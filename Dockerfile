@@ -30,4 +30,5 @@ RUN install2.r -e -s \
     DT \
     plotly \
     rlang \
+    conflicted \
     && chown -R shiny:shiny /srv/app
