@@ -242,6 +242,8 @@ server <- function(input, output, session){
     return(df)
   }
 
+  outputs_collected <-outputs()
+
   cod_acl <- function(){
     cod_acl = 118
     return(cod_acl)
@@ -275,8 +277,10 @@ server <- function(input, output, session){
     return(regs_data)
   }
 
+  regs_collected<-regs()
+
   output$DTout <- DT::renderDT({
-    catch_agg<- outputs() %>%
+    catch_agg<- outputs_collected %>%
       #dat %>%
       dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                     mode == "all modes") %>%
@@ -292,7 +296,7 @@ server <- function(input, output, session){
 
     # regs<- regs %>%
 
-    regs1 <- regs() %>%
+    regs1 <- regs_collected %>%
       dplyr::rename("model" = "run_name") %>%
       dplyr::left_join(catch_agg, by = c("model")) %>%
       tidyr::separate(input, into =c("Species", "season", "Var"), sep = "_") %>%
@@ -346,7 +350,7 @@ server <- function(input, output, session){
   })
 
   # output$summary_regs_table <- DT::renderDT({
-  #   regs1 <- regs() %>%
+  #   regs1 <- regs_collected %>%
   #      dplyr::rename("model" = "run_name") %>%
   #      dplyr::left_join(catch_agg, by = c("model")) %>%
   #     tidyr::separate(input, into =c("Species", "season", "Var"), sep = "_") %>%
@@ -392,7 +396,7 @@ server <- function(input, output, session){
 
   output$totCatch <- plotly::renderPlotly({
 
-    catch_agg<- outputs() %>%
+    catch_agg<- outputs_collected %>%
       #dat %>%
       dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                     mode == "all modes")%>%
@@ -455,7 +459,7 @@ server <- function(input, output, session){
 
       plotly::renderPlotly({
 
-        welfare <-  outputs() %>%
+        welfare <-  outputs_collected %>%
           dplyr::filter(metric == c("CV"),
                         mode == "all modes") %>%
           dplyr::group_by(model,  draw) %>%
@@ -467,7 +471,7 @@ server <- function(input, output, session){
                  pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
           dplyr::ungroup()
 
-        catch<- outputs() %>%
+        catch<- outputs_collected %>%
           #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
@@ -509,7 +513,7 @@ server <- function(input, output, session){
     if(any("Angler Satisfaction" == input$fig)){
 
       plotly::renderPlotly({
-        welfare <-  outputs() %>%
+        welfare <-  outputs_collected %>%
           dplyr::filter(metric == c("CV"),
                         mode == "all modes") %>%
           dplyr::group_by(model,  draw) %>%
@@ -521,7 +525,7 @@ server <- function(input, output, session){
                  pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
           dplyr::ungroup()
 
-        catch<- outputs() %>%
+        catch<- outputs_collected %>%
           #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
@@ -566,14 +570,14 @@ server <- function(input, output, session){
 
       plotly::renderPlotly({
 
-        discmort <-  outputs() %>%
+        discmort <-  outputs_collected %>%
           dplyr::filter(metric == c("discmort_weight"),
                         mode == "all modes") %>%
           dplyr::group_by(model,  draw) %>%
           dplyr::mutate(disc_mort = value * lb_to_mt())  %>%
           dplyr::select(!c(metric,value))
 
-        catch<- outputs() %>%
+        catch<- outputs_collected %>%
           #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
@@ -616,14 +620,14 @@ server <- function(input, output, session){
 
 
       plotly::renderPlotly({
-        discmort <-  outputs() %>%
+        discmort <-  outputs_collected %>%
           dplyr::filter(metric == c("discmort_weight"),
                         mode == "all modes") %>%
           dplyr::group_by(model,  draw) %>%
           dplyr::mutate(disc_mort = value * lb_to_mt())  %>%
           dplyr::select(!c(metric,value))
 
-        catch<- outputs() %>%
+        catch<- outputs_collected %>%
           #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
@@ -668,14 +672,14 @@ server <- function(input, output, session){
 
       plotly::renderPlotly({
 
-        trips <-  outputs() %>%
+        trips <-  outputs_collected %>%
           dplyr::filter(metric == c("predicted_trips"),
                         mode == "all modes") %>%
           dplyr::group_by(model,  draw) %>%
           dplyr::summarise(value = sum(as.numeric(value))) %>%
           dplyr::ungroup()
 
-        catch<- outputs() %>%
+        catch<- outputs_collected %>%
           #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
@@ -716,14 +720,14 @@ server <- function(input, output, session){
     if(any("Trips" == input$fig)){
 
       plotly::renderPlotly({
-        trips <- outputs() %>%
+        trips <- outputs_collected %>%
           dplyr::filter(metric == c("predicted_trips"),
                         mode == "all modes") %>%
           dplyr::group_by(model,  draw) %>%
           dplyr::summarise(value = sum(as.numeric(value))) %>%
           dplyr::ungroup()
 
-        catch<- outputs() %>%
+        catch<- outputs_collected %>%
           #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes") %>%
