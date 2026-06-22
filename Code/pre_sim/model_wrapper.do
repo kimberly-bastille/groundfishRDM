@@ -53,7 +53,7 @@ global fed_holidays_y2 "inlist(day1, td(25may2026), td(19jun2026), td(03jul2026)
 global leap_yr_days "td(29feb2024)" 
 
 * set number of model iterations to create
-global ndraws 100
+global ndraws 50
 
 * adjust 2022 survey trip costs to account for inflation (January 2022 - January 2025)
 * source =https://www.bls.gov/data/inflation_calculator.htm
@@ -118,7 +118,7 @@ do "$input_code_cd\directed_trips_calibration.do"
 		*THIS NEEDS TO BE ADJUSTED EVERY YEAR. 
 
 // 3) Create distributions of costs per trip across strata - only needs to be run once
-*do "$input_code_cd\survey_trip_costs.do"
+do "$input_code_cd\survey_trip_costs.do"
 
 // 4) Create draw of angler preference parameters 
 *do "$input_code_cd\estimate_angler_preferences.do" - only needs to be run once

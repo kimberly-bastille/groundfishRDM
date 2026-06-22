@@ -224,7 +224,7 @@ split new, parse(_)
 rename new1 species
 rename new2 disp
 drop new3
-drop new my 
+drop new my area common
 merge 1:1  mode month species disp  using `sim',  keep(3) nogen
 gen sim_ul = sim_total+1.96*sim_sd
 gen sim_ll = sim_total-1.96*sim_sd
@@ -380,7 +380,7 @@ split new, parse(_)
 rename new1 species
 rename new2 disp
 drop new3
-drop new my 
+drop new my area common
 merge 1:1  mode  species disp  using `sim',  keep(3) nogen
 gen sim_ul = sim_total+1.96*sim_sd
 gen sim_ll = sim_total-1.96*sim_sd
@@ -540,7 +540,7 @@ split new, parse(_)
 rename new1 species
 rename new2 disp
 drop new3
-drop new my 
+drop new my area common
 merge 1:1  mode  season species disp  using `sim',  keep(3) nogen
 gen sim_ul = sim_total+1.96*sim_sd
 gen sim_ll = sim_total-1.96*sim_sd

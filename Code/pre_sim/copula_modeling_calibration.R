@@ -36,7 +36,7 @@ conflicts_prefer(dplyr::summarise)
 
 # ---- controls ----
 n_sim   <- 5000
-n_draws <- 100
+n_draws <- 50
 n_reps  <- 200
 
 statez <- c("all") #holdover from SFRDM

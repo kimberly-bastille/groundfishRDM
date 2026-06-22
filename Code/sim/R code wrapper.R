@@ -49,7 +49,7 @@ final_process_choice_occasions_cd=file.path(final_process_data_cd,"n_choice_occa
 final_process_misc_cd=file.path(final_process_data_cd,"miscellaneous")
 final_process_calib_catch_cd=file.path(final_process_data_cd,"calib_catch_draws")
 
-n_simulations<-5 # Number of model iterations
+n_simulations<-50 # Number of model iterations
 n_draws<-50 # Number of simulated trips per day
 
 # helpers
