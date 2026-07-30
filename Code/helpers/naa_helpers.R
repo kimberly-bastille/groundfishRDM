@@ -27,7 +27,7 @@ pivot_naa_long <- function(df) {
 # Is our data what it claims to be.  We should have some characters, some
 # numerics, a date. These should have no missing values.
 ########################################################
-validate_naa_data <- function(df) {
+validate_naa_data <- function(df, file_in, type, age_classes, ndraws=1, years=1) {
 
   # Ensure specified columns are character vectors and contain no NAs
   stopifnot(
@@ -45,6 +45,12 @@ validate_naa_data <- function(df) {
 
   # Ensure data_version is a Date class
   stopifnot(inherits(df$data_version, "Date"))
+
+  # Historical data should have the same number of rows as age classes* years.
+  # projected data  should have age_classes*ndraws*years
+    stopifnot(nrow(df) == age_classes * ndraws*years)
+
+
 
   # NOTE: state and wave are allowed to be NA; no type enforcement applied here
 
