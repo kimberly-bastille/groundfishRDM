@@ -1,21 +1,50 @@
+/*******************************************************************************
+ Script:       calibration_catch_per_trip_part1.do
+ Purpose:      Uses MRIP trip and catch records to build the calibration-year
+               catch-per-trip inputs for the copula simulation, plus the MRIP
+               benchmark totals used later to check the simulation.
+               Part A: estimates survey-weighted mean harvest-, discard-, and
+                 catch-per-trip and their standard errors by month/mode/area/
+                 species-domain (the "my_dom_id_string" strata). Strata with a
+                 single PSU have no SE; these are imputed from neighboring-month
+                 strata (an approach loosely modeled on MRIP hot/cold-deck
+                 imputation). Flags strata where keep and release never co-occur
+                 (or are perfectly correlated) so the copula treats them as
+                 independent. Saves baseline_mrip_catch_processed.dta for the R
+                 copula step.
+               Part B: computes survey-weighted MRIP catch TOTALS by mode, by
+                 mode-month, and by mode-season, as benchmarks the simulated
+                 calibration-year totals are later compared against.
+ Inputs:       $triplist, $catchlist (tidied MRIP extracts),
+               $misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv (site -> stock-area map).
+ Outputs:      $misc_data_cd/baseline_mrip_catch_processed.{xlsx,dta},
+               $misc_data_cd/mrip_catch_by_mode.dta,
+               $misc_data_cd/mrip_catch_by_mode_month.dta,
+               $misc_data_cd/mrip_catch_by_mode_season.dta.
+ Dependencies: Globals $seed, $calibration_year, $triplist, $catchlist,
+               $misc_data_cd (set in model_wrapper.do). User command renvarlab.
+ Pipeline:     Step 5a. Gated by `catch_per_trip1' in model_wrapper.do; its
+               output feeds copula_modeling_calibration.R (step 5b), then
+               calibration_catch_per_trip_part2.do (step 5c).
+ Note:         Several comments were copied from the flukeRDM template and
+               referred to "fluke, sea bass, or scup" / "sf/bsb"; the code here
+               classifies Atlantic cod and haddock, so those comments were
+               corrected. Part B repeats the same MRIP-prep block three times
+               (once per aggregation level); this duplication is intentional in
+               the source, not a merge artifact. Suspected copy-paste (code
+               unchanged): prim2_common is assigned from prim1_common (see the
+               "classify trips" lines); prim2_common is not used downstream.
+*******************************************************************************/
 
 
 
-/*This code uses the MRIP data to: 
- 
-	* Part A)  
-		1) estimate mean harvest-, discards-, and catch-per-trip and their standard errors at the state, wave, and fishing mode level in the calibration period
-		2) For some combinations of state-wave-mode, there is only a single PSU and thus no standard error available for the mean estimates. In these cases, I impute 
-			a standard error based on other recent data or difference levels of aggregation. 
-		3) Once a mean and standard errors have been estimated for all strata, I save the file and run the "copula_loop.R" in R. This file simulates random 
-			draws of harvest and discards-per trip, accounting for possible intra-species correlation in harvest and discards
-			
-	* Part B)  
-		1) Compute catch'harvest totals by state/mode/etc.in the caliabration year to compare with simulated caliabration-year fishery data 
-	
-*/
-		
-************** Part A  **************
+/******************************************************************************/
+/******************************************************************************/
+/* Part A: Mean catch-per-trip by stratum, with SE imputation */
+/******************************************************************************/
+/******************************************************************************/
+
+di "Part A: estimating mean catch-per-trip and standard errors by stratum"
 set seed $seed
 
 * Pull in MRIP data
@@ -74,13 +103,13 @@ replace mode1="fh" if inlist(mode_fx, "4", "5")
 *drop shore trips
 drop if mode1=="sh"
 
-* classify trips that I care about into the things I care about (caught or targeted sf/bsb) and things I don't care about "ZZ" 
+* classify trips into the domain we care about (caught or targeted cod or haddock) and everything else, marked "ZZ"
 replace prim1_common=subinstr(lower(prim1_common)," ","",.)
 replace prim2_common=subinstr(lower(prim1_common)," ","",.)
 
 * We need to retain 1 observation for each strat_id, psu_id, and id_code
-/* A.  Trip (Targeted or Caught) (fluke, sea bass, or scup) then it should be marked in the domain "_ATLCO"
-   B.  Trip did not (Target or Caught) (fluke, sea bass, or scup) then it is marked in the the domain "ZZZZZ"
+/* A.  Trip targeted or caught cod or haddock -> domain "ATLCO"
+   B.  Trip did not target or catch either species -> domain "ZZ"
 */
 
 gen common_dom="ZZ"
@@ -90,7 +119,7 @@ replace common_dom="ATLCO" if inlist(common, "haddock")
 replace common_dom="ATLCO"  if inlist(prim1_common, "atlanticcod") 
 replace common_dom="ATLCO"  if inlist(prim1_common, "haddock") 
 
-*New MRIP site allocations
+*MRIP-Western GoM site allocations
 preserve 
 import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear 
 keep if inlist(state, "MA", "ME")
@@ -152,7 +181,7 @@ replace no_dup=1 if  strmatch(common, "atlanticcod")==0
 replace no_dup=1 if strmatch(common, "haddock")==0
 
 /*
-We sort on year, strat_id, psu_id, id_code, "no_dup", and "my_dom_id_string". For records with duplicate year, strat_id, psu_id, and id_codes, the first entry will be "my_common catch" if it exists.  These will all be have sp_dom "SF."  If there is no my_common catch, but the trip targeted (fluke, sea bass, or scup) or caught either species, the secondary sorting on "my_dom_id_string" ensures the trip is properly classified.
+We sort on year, strat_id, psu_id, id_code, "no_dup", and "my_dom_id_string". For records with duplicate year, strat_id, psu_id, and id_codes, the first entry will be the cod/haddock catch record if it exists (domain "ATLCO"). If there is no cod/haddock catch but the trip targeted or caught either species, the secondary sort on "my_dom_id_string" ensures the trip is properly classified.
 
 After sorting, we generate a count variable (count_obs1 from 1....n) and we keep only the "first" observations within each "year, strat_id, psu_id, and id_codes" group.
 */
@@ -254,6 +283,10 @@ rename my_dom_id_string1 month
 rename my_dom_id_string2 mode
 rename my_dom_id_string3 area_s
 rename my_dom_id_string4 common_dom
+
+
+keep if area_s=="WGOM"
+keep if common=="ATLCO"
 
 gen shoulder_month="10" if month=="11"
 
@@ -455,10 +488,20 @@ import excel using "$misc_data_cd\baseline_mrip_catch_processed.xlsx", clear fir
 save "$misc_data_cd\baseline_mrip_catch_processed.dta", replace 
 
 
-************** Part B  **************
-* Compute MRIP estimates for comparison with simulated estimates 
+/******************************************************************************/
+/******************************************************************************/
+/* Part B: Survey-weighted MRIP catch totals (benchmarks for the simulation) */
+/******************************************************************************/
+/******************************************************************************/
+* Compute MRIP estimates for comparison with simulated estimates
+* Each of the three sub-blocks below re-reads and re-preps the raw MRIP data
+* from scratch, differing only in the aggregation level of my_dom_id_string
+* (mode; mode-month; mode-season).
 
-* Estimates by mode
+/******************************************************************************/
+/* Part B.1: Totals by mode */
+/******************************************************************************/
+di "Part B.1: MRIP catch totals by mode"
 
 clear
 mata: mata clear
@@ -468,7 +511,7 @@ dsconcat $triplist
 
 sort year strat_id psu_id id_code
 drop if strmatch(id_code, "*xx*")==1
-duplicates drop 
+duplicates drop
 save `tl1'
 clear
 
@@ -484,7 +527,7 @@ merge 1:m year strat_id psu_id id_code using `cl1', keep(1 3) nogenerate /*Keep 
 replace var_id=strat_id if strmatch(var_id,"")
 
 
-* Format MRIP data for estimation 
+* Format MRIP data for estimation
 
 gen state="MA" if st==25
 replace state="MD" if st==24
@@ -501,7 +544,7 @@ replace state="NH" if st==33
 * ensure only relevant states/year
 keep if inlist(st, 23, 33, 25)
 keep if $calibration_year
- 
+
 gen st2 = string(st,"%02.0f")
 
 gen mode1="sh" if inlist(mode_fx, "1", "2", "3")
@@ -511,13 +554,13 @@ replace mode1="fh" if inlist(mode_fx, "4", "5")
 *drop shore trips
 drop if mode1=="sh"
 
-* classify trips that I care about into the things I care about (caught or targeted sf/bsb) and things I don't care about "ZZ" 
+* classify trips into the domain we care about (caught or targeted cod or haddock) and everything else, marked "ZZ"
 replace prim1_common=subinstr(lower(prim1_common)," ","",.)
 replace prim2_common=subinstr(lower(prim1_common)," ","",.)
 
 * We need to retain 1 observation for each strat_id, psu_id, and id_code
-/* A.  Trip (Targeted or Caught) (fluke, sea bass, or scup) then it should be marked in the domain "_ATLCO"
-   B.  Trip did not (Target or Caught) (fluke, sea bass, or scup) then it is marked in the the domain "ZZZZZ"
+/* A.  Trip targeted or caught cod or haddock -> domain "ATLCO"
+   B.  Trip did not target or catch either species -> domain "ZZ"
 */
 
 gen common_dom="ZZ"
@@ -528,7 +571,7 @@ replace common_dom="ATLCO"  if inlist(prim1_common, "atlanticcod")
 replace common_dom="ATLCO"  if inlist(prim1_common, "haddock") 
 
 
-*New MRIP site allocations
+*MRIP-Western GoM site allocations
 preserve 
 import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear 
 keep if inlist(state, "MA", "ME")
@@ -590,7 +633,7 @@ replace no_dup=1 if  strmatch(common, "atlanticcod")==0
 replace no_dup=1 if strmatch(common, "haddock")==0
 
 /*
-We sort on year, strat_id, psu_id, id_code, "no_dup", and "my_dom_id_string". For records with duplicate year, strat_id, psu_id, and id_codes, the first entry will be "my_common catch" if it exists.  These will all be have sp_dom "SF."  If there is no my_common catch, but the trip targeted (fluke, sea bass, or scup) or caught either species, the secondary sorting on "my_dom_id_string" ensures the trip is properly classified.
+We sort on year, strat_id, psu_id, id_code, "no_dup", and "my_dom_id_string". For records with duplicate year, strat_id, psu_id, and id_codes, the first entry will be the cod/haddock catch record if it exists (domain "ATLCO"). If there is no cod/haddock catch but the trip targeted or caught either species, the secondary sort on "my_dom_id_string" ensures the trip is properly classified.
 
 After sorting, we generate a count variable (count_obs1 from 1....n) and we keep only the "first" observations within each "year, strat_id, psu_id, and id_codes" group.
 */
@@ -682,7 +725,10 @@ save "$misc_data_cd\mrip_catch_by_mode.dta", replace
 
 
 
-* Estimates by mode and month 
+/******************************************************************************/
+/* Part B.2: Totals by mode and month */
+/******************************************************************************/
+di "Part B.2: MRIP catch totals by mode and month"
 
 clear
 mata: mata clear
@@ -692,7 +738,7 @@ dsconcat $triplist
 
 sort year strat_id psu_id id_code
 drop if strmatch(id_code, "*xx*")==1
-duplicates drop 
+duplicates drop
 save `tl1'
 clear
 
@@ -708,7 +754,7 @@ merge 1:m year strat_id psu_id id_code using `cl1', keep(1 3) nogenerate /*Keep 
 replace var_id=strat_id if strmatch(var_id,"")
 
 
-* Format MRIP data for estimation 
+* Format MRIP data for estimation
 
 gen state="MA" if st==25
 replace state="MD" if st==24
@@ -725,7 +771,7 @@ replace state="NH" if st==33
 * ensure only relevant states/year
 keep if inlist(st, 23, 33, 25)
 keep if $calibration_year
- 
+
 gen st2 = string(st,"%02.0f")
 
 gen mode1="sh" if inlist(mode_fx, "1", "2", "3")
@@ -735,36 +781,36 @@ replace mode1="fh" if inlist(mode_fx, "4", "5")
 *drop shore trips
 drop if mode1=="sh"
 
-* classify trips that I care about into the things I care about (caught or targeted sf/bsb) and things I don't care about "ZZ" 
+* classify trips into the domain we care about (caught or targeted cod or haddock) and everything else, marked "ZZ"
 replace prim1_common=subinstr(lower(prim1_common)," ","",.)
 replace prim2_common=subinstr(lower(prim1_common)," ","",.)
 
 * We need to retain 1 observation for each strat_id, psu_id, and id_code
-/* A.  Trip (Targeted or Caught) (fluke, sea bass, or scup) then it should be marked in the domain "_ATLCO"
-   B.  Trip did not (Target or Caught) (fluke, sea bass, or scup) then it is marked in the the domain "ZZZZZ"
+/* A.  Trip targeted or caught cod or haddock -> domain "ATLCO"
+   B.  Trip did not target or catch either species -> domain "ZZ"
 */
 
 gen common_dom="ZZ"
-replace common_dom="ATLCO" if inlist(common, "atlanticcod") 
-replace common_dom="ATLCO" if inlist(common, "haddock") 
+replace common_dom="ATLCO" if inlist(common, "atlanticcod")
+replace common_dom="ATLCO" if inlist(common, "haddock")
 
-replace common_dom="ATLCO"  if inlist(prim1_common, "atlanticcod") 
-replace common_dom="ATLCO"  if inlist(prim1_common, "haddock") 
+replace common_dom="ATLCO"  if inlist(prim1_common, "atlanticcod")
+replace common_dom="ATLCO"  if inlist(prim1_common, "haddock")
 
 
 
-*New MRIP site allocations
-preserve 
-import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear 
+*MRIP-Western GoM site allocations
+preserve
+import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear
 keep if inlist(state, "MA", "ME")
 keep state intsite nmfs_stock_area nmfs_stat_area
-sort intsite nmfs_stock_area  
+sort intsite nmfs_stock_area
 replace nmfs_stock_area="WGOM" if inlist(nmfs_stat_area, 521, 526, 541, 514, 513, 515)
 replace nmfs_stock_area="XX" if !inlist(nmfs_stat_area, 521, 526, 541, 514, 513, 515)
 keep nmfs_stock_area intsite nmfs_stat_area state
 duplicates drop
 tempfile mrip_sites
-save `mrip_sites', replace 
+save `mrip_sites', replace
 restore
 
 merge m:1 intsite state using `mrip_sites',  keep(1 3)
@@ -772,7 +818,7 @@ merge m:1 intsite state using `mrip_sites',  keep(1 3)
 /*classify into WGOM or not WGOM */
 gen str3 area_s="XX"
 replace area_s="WGOM" if st2=="33"
-replace area_s=nmfs_stock_area if inlist(st2, "25", "23") 
+replace area_s=nmfs_stock_area if inlist(st2, "25", "23")
 
 gen my_dom_id_string=month+"_"+mode1+"_"+area_s+"_"+common_dom
 
@@ -815,7 +861,7 @@ replace no_dup=1 if  strmatch(common, "atlanticcod")==0
 replace no_dup=1 if strmatch(common, "haddock")==0
 
 /*
-We sort on year, strat_id, psu_id, id_code, "no_dup", and "my_dom_id_string". For records with duplicate year, strat_id, psu_id, and id_codes, the first entry will be "my_common catch" if it exists.  These will all be have sp_dom "SF."  If there is no my_common catch, but the trip targeted (fluke, sea bass, or scup) or caught either species, the secondary sorting on "my_dom_id_string" ensures the trip is properly classified.
+We sort on year, strat_id, psu_id, id_code, "no_dup", and "my_dom_id_string". For records with duplicate year, strat_id, psu_id, and id_codes, the first entry will be the cod/haddock catch record if it exists (domain "ATLCO"). If there is no cod/haddock catch but the trip targeted or caught either species, the secondary sort on "my_dom_id_string" ensures the trip is properly classified.
 
 After sorting, we generate a count variable (count_obs1 from 1....n) and we keep only the "first" observations within each "year, strat_id, psu_id, and id_codes" group.
 */
@@ -902,7 +948,10 @@ order my_dom_id_string month mode  area_s common_dom
 save "$misc_data_cd\mrip_catch_by_mode_month.dta", replace 
 
 
-* Estimates by mode and season 
+/******************************************************************************/
+/* Part B.3: Totals by mode and season (winter = Sep-Apr, summer = May-Aug) */
+/******************************************************************************/
+di "Part B.3: MRIP catch totals by mode and season"
 
 clear
 mata: mata clear
@@ -912,7 +961,7 @@ dsconcat $triplist
 
 sort year strat_id psu_id id_code
 drop if strmatch(id_code, "*xx*")==1
-duplicates drop 
+duplicates drop
 save `tl1'
 clear
 
@@ -955,13 +1004,13 @@ replace mode1="fh" if inlist(mode_fx, "4", "5")
 *drop shore trips
 drop if mode1=="sh"
 
-* classify trips that I care about into the things I care about (caught or targeted sf/bsb) and things I don't care about "ZZ" 
+* classify trips into the domain we care about (caught or targeted cod or haddock) and everything else, marked "ZZ"
 replace prim1_common=subinstr(lower(prim1_common)," ","",.)
 replace prim2_common=subinstr(lower(prim1_common)," ","",.)
 
 * We need to retain 1 observation for each strat_id, psu_id, and id_code
-/* A.  Trip (Targeted or Caught) (fluke, sea bass, or scup) then it should be marked in the domain "_ATLCO"
-   B.  Trip did not (Target or Caught) (fluke, sea bass, or scup) then it is marked in the the domain "ZZZZZ"
+/* A.  Trip targeted or caught cod or haddock -> domain "ATLCO"
+   B.  Trip did not target or catch either species -> domain "ZZ"
 */
 
 gen common_dom="ZZ"
@@ -973,7 +1022,7 @@ replace common_dom="ATLCO"  if inlist(prim1_common, "haddock")
 
 
 
-*New MRIP site allocations
+*MRIP-Western GoM site allocations
 preserve 
 import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear 
 keep if inlist(state, "MA", "ME")
@@ -1038,7 +1087,7 @@ replace no_dup=1 if  strmatch(common, "atlanticcod")==0
 replace no_dup=1 if strmatch(common, "haddock")==0
 
 /*
-We sort on year, strat_id, psu_id, id_code, "no_dup", and "my_dom_id_string". For records with duplicate year, strat_id, psu_id, and id_codes, the first entry will be "my_common catch" if it exists.  These will all be have sp_dom "SF."  If there is no my_common catch, but the trip targeted (fluke, sea bass, or scup) or caught either species, the secondary sorting on "my_dom_id_string" ensures the trip is properly classified.
+We sort on year, strat_id, psu_id, id_code, "no_dup", and "my_dom_id_string". For records with duplicate year, strat_id, psu_id, and id_codes, the first entry will be the cod/haddock catch record if it exists (domain "ATLCO"). If there is no cod/haddock catch but the trip targeted or caught either species, the secondary sort on "my_dom_id_string" ensures the trip is properly classified.
 
 After sorting, we generate a count variable (count_obs1 from 1....n) and we keep only the "first" observations within each "year, strat_id, psu_id, and id_codes" group.
 */

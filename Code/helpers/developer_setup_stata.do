@@ -1,8 +1,17 @@
-/* small helper to setup up users files for the data directory.
-Ideally all data is stored somewhere in "Data" inside the repo but not committed
-Most people will store data there.
-The processed data takes up alot of space, so whoever processes the data will need to store it elsewhere.
-*/
+/*******************************************************************************
+ Script:       developer_setup_stata.do  (helpers)
+ Purpose:      Sets global $gfdatadir to the data root for the current developer
+               ($developer). LCH points at an external E: drive; TP/ML/KB use a
+               repo-relative ${here}\Data folder. Asserts $developer is one of
+               the four allowed codes before proceeding.
+ Inputs:       Global $developer (one of "LCH","TP","ML","KB"), set externally
+               (e.g. the user's profile.do). Global $here (set by the `here`
+               package in model_wrapper.do).
+ Outputs:      Global $gfdatadir; creates that directory if absent.
+ Dependencies: $developer and $here must be set before this runs.
+ Pipeline:     Called unconditionally near the top of model_wrapper.do (line 83).
+               Stata twin of developer_setup.R.
+*******************************************************************************/
 
 assert inlist("$developer", "LCH", "TP", "ML", "KB")
 

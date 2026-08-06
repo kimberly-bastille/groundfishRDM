@@ -1,41 +1,45 @@
-# This code runs the standard projections requested by the PDT for WHAM models.
-# The terminal year of this stock assessment is 2023.
-
-# Author: Charles Perretti (2024-NOV)
-# Mod : Min-Yang Lee (2025-Nov)
-####################################################################################
-# Depends "wham_version_installer.R" will install the proper version of the WHAM
-# package that matches the WHAM model.
-####################################################################################
-# Reads files from google drive, you'll need access to those files.
-
-# This code does 2 projections, but uses the first projection
-# 1) Fmsy 2025-2027 (this is the projection in the MT report) which also produces the ofl in 2025
-# 2) 75%Fmsy 2025-2027 (potential ABCs)
-
-
-# The bioeconomic model needs a few parameters that go into the stock assessment.
-# It also needs some parameters that come out of the stock assessment.
-# Bridging (2024 removals) was orginally set at 2105mt, following the groundfish PDT
-# I've updated it to 2024 actuals
-# This is pretty standard.
-# Some inputs to ASAP are scalars, some are vectors, and some are matrices.
-# I use tail(.x, 1) to pick the last "thing" of a vector or matrix, which is usually the final year of data.
-
-
-
-############
-# Parameters that come out of the stock assessment
-# Weights at age
-# Historical NAA comes out of the WHAM stock assessment.
-
-######
-# Parameters that come out of the projections
-######
-# Numbers at age (in the future).  There isn't a stochastic projection for
-# Haddock NAA are assumed to be lognormally distributed with a mean and sd parameters.
-# I use rlnorm() to generate a distribution
-############ End description###################################################
+################################################################################
+################################################################################
+# Script:       get_haddock_assessment_data.R
+# Purpose:      Reads the accepted GOM haddock WHAM stock-assessment model
+#               (terminal year 2023) and its projected weight-at-age workbook
+#               from Google Drive, runs the two standard PDT projections
+#               (Fmsy and 0.75*Fmsy, 2025-2027), and writes historical and
+#               projected numbers-at-age (NAA). NAA are taken from the SECOND
+#               projection (0.75*Fmsy) and, for the projection year, drawn
+#               (num_NAA_draws) from a bias-corrected lognormal.
+# Inputs:       Two files from the Google Drive shared drive:
+#               "NMFS NEC READ SSB", haddock_assessment/
+#                 mod_nola_dcpe_blls2.rds     (accepted WHAM model),
+#                 waa_pred_2024-08-25.xlsx    (projected SSB/Catch weight-at-age).
+# Outputs:      input_data/GOM_Haddock_Projections_<date>.Rds,
+#               input_data/GOM_Haddock_historical_NAA_<date>.{Rds,dta},
+#               input_data/GOM_Haddock_projected_NAA_<date>.{Rds,dta}
+#               (the NAA files are also uploaded back to Google Drive/input_data).
+# Dependencies: wham_version_installer.R must have installed the WHAM version
+#               matching the model (verified here via stopifnot on the commit).
+#               Code/helpers/naa_helpers.R (pivot_naa_long, validate_naa_data).
+#               Google Drive access with cached credentials in .secrets.
+# Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
+#               the Stata pipeline: its NAA outputs feed the catch-at-length
+#               steps (see catch_at_length_projection.do). Sibling of
+#               get_cod_assessment_data.R.
+#
+# Background (units and conventions):
+#   - Aggregate weights (SSB, catch) are in metric tons; weight-at-age vectors
+#     are in kg. tail(x, 1) picks the last (most recent) year of a vector/matrix.
+#   - Some parameters go INTO the assessment, others come OUT (weights-at-age,
+#     historical NAA). Future NAA are treated as lognormal (no stochastic
+#     projection) and simulated with rlnorm().
+#   - Bridging (2024 removals) was originally the PDT's 2105 mt; it has been
+#     updated to the 2024 actual catch (see "Define catch in previous years").
+#   - The two projections differ only in the out-year F: projection 1 uses Fmsy
+#     (this is the projection in the MT report, and produces the 2025 OFL);
+#     projection 2 uses 0.75*Fmsy (potential ABCs) and supplies the saved NAA.
+#
+# Author: Charles Perretti (2024-NOV); modified by Min-Yang Lee (2025-Nov).
+################################################################################
+################################################################################
 #Load libraries
 library(tidyverse)
 library(TMB)
@@ -209,17 +213,19 @@ old_bridge_year_catch <- 2105 #GOM haddock 2024 MT PDT-supplied catch
 actual_2023_commercial_catch_mt<-2277
 actual_2024_commercial_catch_mt<-1405
 actual_2025_commercial_catch_mt<-NA # Update for 2027
+actual_2026_commercial_catch_mt<-NA # Update for 2028
 
 actual_2023_rec_catch_mt<-793 # From GARFO quota monitoring report
 actual_2024_rec_catch_mt<-899
 actual_2025_rec_catch_mt<-NA #Update for 2027
+actual_2025_rec_catch_mt<-NA #Update for 2028
 
 
 actual_2023_catch_mt<-actual_2023_commercial_catch_mt+actual_2023_rec_catch_mt
 actual_2024_catch_mt<-actual_2024_commercial_catch_mt+actual_2024_rec_catch_mt
 
 # 2025 not used yet.
-# actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
+ actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
 
 
 #Handle WAA ###############################################################################

@@ -1,6 +1,12 @@
 
 
-* We originally used MRIP data from (year==2025 & inlist(wave, 1, 2, 3, 4)) | (year==2024 & inlist(wave, 5, 6)) for the groundfish RDM in FY2026's mgt. cycle. 
+/*******************************************************************************
+ Dev paths note (no full script header yet - out of scope for this pass):
+ 4 hardcoded absolute paths to a developer's local machine (C:\ or E:\),
+ at lines 31, 38, 212 and 471.
+*******************************************************************************/
+
+* We originally used MRIP data from (year==2025 & inlist(wave, 1, 2, 3, 4)) | (year==2024 & inlist(wave, 5, 6)) for the groundfish RDM in FY2026's mgt. cycle.
 * MRIP released preliminary 2025w5 and updated preliminary 2025w4 data on January 21, 2026. 
 * This file computes a scalar to adjust the original RDM output based on newly available/updated data MRIP data.
 

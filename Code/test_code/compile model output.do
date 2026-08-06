@@ -1,4 +1,10 @@
 
+/*******************************************************************************
+ Dev paths note (no full script header yet - out of scope for this pass):
+ 9 hardcoded absolute paths to a developer's local machine (C:\ or E:\),
+ at lines 3, 4, 5, 6, 7, 28, 41, 96 and 101.
+*******************************************************************************/
+
 * adjust project paths based on user
 global project_path "C:\Users\andrew.carr-harris\Desktop\Git\groundfishRDM" /* Lou's project path */
 global input_data_cd "E:\Lou_projects\groundfishRDM\input_data" /* Lou's local data path */

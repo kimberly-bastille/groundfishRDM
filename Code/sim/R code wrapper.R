@@ -1,6 +1,41 @@
+################################################################################
+# Script:       R code wrapper.R
+# Purpose:      Orchestrates the R (simulation) half of the pipeline. Loads
+#               packages, sets shared paths and run parameters, converts the
+#               Stata-produced calibration inputs from CSV/DTA to FST for speed,
+#               then runs the two-step calibration and exports the results to
+#               Google Drive.
+# Inputs:       Under gf.data.dir: miscellaneous/directed_trip_draws.csv,
+#               calib_catch_draws/calib_catch_draws_<i>.dta (i = 1..n_simulations),
+#               miscellaneous/Discard_Mortality.csv,
+#               miscellaneous/next_year_calendar_adjustments.csv.
+# Outputs:      Under gf.data.dir: miscellaneous/directed_trip_draws.fst,
+#               calib_catch_draws/calib_catch_draws_<i>.fst (i = 1..n_simulations),
+#               miscellaneous/Discard_Mortality.fst,
+#               miscellaneous/calendar_adj.fst.
+#               These are FST copies of the four inputs above, written by
+#               Section C for speed. Note that the calendar adjustments file is
+#               renamed on the way through, so its two names do not match.
+#               Written by the sourced scripts rather than here:
+#               calibration_comparison.fst (calibrate_rec_catch0.R),
+#               calibrated_model_stats.fst (calibration_routine.R),
+#               base_outcomes_<s>_<md>_<i>.fst and
+#               n_choice_occasions_<s>_<md>_<i>.fst (calibrate_rec_catch1.R).
+# Dependencies: Object `developer` set in the session; sources developer_setup.R,
+#               calibrate_rec_catch0.R, calibration_routine.R,
+#               export_to_GoogleDrive.R. The Stata pre-sim pipeline must have run
+#               first to produce the inputs.
+# Pipeline:     The R simulation wrapper. Invoked as the final toggle-gated step
+#               of model_wrapper.do (run_calibration), or run standalone after
+#               the Stata stage (see DATAFLOW_GROUNDFISH.md).
+################################################################################
 
 
-# run this file after data processing in Stata
+################################################################################
+################################################################################
+# Section A: Package loading and run configuration
+################################################################################
+################################################################################
 
 options(scipen = 999)
 
@@ -30,6 +65,12 @@ conflicts_prefer(dplyr::summarise)
 conflicts_prefer(dplyr::count)
 
 
+################################################################################
+################################################################################
+# Section B: Run parameters, data paths, and helper functions
+################################################################################
+################################################################################
+
 #Set up R globals for input/output data and code scripts
 code_cd=here("Code", "sim")
 source(here("Code", "helpers", "developer_setup.R"))
@@ -50,10 +91,23 @@ final_process_choice_occasions_cd=file.path(final_process_data_cd,"n_choice_occa
 final_process_misc_cd=file.path(final_process_data_cd,"miscellaneous")
 final_process_calib_catch_cd=file.path(final_process_data_cd,"calib_catch_draws")
 
-n_simulations<-101 # Number of model iterations
+# Number of model iterations. Should match Stata's $ndraws
+# (model_wrapper.do); the two are not linked in code, so a
+# prototyping run that changes $ndraws must change this too.
+n_simulations<-101
 n_draws<-50 # Number of simulated trips per day
 
-# helpers
+#' @title Parse dates of unknown format to IDate
+#' @description Tries several common date encodings in turn and returns a
+#'   data.table IDate, so downstream date math is fast. Normalizes the mixed
+#'   date formats arriving in the Stata-produced CSV/DTA inputs.
+#' @param x Character (or coercible) vector of dates in one of the tried
+#'   formats: %d%b%Y, %Y-%m-%d, %m/%d/%Y, %d/%m/%Y.
+#' @return A data.table IDate vector.
+#' @examples
+#' \dontrun{
+#' parse_date_any(c("01Nov2024", "2024-11-01"))
+#' }
 parse_date_any <- function(x) {
   data.table::as.IDate(as.Date(
     x,
@@ -61,15 +115,21 @@ parse_date_any <- function(x) {
   ))
 }
 
-### MODEL CALIBRATION ###
-# Simulation stratum are the groups in which we allocate and simulate choice occasions.
-# For the 2026 GF RDM, the stratum is the combination of mode (pr/fh) and season (winter/summer)
+################################################################################
+################################################################################
+# Section C: Model calibration (convert inputs to FST, then calibration STEP 1 -> STEP 2)
+################################################################################
+################################################################################
 
-# Projection results are based on X iterations of the model. In each iteration we pull
+# Simulation strata are the groups in which we allocate and simulate choice occasions.
+# For the 2026 GF RDM, a stratum is the combination of mode (pr/fh) and season (winter/summer).
+
+# Projection results are based on n_simulations iterations of the model. In each iteration we pull
 # in new distributions of catch-per-trip, directed fishing effort, projected catch-at-length,
 # and angler preferences.
 
 # Transfer some files from .csv to .fst to reduce computing time
+message("Converting calibration inputs from CSV/DTA to FST (this can take a while) ...")
 dtrip0<-read.csv(file.path(final_process_misc_cd, paste0("directed_trip_draws.csv"))) %>%
   dplyr::mutate(date_parsed = parse_date_any(day),
                 month=data.table::month(date_parsed)) %>%
@@ -93,13 +153,16 @@ write_fst(disc_mort, file.path(final_process_misc_cd, paste0("Discard_Mortality.
 
 calendar_adj<- readr::read_csv(file.path(final_process_misc_cd, "next_year_calendar_adjustments.csv"), show_col_types = FALSE)
 write_fst(calendar_adj, file.path(final_process_misc_cd, paste0("calendar_adj.fst")))
+message("Finished converting inputs to FST.")
 
 
 # STEP 1
 # Run the simulation to determine and retain percent/absolute differences between
-# model-based harvest and MRIP-based harvest harvest numbers by species.
+# model-based harvest and MRIP-based harvest numbers by species.
 
+message("STEP 1: running calibrate_rec_catch0.R (simulation; this can take a while) ...")
 source(file.path(code_cd,"calibrate_rec_catch0.R"))
+message("STEP 1 complete.")
 
 # Output files:
 # calibration_comparison.fst
@@ -114,27 +177,25 @@ source(file.path(code_cd,"calibrate_rec_catch0.R"))
 
 # Retain calibrated baseline trip outcomes, n_choice_occasions, calibration statistics (e.g. r*, h*)
 
+message("STEP 2: running calibration_routine.R (iterative reallocation; this can take a while) ...")
 source(file.path(code_cd,"calibration_routine.R"))
+message("STEP 2 complete.")
 
 # Output files:
 # calibrated_model_stats.fst
 # file.path(final_process_choice_occasions_cd,paste0("n_choice_occasions_", s, "_", md, "_", i,".fst"))
 # file.path(final_process_outcomes_cd, paste0("base_outcomes_", s, "_", md, "_", i, ".fst"))
 
-### END MODEL CALIBRATION ###
+################################################################################
+################################################################################
+# Section D: Export calibration outputs to Google Drive
+################################################################################
+################################################################################
 
-# Export files to Google Drive
+message("Exporting calibration outputs to Google Drive ...")
 source(file.path(code_cd, "export_to_GoogleDrive.R"))
+message("Export complete.")
 
-
-
-
-### MODEL PROJECTION ###
-# Run the simulation using baseline trip outcomes (to compute welfare and demand response),
-# n_choice_occasions, calibration statistics,  population-adjusted catch-at-length distributions,
-# projection year calendar adjustments
-
-#source(file.path(code_cd, "predict_rec_catch.R"))
 
 
 

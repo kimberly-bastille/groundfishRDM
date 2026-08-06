@@ -1,14 +1,24 @@
-/* Tidyup mrip data that comes from R's tacklebox*/
-/* In the data processing chain, this runs after 
-	rscript using "$input_code_cd\get_mrip_oracle.R", args($first_mrip_year $last_mrip_year)
-	
-Inputs -- mrip trip, catch, size, sizeb2 files
-Outputs -- same, with these modifications:
-	strat_id psu_id id_code zip are forced to strings
-	year wave st are forced to numeric
-	
-	Filterned to include yearwave patterns from $yr_wvs in the model_wrapper.do file.	
-*/
+/*******************************************************************************
+ Script:       tidyup_mrip_data_fromR.do
+ Purpose:      Cleans the MRIP trip/catch/size/size_b2 files freshly pulled from
+               Oracle via R's tacklebox: enforces column types, converts the
+               pull-date string to a Stata date, and filters each file to the
+               year-wave combinations listed in $yr_wvs.
+ Inputs:       The .dta files named in globals $catchlist $triplist $b2list
+               $sizelist (the raw MRIP extracts written by get_mrip_oracle.R).
+ Outputs:      The same files, overwritten in place, with:
+                 - strat_id psu_id id_code zip forced to string
+                 - year wave st forced to numeric
+                 - mrip_pull_date converted to a Stata %td date
+                 - rows restricted to the year-wave patterns in $yr_wvs
+ Dependencies: Globals $catchlist/$triplist/$b2list/$sizelist and $yr_wvs
+               (set in model_wrapper.do). Runs immediately after
+               get_mrip_oracle.R.
+ Pipeline:     Step 2 of model_wrapper.do, gated by `pull_MRIP' (default ON),
+               directly following the get_mrip_oracle.R Oracle pull.
+*******************************************************************************/
+
+display "Tidying MRIP catch/trip/size files (type enforcement + year-wave filter) ..."
 
 foreach l in $catchlist $triplist $b2list $sizelist {
 
@@ -40,3 +50,5 @@ foreach l in $catchlist $triplist $b2list $sizelist {
 	
 save `l', replace
 }
+
+display "Finished tidying MRIP files."

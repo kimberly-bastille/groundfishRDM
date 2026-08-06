@@ -1,15 +1,33 @@
+################################################################################
+# Script:       export_to_GoogleDrive.R
+# Purpose:      Uploads the calibration outputs (miscellaneous, base_outcomes,
+#               n_choice_occasions, calib_catch_draws) from the local data folders
+#               to their Google Drive counterparts, then compares the expected vs
+#               actual file inventory on Drive and reports any missing files.
+# Inputs:       Local FST/CSV/XLSX/DTA files in the final_process_* folders (set by
+#               "R code wrapper.R"); the corresponding shared-drive folders.
+# Outputs:      Files uploaded to Google Drive; a printed report of missing files.
+# Dependencies: Requires a cached Drive token (.secrets) and the
+#               final_process_* path objects defined by the calling
+#               "R code wrapper.R".
+# Pipeline:     Sourced by "R code wrapper.R" (Section D) after calibration.
+################################################################################
 
-#export files to Google Drive
-# Upload files to Google Drive
 library(googledrive)
 
 # Connect to Google Drive
 # NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
 drive_auth(cache = here(".secrets"), email = TRUE)
 
+################################################################################
+################################################################################
+# Section A: Resolve Google Drive folder ids
+################################################################################
+################################################################################
+
 # Output folders on google drive
 base_outcomes_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","base_outcomes")
-n_choice_occasions_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","n_choice_occassions")
+n_choice_occasions_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","n_choice_occasions")
 calib_catch_draws_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","calib_catch_draws")
 miscellaneous_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","miscellaneous")
 
@@ -38,7 +56,29 @@ folder_info <- drive_get(
 miscellaneous_path<-folder_info$id
 
 
-# Upload all files in a local folder to a Google Drive folder
+################################################################################
+################################################################################
+# Section B: Upload local output folders to Google Drive
+################################################################################
+################################################################################
+
+#' @title Upload all matching files in a local folder to a Google Drive folder
+#' @description Lists files in `local_folder` matching `pattern` and uploads each
+#'   to the Drive folder given by `drive_folder_id`, handling name collisions per
+#'   `if_exists`. Individual upload failures are caught and warned about rather
+#'   than aborting the whole batch.
+#' @param local_folder Path to the local folder to upload from.
+#' @param drive_folder_id Google Drive folder id (an as_id-able string) to upload into.
+#' @param pattern Regex for which files to include (default: fst/csv/xlsx/dta).
+#' @param if_exists How to handle a name already present on Drive: "skip" (leave
+#'   the existing file), "overwrite" (replace it), or "rename" (append a timestamp).
+#' @param recursive Whether to recurse into subfolders of `local_folder`.
+#' @return Invisibly, the vector of local file paths considered for upload.
+#' @examples
+#' \dontrun{
+#' upload_folder_to_drive(final_process_misc_cd, miscellaneous_path,
+#'                        if_exists = "overwrite")
+#' }
 upload_folder_to_drive <- function(local_folder, drive_folder_id,
                                    pattern = "\\.(fst|csv|xlsx|dta)$",
                                    if_exists = c("skip", "overwrite", "rename"),
@@ -104,6 +144,7 @@ upload_folder_to_drive <- function(local_folder, drive_folder_id,
   invisible(files_to_upload)
 }
 
+message("Uploading calibration output folders to Google Drive (this can take a while) ...")
 upload_folder_to_drive(
   local_folder = final_process_misc_cd,
   drive_folder_id = miscellaneous_path,
@@ -135,6 +176,12 @@ upload_folder_to_drive(
 
 
 
+
+################################################################################
+################################################################################
+# Section C: Reconcile expected vs actual files on Drive; report any missing
+################################################################################
+################################################################################
 
 # Identify expected and actual files on Google Drive, print files that are missing to manually upload
 library(googledrive)
@@ -170,7 +217,7 @@ expected_choice <- CJ(
 )[
   ,
   .(
-    folder = "n_choice_occassions",
+    folder = "n_choice_occasions",
     file_name = paste0("n_choice_occasions_", season, "_", mode, "_", draw, ".fst")
   )
 ]
@@ -181,6 +228,13 @@ expected_files <- rbindlist(
 )
 
 # Get actual files currently on Google Drive
+#' @title List file names in a Drive folder as a data.table
+#' @description Wraps drive_ls for one folder and returns a tidy data.table of the
+#'   file names and Drive ids, tagged with a caller-supplied folder label so
+#'   several folders can be stacked and compared.
+#' @param drive_folder_id Google Drive folder id (an as_id-able string).
+#' @param folder_label Short label recorded in the `folder` column for this folder.
+#' @return A data.table with columns folder, file_name, drive_id.
 get_drive_file_names <- function(drive_folder_id, folder_label) {
   x <- googledrive::drive_ls(
     path = googledrive::as_id(drive_folder_id)
@@ -196,10 +250,12 @@ get_drive_file_names <- function(drive_folder_id, folder_label) {
 actual_files <- rbindlist(list(
   get_drive_file_names(calib_catch_draws_path, "calib_catch_draws"),
   get_drive_file_names(base_outcomes_path, "base_outcomes"),
-  get_drive_file_names(n_choice_occasions_path, "n_choice_occassions")
+  get_drive_file_names(n_choice_occasions_path, "n_choice_occasions")
 ))
 
 # Identify missing files
+# data.table anti-join: keep rows of expected_files with no matching (folder,
+# file_name) row in actual_files — i.e. expected outputs not yet on Drive.
 missing_files <- expected_files[
   !actual_files,
   on = c("folder", "file_name")

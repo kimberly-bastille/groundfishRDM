@@ -1,4 +1,10 @@
 
+################################################################################
+# Dev paths note (no full script header yet - out of scope for this pass):
+# 5 hardcoded absolute paths to a developer's local machine (E:\),
+# at lines 10, 11, 12, 13 and 14.
+################################################################################
+
 library(data.table)
 library(fst)
 library(readr)

@@ -1,12 +1,37 @@
 
 
 
-****Set regulations for the calibration period and the projection period****
-*These need to be changed every year 
+/*******************************************************************************
+ Script:       set_regulations.do
+ Purpose:      Writes the status-quo bag limits and minimum sizes for cod and
+               haddock onto a daily calendar dataset, for both the calibration
+               period (variable `day') and the projection year (`day_y2'). Builds
+               the projection-year calendar, merges the calibration-period regs
+               onto it, and layers on year-2 status-quo (_y2) and alternative
+               (_y2_alt) regulation scenarios. FY 2026 model.
+ Inputs:       The daily calendar dataset already in memory (supplied by
+               directed_trips_calibration.do); globals $projection_date_start,
+               $projection_date_end, $leap_yr_days, $fed_holidays_y2.
+ Outputs:      (in memory) the calendar with cod_bag/cod_min/hadd_bag/hadd_min for
+               the calibration period plus _y2 and _y2_alt variants for the
+               projection period.
+ Dependencies: Expects a daily calendar (with day, mode, dow, kod, draw) in memory
+               and the globals above set. THESE REGULATIONS MUST BE UPDATED EVERY
+               YEAR.
+ Pipeline:     Not called directly by model_wrapper.do; invoked via a nested `do'
+               from directed_trips_calibration.do (step 5a in DATAFLOW_GROUNDFISH.md).
+ Note:         Suspected bug (flagged, code unchanged): the year-2 kind-of-day
+               block (~lines 110-111) tests variable `dow', but at that point the
+               dataset has just been rebuilt and only `dow_y2' exists (created a
+               few lines above). This may error or misclassify projection-year
+               weekends.
+*******************************************************************************/
 
-*FY 2026 model
-
-*************************
+/******************************************************************************/
+/******************************************************************************/
+/* Section A: Calibration-period regulations (haddock and cod) */
+/******************************************************************************/
+/******************************************************************************/
 * Generate baseline regulations for the calibration period, which covers (year==2025 & inlist(wave, 1, 2, 3, 4)) | (year==2024 & inlist(wave, 5, 6)). 
 * So FY24 regs until April 30, 2025, FY25 regs starting May 1, 2025 
 
@@ -26,7 +51,10 @@ Cod			9/1/24-10/31/24		both		1	    23
 Cod			9/1/25-10/31/25		both		1		23
 */
 
-gen cod_bag  = 0 
+/* Defaults represent a closed fishery: bag 0, and a 100 cm minimum size that no
+   fish reaches. Open seasons below overwrite these. Size limits are entered in
+   inches and converted to cm (inches * 2.54). */
+gen cod_bag  = 0
 gen cod_min  = 100
 
 gen hadd_bag = 0
@@ -92,8 +120,12 @@ replace cod_min = 23*2.54  if inrange(day, td(01sep2025), td(31oct2025))
 tempfile regulations
 save `regulations', replace 
 
-*now merge to this file the calender for y+1 (_y2)
-clear 
+/******************************************************************************/
+/******************************************************************************/
+/* Section B: Build the projection-year (y2) calendar and merge in calibration regs */
+/******************************************************************************/
+/******************************************************************************/
+clear
 set obs 2
 gen day_y2=$projection_date_start if _n==1
 replace day_y2=$projection_date_end if _n==2
@@ -107,8 +139,11 @@ gen year_y2=year(day_y2)
 drop if day_y2==$leap_yr_days
 gen dow_y2 = dow(day_y2)  
 
+/* Kind-of-day: weekend ("we") for Fri/Sat/Sun (dow 5,6,0) and federal holidays,
+   weekday ("wd") for Mon-Thu. NOTE: these two lines test `dow', but only `dow_y2'
+   exists here (see the suspected-bug note in the header). */
 gen kod_y2="we" if inlist(dow, 5, 6, 0)
-replace kod_y2="wd" if inlist(dow, 1, 2, 3, 4)		
+replace kod_y2="wd" if inlist(dow, 1, 2, 3, 4)
 replace kod_y2="we" if $fed_holidays_y2
 
 gen month2_y2= string(month1,"%02.0f")
@@ -129,7 +164,11 @@ order year mode month kod dow day  draw cod_bag cod_min hadd_bag hadd_min day_y2
 sort  mode day draw
 
 
-*************************************************
+/******************************************************************************/
+/******************************************************************************/
+/* Section C: Year-2 status-quo regulations (projection period) */
+/******************************************************************************/
+/******************************************************************************/
 * Year 2 status-quo regs (projection period : 01may2026–30apr2027)
 * Based on actual 2025 regulations:
 *   Cod:     1 fish, 23",  9/1/25–10/31/25
@@ -160,7 +199,13 @@ replace hadd_min_y2 = 18*2.54 if inrange(day_y2, td(01may2026), td(28feb2027)) /
                                                 | inrange(day_y2, td(01apr2027), td(30apr2027))
 
 
-*************************************************
+/******************************************************************************/
+/******************************************************************************/
+/* Section D: Year-2 alternative regulations (voted but not implemented) */
+/******************************************************************************/
+/******************************************************************************/
+*This section can be excluded if the regulations voted for the projection year were actually implemented. But this is not always the case, e.g., in FY 2026. 
+
 * Year 2 alternative regs (projection: 01may2026–30apr2027)
 * Based on *voted but not implemented* 2025 regs:
 *   Cod:     1 fish, 23",  5/1/25–5/31/25 and 9/1/25–10/31/25
