@@ -1,5 +1,19 @@
-#This code reads in a catch at length dta for the recDST data dashboard and uploads it to Google drive as an Rds
-
+################################################################################
+# Script:       rdb_catch_at_len_to_drive.R
+# Purpose:      Reads the dashboard-formatted catch-at-length .dta, saves it as
+#               an .Rds stamped with its data_version, and uploads that .Rds to
+#               the shared Google Drive miscellaneous folder for the rec
+#               dashboard.
+# Inputs:       <gf.data.dir>/miscellaneous/rdb_cat_len.dta (written by rdb_catch_at_length.do)
+# Outputs:      <gf.data.dir>/miscellaneous/rdb_catch_at_length_<date>.Rds,
+#               and a copy of that file uploaded to Google Drive.
+# Dependencies: Sources developer_setup.R (for gf.data.dir). Requires a cached
+#               Drive token in .secrets (see googledrivesetup.R).
+# Pipeline:     Step in model_wrapper.do gated by `Rpush_catch_at_length_to_gdrive'
+#               (default ON), run via `rscript using`. Near-identical twin of
+#               rdb_catch_per_trip_to_drive.R (differs only in the input file and
+#               object names). Input file rdb_cat_len.dta is generated in rdb_catch_at_length.do.
+################################################################################
 
 #Load libraries
 library(tidyverse)
@@ -36,6 +50,7 @@ write_rds(rdb_catch_at_length, file=file.path(output_folder,glue("{SimCPTSaveFil
 
 # Connect to Google Drive
 # NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
+message("Uploading catch-at-length Rds to Google Drive ...")
 drive_auth(cache = here(".secrets"), email = TRUE)
 
 # Output folder on google drive
@@ -56,5 +71,6 @@ drive_upload(
   name = glue("{SimCPTSaveFile}.Rds"),
   overwrite = TRUE
 )
+message("Catch-at-length upload complete.")
 
 

@@ -1,23 +1,25 @@
-*********** WGOM COD & GOM HADDOCK CATCH PER TRIP ***********
+/*******************************************************************************
+ Script:       rdb_processing_catch_per_trip.do
+ Purpose:      Cleans the simulated catch-per-trip data and formats it for the rec
+               dashboard: for WGOM Atlantic cod and GOM haddock, takes the median, min, and max
+               across the 100 draws of simulated mean catch per trip (harvest +
+               discards, i.e. A + B1 + B2) at the mode-month level and adds 
+               descriptive columns.
+ Inputs:       $misc_data_cd/simulated_catch_totals3.dta (written by
+               compare_calibration_data_to_MRIP.do).
+ Outputs:      $misc_data_cd/rdb_sim_catch_per_trip.dta
+ Dependencies: Global $misc_data_cd (set in model_wrapper.do).
+ Pipeline:     Wrapped by model_wrapper.do, gated by `prep_cpt_for_dashboard'
+               (default ON). Followed by rdb_catch_per_trip_to_drive.R, which
+               pushes the output to Google Drive as an Rds.
+               
 
-/*
-This code pulls the median, minimum, and maximum of  100 draws of simulated mean catch per trip (ie, harvest + discards, or A + B1 + B2) at the the mode-month level for Western Gulf of Maine (WGOM)  Atlantic Cod and Gulf of Maine (GOM) Haddock. 
-
-This code cleans the simulated catch per trip data compiled in compare_calibration_data_to_MRIP.do and saved in simulated_catch_totals3.dta and formats the data for use in the rec dashboard. 
-
-
- Name: rdb_processing_catch_per_trip.do
- Inputs: simulated_catch_totals3.dta
- Outputs: rdb_sim_catch_per_trip.dta
- Description: Grabs the median, min, and max of catch per trip at the the mode-month level for Atlantic Cod and Haddock in the Western Gulf of Maine (WGOM), based on 100 random draws of mean catch per trip.
  General strategy:
   1. Read in data
   2. Collapse data to get median, min, and max catch per trip at the mode-month level for Cod and then Haddock
   3. Stack median, min, and max catch per trip for Cod and Haddock  
   4. Add descriptive columns for dashboard
-  5. Run rdb_catch_per_trip_to_drive.R to push the processed data to Google Drive as an Rds
-  
-*/
+*******************************************************************************/
 
 
 u "$misc_data_cd\simulated_catch_totals3.dta", clear
@@ -26,7 +28,14 @@ u "$misc_data_cd\simulated_catch_totals3.dta", clear
 keep mode month dtrip cod_cat_sim hadd_cat_sim
 
 
-** Take median, max, and min of cod catch per trip (cod_cat_sim) and haddock catch per trip (hadd_cat_sim) by mode and month, then append them:
+/******************************************************************************/
+/******************************************************************************/
+/* Section A: Median / min / max catch per trip by mode-month, per species */
+/******************************************************************************/
+/******************************************************************************/
+
+/* Take median, max, and min of cod catch per trip (cod_cat_sim) and haddock catch 
+per trip (hadd_cat_sim) by mode and month */
 
 *cod median
 preserve
@@ -103,8 +112,14 @@ tempfile h_max
 save `h_max', replace 
 restore
 
-clear
+/******************************************************************************/
+/******************************************************************************/
+/* Section B: Stack the six data summaries, add dashboard columns, and save */
+/******************************************************************************/
+/******************************************************************************/
+
 // clear then append all 6 of them
+clear
 append using `c_med' `c_min' `c_max' `h_med' `h_min' `h_max'
 
 
@@ -145,8 +160,6 @@ save "$misc_data_cd\rdb_sim_catch_per_trip.dta", replace
 
 *graph bar value if metric=="median catch per trip" & common=="haddock", over(month) by(mode) ytitle("Median hadd catch per trip by mode-month")  scheme(stmono1) //xtitle("Month") 
 
-
-// better to show month level rather than wave because of variability across months (May catch per trip is much higher than June - see bar chart above)
 
 
 

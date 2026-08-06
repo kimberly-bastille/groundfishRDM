@@ -1,14 +1,39 @@
 
-***This code creates trip cost distributions based on the Sabrina's 2017 trip expenditure survey data
+/*******************************************************************************
+ Script:       survey_trip_costs.do
+ Purpose:      Builds simulated trip-cost distributions by mode/species-domain
+               from the survey expenditure data using a two-part ("hurdle")
+               model: a survey-weighted probability of any spending, plus a
+               lognormal for positive costs calibrated so the simulated
+               positive-cost mean matches the survey estimate. Adjusts for
+               inflation and caps simulated costs at the observed max by mode.
+ Inputs:       $misc_data_cd/gulf_atl_2022.dta (expenditure survey),
+               $misc_data_cd/prim1.dta, $misc_data_cd/prim2.dta.
+ Outputs:      $misc_data_cd/trip_costs.dta
+ Dependencies: Globals $seed, $inflation_expansion, $misc_data_cd
+               (set in model_wrapper.do).
+ Pipeline:     Wrapped by model_wrapper.do, gated by `costs_per_trip' (default ON;
+               commented in the wrapper as a "run 1x" step).
+ Note:         The original comment described this as "Sabrina's 2017 trip
+               expenditure survey," but the code loads gulf_atl_2022.dta and later
+               comments reference the 2022 data — the "2017" appears stale.
+*******************************************************************************/
 
 set seed $seed
 
-*Enter a directory with the expenditure survey data 
+/******************************************************************************/
+/******************************************************************************/
+/* Section A: Load and clean the survey expenditure data */
+/******************************************************************************/
+/******************************************************************************/
+
+*Enter a directory with the expenditure survey data
 u "$misc_data_cd\gulf_atl_2022.dta", clear
 renvarlab *, lower
 
 
-* As per Sabrina, run the following code before using the 2022 data. This code sets certain expenditure variables to missing depending on the trip mode. 
+* As per Sabrina Lovell, run the following code before using the 2022 data. This code sets certain expenditure variables to missing depending on the trip mode. 
+* Begin Sabrina's code recommendation:
 * For-Hire trips: set boat fuel and boat rental to missing
 replace bfuelexp = . if mode == "For-Hire"
 replace brentexp = . if mode == "For-Hire"
@@ -22,7 +47,7 @@ replace bfuelexp = . if mode == "Shore"
 replace crewexp  = . if mode == "Shore"
 replace guideexp = . if mode == "Shore"
 replace brentexp = . if mode == "Shore"
-
+* End Sabrina's code recommendation
 
 *keep only the states we need (ME, NH, MA) 
 keep if inlist(st, 23, 33, 25)
@@ -42,7 +67,7 @@ egen total_exp=rowtotal(afuelexp arentexp ptransexp lodgexp grocexp restexp bait
 
 svyset psu_id [pweight= sample_wt], strata(var_id) singleunit(certainty)
 
-
+*merge prim1 (numeric id for species) to prim1_common (common_name identified) in order to estimates trip costs for the species of interest, rather than for all species
 merge m:1 prim1 using "$misc_data_cd\prim1.dta", keep(1 3) nogen 
 merge m:1 prim2 using "$misc_data_cd\prim2.dta", keep(1 3) nogen 
 
@@ -73,7 +98,7 @@ replace mode1="pr" if inlist(mode_fx,  "7")
 *Adjust for inflation
 replace total_exp = total_exp*$inflation_expansion
 
-*New approach computes trip cost distribution based on directed trips for sf, bsb, or scup
+*computes trip cost distribution based on directed trips for cod, haddock, or pollock
 gen common_dom="1" if inlist(prim1_common, "HADDOCK", "ATLANTIC COD", "POLLOCK") |  inlist(prim2_common, "HADDOCK", "ATLANTIC COD", "POLLOCK")
 replace common_dom="2" if common_dom==""
 *gen common_dom="1" 
@@ -90,8 +115,14 @@ save `domains', replace
 restore
 
 
+/******************************************************************************/
+/******************************************************************************/
+/* Section B: Survey-weighted observed cost means by mode-species domain */
+/******************************************************************************/
+/******************************************************************************/
+
 preserve
-svy: mean total_exp, over(domain2)  
+svy: mean total_exp, over(domain2)
 
 xsvmat, from(r(table)') rownames(rname) names(col) norestor
 split rname, parse("@")
@@ -116,6 +147,12 @@ tempfile observed
 save `observed', replace 
 restore
 
+
+/******************************************************************************/
+/******************************************************************************/
+/* Section C: Two-part hurdle parameters (spend probability + lognormal) */
+/******************************************************************************/
+/******************************************************************************/
 
 *Two-part ("hurdle") simulation with a calibrated lognormal for positive costs, by mode domain.
 drop domain
@@ -253,6 +290,13 @@ merge 1:1 dom2 using `meanpos', nogen
 *simulated positive-cost mean should line up with the survey-estimated positive-cost mean (up to Monte Carlo error), while keeping the estimated log-variance sig2_hat
 gen double mu_adj = ln(mean_pos) - 0.5*sig2_hat
 
+/******************************************************************************/
+/******************************************************************************/
+/* Section D: Simulate trip costs (two-part hurdle) and cap at observed max */
+/******************************************************************************/
+/******************************************************************************/
+
+display "Simulating trip-cost distributions by domain ..."
 local n_draws = 10000
 
 expand `n_draws'
@@ -283,7 +327,7 @@ format cost %9.2f
 order  mode common_dom tripid cost
 keep if common_dom=="1"
 
-*when cost_sim>max(observed cost), set cost_sim=cost_sim>max(observed cost), by state-mode 
+*when cost_sim>max(observed cost), set cost_sim=cost_sim>max(observed cost), by region or state-mode 
 merge m:1 mode using `max_cost'
 replace cost=max if cost_sim>max
 drop max  common _merge 

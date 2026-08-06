@@ -1,18 +1,73 @@
+/******************************************************************************/
+/******************************************************************************/
+/* Script:  directed_trips_calibration.do                                     
+                                                                              
+   Purpose: Turns MRIP survey estimates of directed groundfish trips into the 
+            per-day, per-draw trip counts that the simulation runs on. It:    
+              1) estimates directed trips and their standard error at the     
+                 year x month x kind-of-day (weekend incl. federal holidays / 
+                 weekday) x mode (pr/fh) level over the calibration period,   
+              2) uses those estimates to create $ndraws random draws of       
+                 directed trips for each stratum,                             
+              3) divides each draw by the number of days in that stratum to   
+                 get trips per day,                                           
+              4) computes a calendar-year adjustment for each stratum,        
+                 = (calendar days in that stratum in the projection period) / 
+                   (calendar days in that stratum in the calibration period), 
+                 correcting for the fact that a given month has a different   
+                 mix of weekdays and weekend days from one year to the next,  
+              5) sets baseline and projection year regulations by calling     
+                 set_regulations.do, and                                      
+              6) (Part C) re-estimates MRIP directed-trip totals by mode,     
+                 mode-month and mode-season for later comparison with the     
+                 simulated totals.                                            
+                                                                              
+   Inputs:  $triplist, $catchlist -- stacked MRIP trip and catch files        
+            $misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv                          
+                                                                              
+   Outputs: $misc_data_cd/cod_open_season_dates.dta                           
+            $misc_data_cd/directed_trip_draws.csv                             
+            $misc_data_cd/next_year_calendar_adjustments.csv                  
+            $misc_data_cd/mrip_dtrip_by_mode.dta                              
+            $misc_data_cd/mrip_dtrip_by_mode_month.dta                        
+            $misc_data_cd/mrip_dtrip_by_mode_season.dta                       
+                                                                              
+   Dependencies: Called from model_wrapper.do, which must already have set    
+            $seed, $ndraws, $triplist, $catchlist, $calibration_year,         
+            $calibration_date_start, $calibration_date_end, $leap_yr_days,    
+            $fed_holidays, $misc_data_cd and $input_code_cd. Calls            
+            set_regulations.do. Requires the user-written dsconcat, xsvmat    
+            and renvarlab commands.                                           
+                                                                              
+   Pipeline: Pre-simulation, and one of the earliest steps: directed_trip_    
+            draws.csv is read by the catch-per-trip calibration, by           
+            compare_calibration_data_to_MRIP.do, and by the R simulation.     
+            The mrip_dtrip_by_* files are the MRIP side of the comparison in  
+            compare_calibration_data_to_MRIP.do.                              
+                                                                              
+   Note 1:  Part C consists of three near-identical ~160-line blocks that     
+            differ only in the domain string used for the svy: total.         
+   Note 2:  Two renames in this file rely on Stata's variable-name            
+            abbreviation rather than being no-ops; they are annotated where   
+            they occur.     */
+					
+/******************************************************************************/
+/******************************************************************************/
 
-/*This code uses the MRIP data to 
-	1) estimate dircetd trips and their standard error at the year, month, kind-of-day (weekend including fed holidays/weekday), mode (pr/fh) level during the calibraiton period, 
-	2) use those paramters to create 150 random draws of directed trips for each stratum,
-	3) divide each random draw by the number of days in that stratum to obtain an estimate of trips-per-day calibration period, 
-	4) compute for each stratum an calender year adjustment = (# of calender days in that stratum for the projection period)/(# of calender days in that stratum for the calibration period), 
-		that we will use to correct for differences in the number of calinder days in each stratum between the calibration and projection period, 
-	5) set the baseline year and projection year regulations ("$input_code_cd/set regulations.do")
-*/
-		
-set seed $seed 
 
+
+/******************************************************************************/
+/******************************************************************************/
+/* Section A: Estimate directed trips by stratum from MRIP                    */
+/******************************************************************************/
+/******************************************************************************/
+
+set seed $seed
+
+di "directed_trips_calibration: estimating directed trips from MRIP; this may take a while ..."
 
 clear
-global fluke_effort
+global 
 
 tempfile tl1 cl1
 dsconcat $triplist
@@ -47,7 +102,11 @@ keep if $calibration_year
 keep if inlist(st, 23, 33, 25)
 
 
- /* classify trips into dom_id=1 (DOMAIN OF INTEREST) and dom_id=2 ('OTHER' DOMAIN). */
+ /* Classify trips into dom_id=1 (DOMAIN OF INTEREST) and dom_id=2 ('OTHER'
+    DOMAIN). A trip counts as directed at groundfish if it either targeted
+    (prim1_common) or caught (common) cod or haddock. The whole sample is kept
+    rather than filtered, because a survey-weighted domain estimate needs the
+    out-of-domain records to get the variance right. */
 gen str1 dom_id="2"
 replace dom_id="1" if strmatch(common, "atlanticcod") 
 replace dom_id="1" if strmatch(prim1_common, "atlanticcod") 
@@ -82,10 +141,13 @@ drop if inlist(day1,"9x", "xx")
 destring day1, replace
 
 
-// Deal with Group Catch: 
-	// This bit of code generates a flag for each year-strat_id psu_id leader. (equal to the lowest of the dom_id)
-	// Then it generates a flag for claim equal to the largest claim.  
-	// Then it re-classifies the trip into dom_id=1 if that trip had catch of species in dom_id1 
+/* Deal with group catch. MRIP records catch for a group of anglers against a
+   single "leader" interview, so an individual angler's record can show no cod
+   or haddock even though the group kept some. Within each
+   strat_id-psu_id-leader group this takes the lowest dom_id (1 if anyone in
+   the group was in the domain) and the largest domain claim (fish kept and
+   available for identification), and promotes the trip to dom_id=1 if the
+   group both was in the domain and had claimed groundfish. */
 
 replace claim=0 if claim==.
 
@@ -97,9 +159,9 @@ bysort strat_id psu_id leader (domain_claim): gen claim_flag=domain_claim[_N]
 replace dom_id="1" if strmatch(dom_id,"2") & claim_flag>0 & claim_flag!=. & strmatch(gc_flag,"1")
 
 
-* generate estimation strata
+* Generate estimation strata
 
-*New MRIP site allocations
+*MRIP-Western GoM site allocations
 preserve 
 import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear 
 keep if inlist(state, "MA", "ME")
@@ -128,11 +190,15 @@ replace my_dom_id_string=ltrim(rtrim(my_dom_id_string))
 /* total with over(<overvar>) requires a numeric variable */
 encode my_dom_id_string, gen(my_dom_id)
 
-/* keep 1 observation per year-strat-psu-id_code. This will have dom_id=1 if it targeted or caught my_common1 or my_common2. Else it will be dom_id=2*/
+/* Keep 1 observation per year-strat-psu-id_code. Sorting by dom_id first means
+   the retained record is dom_id=1 if the trip targeted or caught cod or
+   haddock, and dom_id=2 otherwise. */
 bysort year wave strat_id psu_id id_code (dom_id): gen count_obs1=_n
 keep if count_obs1==1
 
 
+/* Negative trip weights occasionally appear in MRIP and are not usable as
+   pweights; zeroing them drops those records from the estimate. */
 replace wp_int=0 if wp_int<=0
 svyset psu_id [pweight= wp_int], strata(strat_id) singleunit(certainty)
 
@@ -150,6 +216,10 @@ encode mode1, gen(mode2)
 
 svy: total dtrip, over(my_dom_id)  
 
+/* svy: total leaves its results in the r(table) matrix, indexed by rows named
+   like "dtrip@3.my_dom_id". xsvmat turns that matrix into a dataset; the two
+   splits below peel off the "@" and the "." to recover the numeric domain id,
+   which is then merged back to its readable label. */
 xsvmat, from(r(table)') rownames(rname) names(col) norestor
 split rname, parse("@")
 drop rname1
@@ -173,12 +243,16 @@ rename my_dom_id_string6 dom_id
 drop my_dom_id_string
 rename b dtrip
 
+*keep if the trip was a cod/haddock trip in the WGoM
 keep if dom_id=="1"
 keep if area_s=="WGOM"
 
 su dtrip
 return list
 
+/* A stratum estimated from a single PSU has no computable SE. Setting the SE
+   equal to the point estimate gives those strata a wide but finite spread when
+   the draws are taken below, rather than dropping them. */
 replace se=dtrip if se==.
 replace pse=(se/dtrip)*100
 
@@ -195,9 +269,20 @@ di `num'
 tempfile new
 save `new', replace 
 
+/******************************************************************************/
+/******************************************************************************/
+/* Section B: Draw directed trips for each stratum                            */
+/******************************************************************************/
+/******************************************************************************/
+
+di "directed_trips_calibration: drawing $ndraws directed-trip draws per stratum ..."
+
+/* One stratum at a time: draw $ndraws values from a normal centered on the MRIP
+   point estimate with that stratum's SE, then truncate at zero. The bias this
+   truncation introduces is corrected further below. */
 global drawz
 forv d = 1/`num'{
-u `new', clear 
+u `new', clear
 
 keep if _n==`d'
 su dtrip
@@ -222,14 +307,15 @@ clear
 dsconcat $drawz
 
 
-su dtrip_not 
+/* Diagnostic: how much did truncating at zero shift the total? */
+su dtrip_not
 return list
+local not_truc = `r(sum)'
 
 su dtrip_new
 return list
 local new = `r(sum)'
 
-local not_truc = `r(sum)'
 di ((`new'-`not_truc')/`not_truc')*100
 
 
@@ -240,7 +326,10 @@ di ((`new'-`not_truc')/`not_truc')*100
 	*number of trips across x_i's>0.
 	*This partly corrects for the issue; however, subtracting a fixed value from x_i where x_i>0 leads to some of these x_i's now <0. I replace these values as 0. */
 
-*I have tried paramaterizing non-negative distributions using the MRIP point estimate and SE, but these resulted in larger differences in the mean trip estimates across all draws by domain (month, kindo-of-day, and mode) than the approach used here. Can work on this in the future. 
+/*I have tried parameterizing non-negative distributions using the MRIP point
+  estimate and SE, but these resulted in larger differences in the mean trip
+  estimates across all draws by domain (month, kind-of-day, and mode) than the
+  approach used here. Can work on this in the future. */
  
 gen domain=month1+"_"+kod+"_"+mode
 
@@ -297,8 +386,19 @@ sort mode month kod draw
 tempfile new1
 save `new1'
 
-*now need to make a dataset for the calender year and average out the directed trips across days
+/******************************************************************************/
+/******************************************************************************/
+/* Section C: Spread stratum trips over the days of the calendar year         */
+/******************************************************************************/
+/******************************************************************************/
 
+di "directed_trips_calibration: building the calendar and computing trips per day ..."
+
+/* Build a one-row-per-calendar-day skeleton for the calibration year, label
+   each day as weekend or weekday, replicate it across the three modes, and
+   merge each draw's stratum totals onto it. Dividing the stratum total by the
+   number of days in that stratum gives trips per day, which is what the
+   simulation consumes. */
 global drawz2
 
 forv d = 1/$ndraws{
@@ -313,18 +413,21 @@ set obs 2
 gen day=$calibration_date_start if _n==1
 replace day=$calibration_date_end if _n==2
 format day %td
+/* Drop February 29 so calibration and projection years have the same length */
 drop if day==$leap_yr_days
+/* Only the two endpoints were entered; tsfill materializes every day between */
 tsset day
 tsfill, full
 gen day_i=_n
 
 gen dow = dow(day)  //0=Sunday,...,6=Saturday
 
+/* Friday, Saturday and Sunday count as "weekend" days for effort purposes */
 gen kod="we" if inlist(dow, 5, 6, 0)
 replace kod="wd" if inlist(dow, 1, 2, 3, 4)
 
-//add the 12 federal holidays as weekends	
-replace kod="we" if $fed_holidays 
+//add the 12 federal holidays as weekends
+replace kod="we" if $fed_holidays
 
 gen year=year(day)				
 gen month=month(day)				
@@ -385,8 +488,10 @@ gen day1=day(day)
 gen month1=month(day)
 
 
-*call the regulations file	
-do "$input_code_cd/set_regulations.do"	
+/* set_regulations.do attaches the bag limits, minimum sizes and open/closed
+   status for the calibration year and both projection-year scenarios to each
+   calendar day, and creates day_y2 (the matching day in the projection year). */
+do "$input_code_cd/set_regulations.do"
 
 preserve
 keep if cod_bag!=0
@@ -406,7 +511,17 @@ compress
 export delimited using "$misc_data_cd\directed_trip_draws.csv",  replace 
 restore
 
-**Now adjust for the differences in directed trips due to changes in kod between calibration year y and  y+1 
+/******************************************************************************/
+/******************************************************************************/
+/* Section D: Calendar-year adjustment factors                                */
+/******************************************************************************/
+/******************************************************************************/
+
+/* A calendar date that is a weekday in the calibration year may be a weekend
+   day in the projection year, and effort differs sharply between the two. For
+   each draw, this matches every projection-year day to the calibration-year
+   stratum with the same mode-month-kind-of-day, then computes an expansion
+   factor = projection-year trips / calibration-year trips by month and mode. */
 keep mode day draw cod_bag cod_min hadd_bag hadd_min day_y2 kod kod_y2 dtrip ///
 			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 ///
 			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt
@@ -430,7 +545,10 @@ keep if draw==`d'
 gen domain_y1=mode+"_"+month_y1+"_"+kod
 gen domain_y2=mode+"_"+month_y2+"_"+kod_y2
 
-gen dtrip_y2=dtrip if domain_y1==domain_y2 
+/* Where the day keeps the same mode-month-kind-of-day in both years, carry the
+   trips straight across; otherwise fill in from the mean of the calibration
+   year days that do match the projection-year stratum. */
+gen dtrip_y2=dtrip if domain_y1==domain_y2
 
 levelsof domain_y2 if dtrip_y2==., local(domains)
 foreach p of local domains{
@@ -450,6 +568,7 @@ global drawz "$drawz "`drawz`d''" "
 
 dsconcat $drawz
 
+/* Missing expansion factor means no adjustment, i.e. a factor of 1 */
 mvencode expansion_factor, mv(1) override
 
 su dtrip
@@ -462,20 +581,33 @@ gen check =dtrip*expansion
 su check
 return list
 
-drop check 
-rename month month 
+drop check
+/* Not a no-op: the collapse left month_y1 rather than month, so "month"
+   abbreviates uniquely to month_y1 and is renamed to month here. */
+rename month month
 destring month, replace
 compress
 export delimited using "$misc_data_cd\next_year_calendar_adjustments.csv",  replace 
 
 
 
-****Part C****
-*Compute totals estimates to compare with simulated calibration output
-* estimates by mode
+/******************************************************************************/
+/******************************************************************************/
+/* Section E (Part C): MRIP directed-trip totals by mode                      */
+/******************************************************************************/
+/******************************************************************************/
+
+/* Sections E, F and G re-derive the MRIP directed-trip estimates at three
+   coarser aggregations. These are the reference values that
+   compare_calibration_data_to_MRIP.do plots the simulated totals against; they
+   are not used by the simulation itself. Each block repeats the data assembly
+   of Section A verbatim and differs only in the domain string built for
+   svy: total below. */
+
+di "directed_trips_calibration: estimating MRIP directed-trip totals by mode ..."
 
 clear
-global fluke_effort
+global 
 
 tempfile tl1 cl1
 dsconcat $triplist
@@ -510,7 +642,11 @@ keep if $calibration_year
 keep if inlist(st,23, 33, 25)
 
 
- /* classify trips into dom_id=1 (DOMAIN OF INTEREST) and dom_id=2 ('OTHER' DOMAIN). */
+ /* Classify trips into dom_id=1 (DOMAIN OF INTEREST) and dom_id=2 ('OTHER'
+    DOMAIN). A trip counts as directed at groundfish if it either targeted
+    (prim1_common) or caught (common) cod or haddock. The whole sample is kept
+    rather than filtered, because a survey-weighted domain estimate needs the
+    out-of-domain records to get the variance right. */
 gen str1 dom_id="2"
 replace dom_id="1" if strmatch(common, "atlanticcod") 
 replace dom_id="1" if strmatch(prim1_common, "atlanticcod") 
@@ -548,10 +684,13 @@ drop if inlist(day1,"9x", "xx")
 destring day1, replace
 
 
-// Deal with Group Catch: 
-	// This bit of code generates a flag for each year-strat_id psu_id leader. (equal to the lowest of the dom_id)
-	// Then it generates a flag for claim equal to the largest claim.  
-	// Then it re-classifies the trip into dom_id=1 if that trip had catch of species in dom_id1 
+/* Deal with group catch. MRIP records catch for a group of anglers against a
+   single "leader" interview, so an individual angler's record can show no cod
+   or haddock even though the group kept some. Within each
+   strat_id-psu_id-leader group this takes the lowest dom_id (1 if anyone in
+   the group was in the domain) and the largest domain claim (fish kept and
+   available for identification), and promotes the trip to dom_id=1 if the
+   group both was in the domain and had claimed groundfish. */
 
 replace claim=0 if claim==.
 
@@ -565,7 +704,7 @@ replace dom_id="1" if strmatch(dom_id,"2") & claim_flag>0 & claim_flag!=. & strm
 
 * generate estimation strata
 
-*New MRIP site allocations
+*MRIP-Western GoM site allocations
 preserve 
 import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear 
 keep if inlist(state, "MA", "ME")
@@ -586,20 +725,24 @@ gen str3 area_s="XX"
 replace area_s="WGOM" if st2=="33"
 replace area_s=nmfs_stock_area if inlist(st2, "25", "23") 
 
-/* generate the estimation strata - year, month, kind-of-day (weekend including fed holidays/weekday), mode (pr/fh)*/
+/* Estimation domain for this block: mode only */
 gen my_dom_id_string=mode1+"_"+ dom_id
 replace my_dom_id_string=ltrim(rtrim(my_dom_id_string))
 
 /* total with over(<overvar>) requires a numeric variable */
 encode my_dom_id_string, gen(my_dom_id)
 
-/* keep 1 observation per year-strat-psu-id_code. This will have dom_id=1 if it targeted or caught my_common1 or my_common2. Else it will be dom_id=2*/
+/* Keep 1 observation per year-strat-psu-id_code. Sorting by dom_id first means
+   the retained record is dom_id=1 if the trip targeted or caught cod or
+   haddock, and dom_id=2 otherwise. */
 bysort year wave strat_id psu_id id_code (dom_id): gen count_obs1=_n
 keep if count_obs1==1
 
 keep if dom_id=="1"
 keep if area_s=="WGOM"
 
+/* Negative trip weights occasionally appear in MRIP and are not usable as
+   pweights; zeroing them drops those records from the estimate. */
 replace wp_int=0 if wp_int<=0
 svyset psu_id [pweight= wp_int], strata(strat_id) singleunit(certainty)
 
@@ -617,6 +760,10 @@ encode mode1, gen(mode2)
 
 svy: total dtrip, over(my_dom_id)  
 
+/* svy: total leaves its results in the r(table) matrix, indexed by rows named
+   like "dtrip@3.my_dom_id". xsvmat turns that matrix into a dataset; the two
+   splits below peel off the "@" and the "." to recover the numeric domain id,
+   which is then merged back to its readable label. */
 xsvmat, from(r(table)') rownames(rname) names(col) norestor
 split rname, parse("@")
 drop rname1
@@ -640,10 +787,16 @@ save "$misc_data_cd\mrip_dtrip_by_mode.dta", replace
 
 
 
-* estimates by mode and month 
+/******************************************************************************/
+/******************************************************************************/
+/* Section F (Part C): MRIP directed-trip totals by mode and month            */
+/******************************************************************************/
+/******************************************************************************/
+
+di "directed_trips_calibration: estimating MRIP directed-trip totals by mode and month ..."
 
 clear
-global fluke_effort
+global 
 
 tempfile tl1 cl1
 dsconcat $triplist
@@ -678,7 +831,11 @@ keep if $calibration_year
 keep if inlist(st,23, 33, 25)
 
 
- /* classify trips into dom_id=1 (DOMAIN OF INTEREST) and dom_id=2 ('OTHER' DOMAIN). */
+ /* Classify trips into dom_id=1 (DOMAIN OF INTEREST) and dom_id=2 ('OTHER'
+    DOMAIN). A trip counts as directed at groundfish if it either targeted
+    (prim1_common) or caught (common) cod or haddock. The whole sample is kept
+    rather than filtered, because a survey-weighted domain estimate needs the
+    out-of-domain records to get the variance right. */
 gen str1 dom_id="2"
 replace dom_id="1" if strmatch(common, "atlanticcod") 
 replace dom_id="1" if strmatch(prim1_common, "atlanticcod") 
@@ -716,10 +873,13 @@ drop if inlist(day1,"9x", "xx")
 destring day1, replace
 
 
-// Deal with Group Catch: 
-	// This bit of code generates a flag for each year-strat_id psu_id leader. (equal to the lowest of the dom_id)
-	// Then it generates a flag for claim equal to the largest claim.  
-	// Then it re-classifies the trip into dom_id=1 if that trip had catch of species in dom_id1 
+/* Deal with group catch. MRIP records catch for a group of anglers against a
+   single "leader" interview, so an individual angler's record can show no cod
+   or haddock even though the group kept some. Within each
+   strat_id-psu_id-leader group this takes the lowest dom_id (1 if anyone in
+   the group was in the domain) and the largest domain claim (fish kept and
+   available for identification), and promotes the trip to dom_id=1 if the
+   group both was in the domain and had claimed groundfish. */
 
 replace claim=0 if claim==.
 
@@ -733,7 +893,7 @@ replace dom_id="1" if strmatch(dom_id,"2") & claim_flag>0 & claim_flag!=. & strm
 
 * generate estimation strata
 
-*New MRIP site allocations
+*MRIP-Western GoM site allocations
 preserve 
 import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear 
 keep if inlist(state, "MA", "ME")
@@ -754,20 +914,24 @@ gen str3 area_s="XX"
 replace area_s="WGOM" if st2=="33"
 replace area_s=nmfs_stock_area if inlist(st2, "25", "23") 
 
-/* generate the estimation strata - year, month, kind-of-day (weekend including fed holidays/weekday), mode (pr/fh)*/
+/* Estimation domain for this block: month x mode */
 gen my_dom_id_string=month+"_"+mode1+"_"+ dom_id
 replace my_dom_id_string=ltrim(rtrim(my_dom_id_string))
 
 /* total with over(<overvar>) requires a numeric variable */
 encode my_dom_id_string, gen(my_dom_id)
 
-/* keep 1 observation per year-strat-psu-id_code. This will have dom_id=1 if it targeted or caught my_common1 or my_common2. Else it will be dom_id=2*/
+/* Keep 1 observation per year-strat-psu-id_code. Sorting by dom_id first means
+   the retained record is dom_id=1 if the trip targeted or caught cod or
+   haddock, and dom_id=2 otherwise. */
 bysort year wave strat_id psu_id id_code (dom_id): gen count_obs1=_n
 keep if count_obs1==1
 
 keep if dom_id=="1"
 keep if area_s=="WGOM"
 
+/* Negative trip weights occasionally appear in MRIP and are not usable as
+   pweights; zeroing them drops those records from the estimate. */
 replace wp_int=0 if wp_int<=0
 svyset psu_id [pweight= wp_int], strata(strat_id) singleunit(certainty)
 
@@ -785,6 +949,10 @@ encode mode1, gen(mode2)
 
 svy: total dtrip, over(my_dom_id)  
 
+/* svy: total leaves its results in the r(table) matrix, indexed by rows named
+   like "dtrip@3.my_dom_id". xsvmat turns that matrix into a dataset; the two
+   splits below peel off the "@" and the "." to recover the numeric domain id,
+   which is then merged back to its readable label. */
 xsvmat, from(r(table)') rownames(rname) names(col) norestor
 split rname, parse("@")
 drop rname1
@@ -808,10 +976,16 @@ renvarlab `r(varlist)', postfix(_mrip)
 save "$misc_data_cd\mrip_dtrip_by_mode_month.dta", replace 
 
 
-* estimates by mode and summer/winter season
+/******************************************************************************/
+/******************************************************************************/
+/* Section G (Part C): MRIP directed-trip totals by mode and season           */
+/******************************************************************************/
+/******************************************************************************/
+
+di "directed_trips_calibration: estimating MRIP directed-trip totals by mode and season ..."
 
 clear
-global fluke_effort
+global 
 
 tempfile tl1 cl1
 dsconcat $triplist
@@ -846,7 +1020,11 @@ keep if $calibration_year
 keep if inlist(st,23, 33, 25)
 
 
- /* classify trips into dom_id=1 (DOMAIN OF INTEREST) and dom_id=2 ('OTHER' DOMAIN). */
+ /* Classify trips into dom_id=1 (DOMAIN OF INTEREST) and dom_id=2 ('OTHER'
+    DOMAIN). A trip counts as directed at groundfish if it either targeted
+    (prim1_common) or caught (common) cod or haddock. The whole sample is kept
+    rather than filtered, because a survey-weighted domain estimate needs the
+    out-of-domain records to get the variance right. */
 gen str1 dom_id="2"
 replace dom_id="1" if strmatch(common, "atlanticcod") 
 replace dom_id="1" if strmatch(prim1_common, "atlanticcod") 
@@ -884,10 +1062,13 @@ drop if inlist(day1,"9x", "xx")
 destring day1, replace
 
 
-// Deal with Group Catch: 
-	// This bit of code generates a flag for each year-strat_id psu_id leader. (equal to the lowest of the dom_id)
-	// Then it generates a flag for claim equal to the largest claim.  
-	// Then it re-classifies the trip into dom_id=1 if that trip had catch of species in dom_id1 
+/* Deal with group catch. MRIP records catch for a group of anglers against a
+   single "leader" interview, so an individual angler's record can show no cod
+   or haddock even though the group kept some. Within each
+   strat_id-psu_id-leader group this takes the lowest dom_id (1 if anyone in
+   the group was in the domain) and the largest domain claim (fish kept and
+   available for identification), and promotes the trip to dom_id=1 if the
+   group both was in the domain and had claimed groundfish. */
 
 replace claim=0 if claim==.
 
@@ -901,7 +1082,7 @@ replace dom_id="1" if strmatch(dom_id,"2") & claim_flag>0 & claim_flag!=. & strm
 
 * generate estimation strata
 
-*New MRIP site allocations
+*MRIP-Western GoM site allocations
 preserve 
 import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear 
 keep if inlist(state, "MA", "ME")
@@ -925,20 +1106,24 @@ replace area_s=nmfs_stock_area if inlist(st2, "25", "23")
 gen season= "winter" if inlist(month, "09", "10", "11", "12", "01", "02", "03", "04")
 replace season="summer" if inlist(month, "05", "06", "07", "08")
 
-/* generate the estimation strata - year, month, kind-of-day (weekend including fed holidays/weekday), mode (pr/fh)*/
+/* Estimation domain for this block: season x mode */
 gen my_dom_id_string=season+"_"+mode1+"_"+ dom_id
 replace my_dom_id_string=ltrim(rtrim(my_dom_id_string))
 
 /* total with over(<overvar>) requires a numeric variable */
 encode my_dom_id_string, gen(my_dom_id)
 
-/* keep 1 observation per year-strat-psu-id_code. This will have dom_id=1 if it targeted or caught my_common1 or my_common2. Else it will be dom_id=2*/
+/* Keep 1 observation per year-strat-psu-id_code. Sorting by dom_id first means
+   the retained record is dom_id=1 if the trip targeted or caught cod or
+   haddock, and dom_id=2 otherwise. */
 bysort year wave strat_id psu_id id_code (dom_id): gen count_obs1=_n
 keep if count_obs1==1
 
 keep if dom_id=="1"
 keep if area_s=="WGOM"
 
+/* Negative trip weights occasionally appear in MRIP and are not usable as
+   pweights; zeroing them drops those records from the estimate. */
 replace wp_int=0 if wp_int<=0
 svyset psu_id [pweight= wp_int], strata(strat_id) singleunit(certainty)
 
@@ -956,6 +1141,10 @@ encode mode1, gen(mode2)
 
 svy: total dtrip, over(my_dom_id)  
 
+/* svy: total leaves its results in the r(table) matrix, indexed by rows named
+   like "dtrip@3.my_dom_id". xsvmat turns that matrix into a dataset; the two
+   splits below peel off the "@" and the "." to recover the numeric domain id,
+   which is then merged back to its readable label. */
 xsvmat, from(r(table)') rownames(rname) names(col) norestor
 split rname, parse("@")
 drop rname1

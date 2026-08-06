@@ -1,5 +1,11 @@
 ### Run this Lou
 
+################################################################################
+# Dev paths note (no full script header yet - out of scope for this pass):
+# 5 hardcoded absolute paths to a developer's local machine (E:\),
+# at lines 17, 18, 19, 20 and 21.
+################################################################################
+
 library(data.table)
 library(fst)
 library(readr)

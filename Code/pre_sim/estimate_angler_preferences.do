@@ -1,5 +1,74 @@
 
-
+/* Script:  estimate_preference_parameters.do
+                                                                              
+   Purpose: Estimates the mixed logit model underlying the recreational       
+            groundfish RDM, then generates simulation 
+            draws of preference parameters for use in the fishery simulation. 
+            The script:                                                       
+              1) estimates the preferred random-parameters choice model using 
+                 the stated preference (choice experiment) survey data,       
+              2) saves the fitted model estimates,                            
+              3) draws repeatedly from the asymptotic sampling distribution   
+                 of the estimated coefficients to account for parameter       
+                 uncertainty,                                                 
+              4) for each parameter draw, generates 5,000 angler-level       
+                 random coefficients to represent preference heterogeneity,   
+                 and                                                          
+              5) combines all draws into a single parameter file used by the 
+                 simulation model.                                            
+                                                                              
+   Inputs:  $misc_data_cd/CE_survey_data.dta                                  
+                                                                              
+   Outputs: $misc_data_cd/m0_gf.ster          (estimated mixed logit model)   
+            $misc_data_cd/preference_params.dta                               
+                                                                              
+   Dependencies: $misc_data_cd and $ndraws must already be defined by the     
+            wrapper script. Requires the user-written estout (eststo) and     
+            dsconcat commands. Uses Stata's cmset/cmxtmixlogit framework.     
+                                                                              
+   Pipeline: Pre-simulation. The resulting preference_params.dta file is      
+            read by the R simulation model to calculate trip utility, choice  
+            probabilities, effort responses, and compensating variation under 
+            alternative management scenarios.                                 
+                                                                              
+   Model specification: The preferred specification is estimated using        
+            cmxtmixlogit with Halton integration (500 points). Random         
+            coefficients are estimated for:                                   
+                - sqrt(cod kept)                                              
+                - sqrt(cod released)                                          
+                - sqrt(haddock kept)                                          
+                - sqrt(haddock released)                                      
+                - sqrt(cod + haddock kept)                                    
+                - opt-out alternative                                         
+            while demographic interactions with the opt-out alternative are   
+            treated as fixed effects. Earlier mixlogit specifications are     
+            retained in comments for reference.                               
+                                                                              
+   Parameter simulation: For each of $ndraws Monte Carlo draws, the script    
+            samples once from the multivariate normal distribution of the     
+            estimated coefficients using the estimated covariance matrix      
+            (capturing estimation uncertainty). Conditional on those sampled  
+            means, it generates 5,000 random preference vectors representing  
+            heterogeneous anglers by drawing from the estimated random-       
+            coefficient distributions. Parameters that were not statistically 
+            different from zero (approximately p > 0.10) are fixed at zero    
+            before generating the simulation draws.                           
+                                                                              
+   Note 1:  Two sources of uncertainty are represented separately:            
+              (a) sampling uncertainty in the estimated model coefficients    
+                  (outer loop over draws), and                                
+              (b) unobserved preference heterogeneity across anglers          
+                  (5,000 random coefficients within each draw).               
+                                                                              
+   Note 2:  The square-root transformation of kept and released catch follows 
+            the preferred 2026 management-cycle specification and implies     
+            diminishing marginal utility from additional fish caught.         
+                                                                              
+   Note 3:  The final preference_params.dta file contains only coefficients   
+            used by the simulation. Parameters fixed to zero are removed,     
+            and variables are renamed to match the naming conventions used    
+            throughout the R simulation code.                                 
+*/
 set seed 03211990
 
 u "$misc_data_cd\CE_survey_data.dta", clear 

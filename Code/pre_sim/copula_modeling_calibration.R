@@ -1,3 +1,30 @@
+################################################################################
+################################################################################
+# Script:       copula_modeling_calibration.R
+# Purpose:      Estimates the calibration-year joint distribution of harvest
+#               ("keep") and discards ("rel") per trip for cod and haddock, by
+#               month/mode/area domain, and simulates n_draws x n_sim
+#               catch-per-trip draws from it. Each species margin is a negative
+#               binomial whose mean and dispersion (theta) are themselves drawn
+#               to carry the MRIP survey sampling uncertainty (via bootstrap
+#               replicate weights). When keep and release co-occur in a domain,
+#               their dependence is modeled with a fitted copula (Gumbel, Frank,
+#               or Normal, chosen by the sign/size of Kendall's tau). Each domain
+#               is routed by case: only-keep, only-rel, joint (copula),
+#               independent joint, or no-catch.
+# Inputs:       gf.data.dir/miscellaneous/baseline_mrip_catch_processed.xlsx
+#               (written by calibration_catch_per_trip_part1.do).
+# Outputs:      gf.data.dir/calib_catch_draws/calib_catch_draws_raw_<d>.dta
+#               (one file per simulation draw d = 1..n_draws).
+# Dependencies: Code/helpers/developer_setup.R (sets gf.data.dir).
+# Pipeline:     Step 5b. Invoked (via rscript) by model_wrapper.do between
+#               calibration_catch_per_trip_part1.do (which writes the xlsx input)
+#               and _part2.do (which resamples these raw draws into trip files).
+# Note:         statez <- c("all") is a holdover from the state-level SFRDM code;
+#               groundfish runs a single "all" domain.
+#               There are a few functions that need Roxygen headers.
+################################################################################
+################################################################################
 
 # ---- packages ----
 required_pkgs <- c(
@@ -128,6 +155,15 @@ get_rep_var <- function(df, varname, rep_design) {
   out
 }
 
+#' @title Negative-binomial dispersion (size/theta) from a mean and variance
+#' @description Converts a mean mu and variance var into the NB size parameter
+#'   theta = mu^2 / (var - mu) (method of moments), guarding against
+#'   non-positive or non-finite inputs and capping theta at theta_cap. A larger
+#'   theta means less overdispersion (closer to Poisson). Vectorized over mu/var.
+#' @param mu Mean(s).
+#' @param var Variance(s).
+#' @param theta_cap Upper bound on theta (default 1000) used when var <= mu.
+#' @return A vector of theta values, each in [1e-6, theta_cap].
 safe_theta <- function(mu, var, theta_cap = 1000) {
   mu  <- as.numeric(mu)
   var <- as.numeric(var)
@@ -192,6 +228,15 @@ weighted_sample_for_copula <- function(df, value_cols, n_sim, weight_col = "wp_i
   out
 }
 
+#' @title Cap simulated counts at a maximum, redistributing the excess
+#' @description Rounds x to non-negative integers and enforces x <= max_x while
+#'   preserving the total: any amount above max_x is redistributed one unit at a
+#'   time to observations that still have headroom (with probability proportional
+#'   to their remaining room). Keeps the simulated catch total intact while
+#'   respecting the observed per-trip maximum.
+#' @param x Numeric vector of simulated counts.
+#' @param max_x Maximum allowed per-observation value.
+#' @return An integer vector, each entry <= max_x, summing to (about) sum(round(x)).
 cap_with_resample <- function(x, max_x) {
   x <- round(x)
   x[x < 0] <- 0
@@ -247,8 +292,27 @@ sample_positive_mean <- function(mu, var_mu, min_mu = 1e-8) {
   max(sampled_mu, min_mu)
 }
 
-
 # Main functions and execution
+#' @title Simulate keep/release catch-per-trip draws for one species
+#' @description For one species, loops over domains (my_dom_id_string) within
+#'   each state and simulates n_draws x n_sim keep/release outcomes, routing each
+#'   domain to the right case via its indicator flags: only-keep and only-rel use
+#'   a single NB margin (simulate_one_margin); joint domains fit a copula
+#'   (simulate_joint_copula); "independent" joint domains draw the margins
+#'   independently (simulate_joint_independent); no-catch domains emit zeros.
+#'   Sampling uncertainty enters by drawing the NB mean (from its survey SE) and
+#'   dispersion (from bootstrap replicate thetas) on each of the n_draws.
+#' @param full_df The processed baseline MRIP catch table (one row per PSU-trip).
+#' @param species_prefix "cod" or "hadd"; selects the keep/rel/flag columns.
+#' @param statez States to loop over (here always "all").
+#' @param n_sim Rows simulated per draw.
+#' @param n_draws Number of parameter draws (model iterations).
+#' @param n_reps Bootstrap replicates for the survey design.
+#' @param keep_cap_buffer,rel_cap_buffer Amounts added to the observed max
+#'   keep/release before capping simulated values.
+#' @param verbose If TRUE, print per-domain progress messages.
+#' @return A data.frame of simulated keep/release counts by state, domain,
+#'   sim_id, stacked across all domains and cases.
 run_species_copula_sim <- function(full_df,
                                    species_prefix,
                                    statez,
@@ -695,6 +759,8 @@ run_species_copula_sim <- function(full_df,
 }
 
 
+message("copula_modeling_calibration: simulating cod catch draws (",
+        n_draws, " draws x ", n_sim, " rows per domain); this may take a while ...")
 cod_sim <- run_species_copula_sim(
   full_df = full_df,
   species_prefix = "cod",
@@ -704,6 +770,7 @@ cod_sim <- run_species_copula_sim(
   n_reps = n_reps
 )
 
+message("copula_modeling_calibration: simulating haddock catch draws ...")
 hadd_sim <- run_species_copula_sim(
   full_df = full_df,
   species_prefix = "hadd",

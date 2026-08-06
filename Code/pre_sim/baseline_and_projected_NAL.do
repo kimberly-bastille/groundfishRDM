@@ -1,12 +1,39 @@
+/*******************************************************************************
+ Script:       baseline_and_projected_NAL.do
+ Purpose:      Builds age-length keys (ALKs) from NEFSC trawl survey data and
+               applies them to stock-assessment numbers-at-age (NAA) to produce
+               numbers-at-length (NAL) proportions for WGOM cod and GOM haddock,
+               for the baseline year (2025) and the projection year (2026). Ends
+               by plotting the 5 cm-binned length distributions and reporting the
+               proportion of fish at or above the legal minimum size.
+ Inputs:       $input_data_cd/{NEFSC_cruises.csv, NEFSC_trawl_cod.csv,
+               NEFSC_trawl_hadd.csv}; $input_data_cd/{WGOM_Cod,GOM_Haddock}_
+               {historical,projected}_NAA*.dta.
+ Outputs:      Diagnostic twoway plots. The graph-export and comparison blocks are
+               commented out, so nothing is persisted (temp files only); the
+               commented exports would write to $figure_cd if re-enabled.
+ Dependencies: Globals $input_data_cd, $ndraws (and $figure_cd for the
+               commented-out figure exports).
+ Pipeline:     Standalone / unwrapped — no confirmed caller (per
+               DATAFLOW_GROUNDFISH.md); looks like a verification/exploration script.
+*******************************************************************************/
 
-*b1) 
-import delimited using "$input_data_cd/NEFSC_cruises.csv", clear 
+/******************************************************************************/
+/******************************************************************************/
+/* Section A: Cod age-length key from NEFSC trawl survey */
+/******************************************************************************/
+/******************************************************************************/
+
+display "Building cod age-length key from NEFSC trawl survey ..."
+
+*b1)
+import delimited using "$input_data_cd/NEFSC_cruises.csv", clear
 renvarlab, lower
 tempfile cruises
-sort year 
-save `cruises', replace 
+sort year
+save `cruises', replace
 
-import delimited using "$input_data_cd/NEFSC_trawl_cod.csv", clear 
+import delimited using "$input_data_cd/NEFSC_trawl_cod.csv", clear
 renvarlab, lower
 rename count count 
 merge m:1 cruise6 using `cruises'
@@ -22,17 +49,22 @@ local min_svy_yr=`r(min)'
 local max_svy_yr=`r(max)'
 di `min_svy_yr'
 tabstat count, stat(sum) by(age)
+* Top-code age into a 6+ plus-group (all fish age 6 and older pooled).
 replace age=6 if age>=6
 collapse (sum) count, by (age length)
 drop if age==. | length==.
 
+* Fill the full age x length grid so every length has a row within each age;
+* mvencode then sets the newly-created (missing) counts to 0.
 tsset age length
 tsfill, full
 
-sort age length 
-mvencode count, mv(0) override 
+sort age length
+mvencode count, mv(0) override
 
-*b2) 
+*b2)
+* LOWESS-smooth the length distribution separately within each age (bwidth = 0.3
+* is the fraction of points used in each local fit); clamp negatives to 0.
 levelsof age, local(ages)
 foreach a of local ages{
 	lowess count length if age==`a' , adjust bwidth(.3) gen(s`a') nograph
@@ -69,9 +101,17 @@ tempfile al_cod
 save `al_cod', replace 
 
 
-* Haddock ALK - age 1 through 9 
-*b1) 
-import delimited using "$input_data_cd/NEFSC_cruises.csv", clear 
+/******************************************************************************/
+/******************************************************************************/
+/* Section B: Haddock age-length key from NEFSC trawl survey */
+/******************************************************************************/
+/******************************************************************************/
+
+display "Building haddock age-length key from NEFSC trawl survey ..."
+
+* Haddock ALK - age 1 through 9 (mirrors the cod ALK above; top-coded at age 9+)
+*b1)
+import delimited using "$input_data_cd/NEFSC_cruises.csv", clear
 renvarlab, lower
 tempfile cruises
 sort year 
@@ -140,19 +180,25 @@ tempfile al_hadd
 save `al_hadd', replace 
 
 
+/******************************************************************************/
+/******************************************************************************/
+/* Section C: Baseline (2025) numbers-at-length from historical NAA */
+/******************************************************************************/
+/******************************************************************************/
+
 *C) compute rec selectivity
-	* c1) pull in historcial NAA
+	* c1) pull in historical NAA
 	* c2) translate ages to lengths using the age-length keys
 	* c3) merge numbers-at-length to catch-at-length
-	* c4) apply adjusmtnet code when catch-at-length is greater than numbers-at-length 
+	* c4) apply adjustment code when catch-at-length is greater than numbers-at-length
 	* c5) compute rec selectivity ql=CAL/NAL
-	
+
 * c1) cod
-use "$input_data_cd/WGOM_Cod_historical_NAA_from_2024Assessment.dta", clear 
+use "$input_data_cd/WGOM_Cod_historical_NAA_from_2024Assessment.dta", clear
 
 egen age6_plus=rowtotal(age6-age9)
 drop age6 age7 age8 age9
-rename age6 age6
+rename age6_plus age6
 keep if year==2025
 reshape long age, i(year) j(new)
 rename age nfish
@@ -198,6 +244,8 @@ sort length
 gen species="hadd"
 
 append using  `naa_cod'
+* Rescale NAL by 1000 (assessment NAA are reported in thousands of fish); the
+* same rescale is applied to the projected data in Section D.
 replace NaL_from_raw_trawl=NaL_from_raw_trawl*1000
 replace NaL_from_smooth_trawl=NaL_from_smooth_trawl*1000
 
@@ -207,13 +255,22 @@ save `nal2025'
 
 
 
+/******************************************************************************/
+/******************************************************************************/
+/* Section D: Projected (2026) numbers-at-length from projected NAA */
+/******************************************************************************/
+/******************************************************************************/
+
+display "Building projected (2026) numbers-at-length for $ndraws draws ..."
+
 *projected - 2026
-use "$input_data_cd/WGOM_Cod_projected_NAA_from_2024Assessment.dta", clear 
+use "$input_data_cd/WGOM_Cod_projected_NAA_from_2024Assessment.dta", clear
 
 egen age6_plus=rowtotal(age6-age9)
 drop age6 age7 age8 age9
-rename age6 age6
-sample $ndraws, count 
+rename age6_plus age6
+* Draw $ndraws random replicates from the projected-NAA replicate distribution.
+sample $ndraws, count
 gen draw=_n
 reshape long age, i(year draw replicate) j(new)
 rename age nfish
@@ -286,6 +343,12 @@ gen year =2026
 
 append using `nal2025'
 
+
+/******************************************************************************/
+/******************************************************************************/
+/* Section E: 5 cm-bin proportions, legal-size shares, and plots */
+/******************************************************************************/
+/******************************************************************************/
 
 *haddock 18 inch = 45.72
 *cod 23 inch = 58.42

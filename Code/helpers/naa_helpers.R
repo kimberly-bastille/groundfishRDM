@@ -1,15 +1,31 @@
-########################################################
-########################################################
-# Some helper functions that are used by both get_cod_assessment_data.R
-# and get_haddock_assessment_data.R
-# better to put 1 function in a single space than have to maintain two.
+################################################################################
+# Script:       naa_helpers.R  (helpers)
+# Purpose:      Shared helper functions for reshaping and validating stock
+#               assessment numbers-at-age (NAA) data, used by both
+#               get_cod_assessment_data.R and get_haddock_assessment_data.R so
+#               the logic lives in one place.
+# Inputs:       None at source time (defines functions only).
+# Outputs:      Functions pivot_naa_long() and validate_naa_data() in the
+#               calling environment.
+# Dependencies:
+# Pipeline:     Sourced by the two get_*_assessment_data.R scripts; not called
+#               by any wrapper.
+################################################################################
 
 
-########################################################
-#
-# From the dashboard repo, this wrestles the wide NAA data into long format.
-#
-########################################################
+#' @title Reshape wide numbers-at-age data to long format
+#' @description Takes an assessment data frame with one column per age
+#'   (age0, age1, ...) and pivots it long, folding the age number into the
+#'   `metric` label (e.g. metric "NAA" for age 3 becomes "NAA 3"). Mirrors the
+#'   long shape the dashboard repo expects.
+#' @param df Wide NAA data frame containing age columns named ageN and a
+#'   `metric` column naming the quantity (e.g. numbers-at-age).
+#' @return A long data frame with one row per original row × age, the `age`
+#'   folded into `metric`, and the standalone `age` column dropped.
+#' @examples
+#' \dontrun{
+#' pivot_naa_long(cod_naa_wide)
+#' }
 pivot_naa_long <- function(df) {
   age_cols <- grep("^age\\d+$", names(df), value = TRUE)
   df %>%
@@ -22,11 +38,19 @@ pivot_naa_long <- function(df) {
 }
 
 
-########################################################
-# Define the validation function
-# Is our data what it claims to be.  We should have some characters, some
-# numerics, a date. These should have no missing values.
-########################################################
+#' @title Validate NAA data types and completeness
+#' @description Guards downstream steps against malformed assessment data by
+#'   asserting that the descriptive columns are non-missing character vectors,
+#'   that species_itis and value are numeric, and that data_version is a Date.
+#'   `state` and `wave` are deliberately allowed to be NA (not every record
+#'   carries them). Stops with an error on the first violated assumption.
+#' @param df A long NAA data frame (typically the output of pivot_naa_long()).
+#' @return The input `df`, returned invisibly so the call can sit inside a
+#'   `%>%` pipe without printing.
+#' @examples
+#' \dontrun{
+#' cod_naa_long %>% validate_naa_data()
+#' }
 validate_naa_data <- function(df) {
 
   # Ensure specified columns are character vectors and contain no NAs

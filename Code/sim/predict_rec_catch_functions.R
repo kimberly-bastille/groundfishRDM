@@ -1,3 +1,29 @@
+################################################################################
+################################################################################
+# Script:       predict_rec_catch_functions.R
+# Purpose:      Function library for the cod/haddock recreational-catch
+#               PROJECTION (the "what-if a policy changes" run, as opposed to
+#               calibration). Defines: the fish-level keep/release/reallocation
+#               simulator, a per-(season, draw) routine that simulates both modes,
+#               computes trip utility, choice probabilities, compensating
+#               variation (CV, the dollar welfare measure), and population-
+#               expanded totals, and a parallel wrapper over draws. Also defines
+#               in_season(), used by model_run.R to apply a scenario's seasons.
+# Inputs:       Loaded by read_projection_common_inputs_cod_hadd():
+#                 calibrated_model_stats.fst, baseline_catch_at_length.csv,
+#                 directed_trip_draws.fst (passed in), Discard_Mortality.fst,
+#                 calendar_adj.fst. Per (season, mode, draw) it also reads
+#                 calib_catch_draws_<dr>.fst, base_outcomes_*, n_choice_occasions_*.
+# Outputs:      None written here; run_cod_hadd_projection() returns a long
+#               data.table of projected metrics by season/mode/metric/iteration.
+# Dependencies: The length-weight parameters (cod_lw_a/b, had_lw_a/b), the
+#               final_process_* path objects, and n_draws must exist in the
+#               calling environment (set by R code wrapper.R / model_run.R).
+# Pipeline:     R projection stage. Downstream of calibration_routine.R
+#               (consumes calibrated_model_stats.fst); sourced by the wrappers.
+################################################################################
+################################################################################
+
 # -----------------------------------------------------------------------------
 # Helper functions
 # -----------------------------------------------------------------------------
@@ -54,6 +80,16 @@ zero_missing_cols <- function(dt, cols) {
 # Common input loading
 # -----------------------------------------------------------------------------
 
+#' @title Load the inputs shared across all projection draws
+#' @description Reads the calibrated stats, catch-at-length lookup, directed
+#'   trips, discard-mortality tables, and calendar adjustments once, subsets them
+#'   to the requested seasons/modes/draws, and keys them for fast joins. Called
+#'   once by run_cod_hadd_projection() and reused for every draw.
+#' @param final_process_misc_cd Directory holding the shared input files.
+#' @param directed_trips Directed-trip draws table (read by the caller).
+#' @param season_draw,mode_draw,draws Which seasons, modes, and draws to keep.
+#' @return A named list: calib, size_lookup, directed_trips, cod_disc_mort,
+#'   hadd_disc_mort, calendar_adjustments.
 read_projection_common_inputs_cod_hadd <- function(final_process_misc_cd,
                                                    directed_trips,
                                                    season_draw,
@@ -122,6 +158,24 @@ read_projection_common_inputs_cod_hadd <- function(final_process_misc_cd,
 # Species simulator
 # -----------------------------------------------------------------------------
 
+#' @title Simulate projected keep/release outcomes for one species
+#' @description The projection counterpart of simulate_species_realloc(): expands
+#'   trip catch to individual fish, draws lengths and weights, applies the
+#'   scenario's bag/size rules, applies the calibrated keep<->release
+#'   reallocation, and returns trip-level counts and weights (including
+#'   discard-mortality weight). Uses the calibrated reallocation fractions rather
+#'   than searching for them.
+#' @param catch_dt,catch_col,bag_col,min_col,size_dt,species_prefix The trip
+#'   catch table, the catch/bag/min column names, the catch-at-length lookup,
+#'   and the species ("cod"/"hadd").
+#' @param rel_to_keep,keep_to_rel,p_rel_to_keep,p_keep_to_rel,all_keep_to_rel
+#'   Calibrated reallocation flags and fractions for this cell.
+#' @param cod_disc_mort,hadd_disc_mort Month- (and size-) specific discard
+#'   mortality tables joined on to weight the dead discards.
+#' @param floor_sublegal_abs Length floor (cm) for release-to-keep eligibility.
+#' @param utility_adjust If TRUE, kept-then-released fish still count as kept for
+#'   utility.
+#' @return A keyed trip-level data.table of keep/release counts and lb weights.
 simulate_species_project_cod_hadd <- function(catch_dt,
                                               catch_col,
                                               bag_col,
@@ -292,6 +346,20 @@ simulate_species_project_cod_hadd <- function(catch_dt,
 # Combined season-draw projection: both modes are processed from one catch read
 # -----------------------------------------------------------------------------
 
+#' @title Project both modes for one season and draw
+#' @description The core projection unit. Reads the draw's catch, applies the
+#'   scenario regulations, simulates cod and haddock keep/release, computes the
+#'   baseline and alternative trip utilities and the opt-out utility, derives
+#'   choice probabilities and compensating variation, expands trip-level results
+#'   to the population using choice occasions and calendar adjustments, and sums
+#'   to season x mode (plus an "all modes" row). Returns the results in long form.
+#' @param s Season ("summer"/"winter").
+#' @param dr Draw/iteration index.
+#' @param common_inputs The list from read_projection_common_inputs_cod_hadd().
+#' @param modes Modes to process (default mode_draw).
+#' @param n_draws Number of within-day simulated trips (the expansion divisor).
+#' @return A long data.table (season, mode, metric, value, iteration), or NULL if
+#'   the draw has no catch for this season.
 project_one_cod_hadd_both_modes <- function(s,
                                             dr,
                                             common_inputs,
@@ -485,6 +553,10 @@ project_one_cod_hadd_both_modes <- function(s,
       log_sum_base = log(exp(v0_trip) + exp(v_optout))
     )]
 
+    # Compensating variation ($/choice occasion): the standard logsum welfare
+    # measure for a binary logit. The change in expected utility between the
+    # alternative and baseline policies is converted to dollars by the (negative)
+    # cost coefficient. Positive CV = the policy makes anglers better off.
     mean_trip_data[, CV := -1 * ((log_sum_alt - log_sum_base) / beta_cost)]
 
     outcome_cols <- intersect(c(
@@ -558,6 +630,18 @@ project_one_cod_hadd_both_modes <- function(s,
 # -----------------------------------------------------------------------------
 # Parallel wrapper over draws
 # -----------------------------------------------------------------------------
+#' @title Run the cod/haddock projection over all season-draw jobs
+#' @description Loads the common inputs once (if not supplied), builds the grid of
+#'   (season, draw) jobs, and runs project_one_cod_hadd_both_modes() over them,
+#'   in parallel via future.apply when use_parallel is TRUE and more than one
+#'   draw is requested. Returns all draws stacked into one long table. This is
+#'   the entry point the wrappers call.
+#' @param season_draw,mode_draw,draws Seasons, modes, and draws to project.
+#' @param n_workers Parallel workers (default: physical cores minus one).
+#' @param use_parallel Use a multisession future backend (safer than multicore
+#'   on Windows/Shiny/Azure) when TRUE.
+#' @param common_inputs Optional pre-loaded input list; NULL loads it here.
+#' @return A long data.table of projected metrics across all jobs.
 run_cod_hadd_projection <- function(season_draw = get("season_draw", envir = .GlobalEnv),
                                     mode_draw = get("mode_draw", envir = .GlobalEnv),
                                     draws = get("draws", envir = .GlobalEnv),
@@ -609,6 +693,14 @@ run_cod_hadd_projection <- function(season_draw = get("season_draw", envir = .Gl
 }
 
 
+#' @title Is a date within an open season, ignoring the year?
+#' @description Compares month-day only (encoded as month*100 + day), so a
+#'   season defined by any year's open/close dates applies to every projection
+#'   year. Handles seasons that wrap across the new year (open > close), e.g. a
+#'   Nov-Feb season, by treating them as "on or after open OR on or before close".
+#' @param date Date(s) to test.
+#' @param open,close Season open/close dates (parsed with lubridate::ymd).
+#' @return Logical vector, TRUE where date falls in the season.
 in_season <- function(date, open, close) {
   d <- lubridate::month(date) * 100 + lubridate::day(date)
   o <- lubridate::month(lubridate::ymd(open))  * 100 + lubridate::day(lubridate::ymd(open))

@@ -1,13 +1,55 @@
-
+################################################################################
+################################################################################
+# Script:  app.R
+#
+# Purpose: Shiny front end for the Western Gulf of Maine cod/haddock
+#          Recreational Decision Support Tool. It does two separable jobs:
+#          (1) browse results of model runs that have already finished -- a
+#              sortable regulations/mortality table plus a cod-vs-haddock
+#              mortality scatter and optional supplemental figures; and
+#          (2) let a user compose a new set of regulations (seasons, bag
+#              limits, minimum sizes by species and mode), write them to
+#              saved_regs/, and enqueue a job so the model is run elsewhere.
+#          The app itself never runs the simulation -- see Dependencies.
+#
+# Inputs:  output/*.csv       -- long-format results, one file per policy run,
+#                                with columns model, species, mode, draw,
+#                                metric, value
+#          saved_regs/*.csv   -- regulation sets previously submitted through
+#                                this app (run_name, input, value)
+#          Environment variable GROUNDFISH_AZURE_STORAGE_QUEUE_URL -- a SAS
+#                                URL for the Azure Storage queue that the
+#                                model worker listens on
+#
+# Outputs: saved_regs/regs_<Run_Name>.csv -- the regulations the user composed
+#          One Azure Storage queue message naming that run
+#
+# Dependencies: A separate worker process consumes the queue and executes the
+#          projection (Run_Model.R / RecDST/model_run.R), writing results back
+#          into output/. Nothing in this file triggers that work directly, so
+#          the Results page stays unchanged until the worker finishes and the
+#          user clicks "Update" (which reloads the page).
+#
+# Pipeline: Terminal, user-facing layer. Everything it reads is produced
+#          upstream by the Stata pre_sim scripts -> R sim scripts chain
+#          described in DATAFLOW_GROUNDFISH.md.
+################################################################################
+################################################################################
 
 library(shiny)
 library(shinyjs)
 
-#### Start UI ####
+################################################################################
+################################################################################
+# Section A: User interface
+################################################################################
+################################################################################
+
 ui <- fluidPage(
   useShinyjs(),
   titlePanel("Western Gulf of Maine Cod and Haddock Recreational Fisheries Decision Support Tool"),
-  #### Regulation Selection ####
+  # Two tabs: a read-only summary of completed runs, then the form used to
+  # compose and submit a new run.
   tabsetPanel(
     tabPanel("Cod and Haddock Model Summary",
              p("This page summarizes models results for sets of policies that have been run to date. These are
@@ -24,24 +66,18 @@ ui <- fluidPage(
 
              DT::DTOutput(outputId = "DTout"),
 
-
-
              shinyWidgets::awesomeCheckboxGroup(
                inputId = "fig",
                label = "Supplemental Figures",
                choices = c( "Angler Satisfaction","Discards", "Trips"),
                inline = TRUE,
                status = "danger"),
-             #uiOutput("summary_regs_table"),
              uiOutput("addCVCod"),
              uiOutput("addCVHad"),
              uiOutput("addReleaseCod"),
              uiOutput("addReleaseHad"),
              uiOutput("addTripsCod"),
              uiOutput("addTripsHad")),
-
-
-
 
 
     tabPanel( "Regulation Selection",
@@ -76,7 +112,7 @@ ui <- fluidPage(
                                             min = 15, max = 30, value = 23, step = 1))),
 
                        actionButton("CODaddSeason", "Add Season"),
-                       shinyjs::hidden(div(ID = "CodSeason2",
+                       shinyjs::hidden(div(id = "CodSeason2",
                                            dateRangeInput(inputId = "CodFH_seas2", label = "For Hire Season 2",
                                                           min = as.Date("2027-05-01"), max = as.Date("2028-04-30"),
                                                           start = as.Date("2028-01-01"), end = as.Date("2028-01-01")),
@@ -144,7 +180,7 @@ ui <- fluidPage(
                                             min = 15, max = 30, value = 17, step = 1))),
 
                        actionButton("HADaddSeason", "Add Season"),
-                       shinyjs::hidden(div(ID = "HadSeason3",
+                       shinyjs::hidden(div(id = "HadSeason3",
                                            dateRangeInput(inputId = "HadFH_seas3", label = "For Hire Season 3",
                                                           min = as.Date("2027-05-01"), max = as.Date("2028-04-30"),
                                                           start = as.Date("2028-01-01"), end = as.Date("2028-01-01")),
@@ -167,21 +203,36 @@ ui <- fluidPage(
                                                                 min = 15, max = 30, value = 17, step = 1)))))))
     )))
 
-####### Start Server ###################
+################################################################################
+################################################################################
+# Section B: Server -- shared data access and constants
+################################################################################
+################################################################################
+
 server <- function(input, output, session){
 
   library(magrittr)
   library(ggplot2)
   #library(webshot)
 
+  # There is no incremental refresh: "Update" reloads the whole browser page,
+  # which re-evaluates outputs() and so picks up any result files the worker
+  # has written since the session started.
   observeEvent(input$updatedat,{
     print("updating")
     shinyjs::js$refresh_page();
   })
 
+  #' @title Read all completed model results
+  #' @description Stacks every CSV in output/ into one long-format table. Each
+  #'   file is one model run; the run identifier travels in the files' own
+  #'   "model" column, so no filename parsing is needed.
+  #' @return A data.table with columns model, species, mode, draw, metric, value.
   outputs <- reactive({
     fnames <- list.files(path=here::here("output/"),pattern = "*.csv",full.names = T)
 
+    # fnames2 derives a run_name from the filename but is never used
+    # downstream; superseded by the "model" column carried inside each file.
     fnames2<- as.data.frame(fnames) %>%
       tidyr::separate(fnames, into = c("a", "b"), sep = "_") %>%
       dplyr::mutate(b = ifelse(stringr::str_detect(b, "202501"),  "NA", b),
@@ -189,11 +240,15 @@ server <- function(input, output, session){
                     run_name = dplyr::case_when(b != "NA" ~ b, TRUE ~ as.character(c))) %>%
       dplyr::select(run_name)
 
-    fnames %>%
+    df <- fnames %>%
       purrr::map_df(~data.table::fread(.,stringsAsFactors=F,check.names=T,strip.white=T))
 
+    return(df)
   })
 
+  # Reference points and unit conversion, written as zero-argument functions so
+  # they read the same way as the reactives above. cod_acl and had_acl are the
+  # recreational annual catch limits in metric tons; results arrive in pounds.
   cod_acl <- function(){
     cod_acl = 118
     return(cod_acl)
@@ -209,6 +264,12 @@ server <- function(input, output, session){
     return(lb_to_mt)
   }
 
+  #' @title Sanitize the user-supplied run name
+  #' @description Replaces underscores with hyphens, because "_" is the
+  #'   delimiter used when result and regulation file names are split apart.
+  #'   Note the saved_regs file name below is built from the raw input$Run_Name,
+  #'   not from this sanitized version.
+  #' @return The run name as a single string.
   Run_Name <- function(){
     if(stringr::str_detect(input$Run_Name, "_")){
       Run_Name <-  gsub("_", "-", input$Run_Name)
@@ -219,36 +280,50 @@ server <- function(input, output, session){
     return(Run_Name)
   }
 
+  #' @title Read every regulation set ever submitted
+  #' @description Stacks all saved_regs/*.csv into one long table. Each row is
+  #'   one regulation element (e.g. "codFH_1_bag") for one run.
+  #' @return A tibble with columns run_name, input, value.
   regs<- function(){
     flist <- list.files(path = here::here("saved_regs/"), pattern = "\\.csv$", full.names = TRUE)
 
-    print("get regs1")
     regs_data <- flist %>%
       purrr::map_dfr(readr::read_csv)
-    print("get regs2")
     return(regs_data)
   }
 
+################################################################################
+################################################################################
+# Section C: Summary table and the cod-vs-haddock mortality scatter
+################################################################################
+################################################################################
+
   output$DTout <- DT::renderDT({
+    # Total recreational mortality = landed weight + dead discards, summed
+    # across seasons within a draw, then converted from pounds to metric tons.
+    # under_acl counts the draws in which that total stayed under the ACL; the
+    # column is later labelled "%", which is only literally true when the model
+    # is run with 100 draws.
     catch_agg<- outputs() %>%
-      #dat %>%
-      dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
-                    mode == "all modes") %>%
-      dplyr::group_by(model, species,draw) %>%
-      dplyr::summarise(Value = sum(as.numeric(value))) %>%
-      dplyr::mutate(Value = Value * lb_to_mt()) %>%
-      dplyr::mutate(under_acl = dplyr::case_when(species == "cod" & Value <= cod_acl() ~ 1, TRUE ~ 0),
-                    under_acl = dplyr::case_when(species == "hadd" & Value <= had_acl() ~ 1, TRUE ~ under_acl)) %>%
-      dplyr::group_by(model, species) %>%
-      dplyr::summarise(under_acl = sum(under_acl),
-                       Value = round(median(Value),0)) %>%
-      tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl))
+        dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
+                      mode == "all modes") %>%
+        dplyr::group_by(model, species,draw) %>%
+        dplyr::summarise(Value = sum(as.numeric(value))) %>%
+        dplyr::mutate(Value = Value * lb_to_mt()) %>%
+        dplyr::mutate(under_acl = dplyr::case_when(species == "cod" & Value <= cod_acl() ~ 1, TRUE ~ 0),
+                      under_acl = dplyr::case_when(species == "hadd" & Value <= had_acl() ~ 1, TRUE ~ under_acl)) %>%
+        dplyr::group_by(model, species) %>%
+        dplyr::summarise(under_acl = sum(under_acl),
+                         Value = round(median(Value),0)) %>%
+        tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl))
 
-    # regs<- regs %>%
-
+    # The saved regulations arrive as opaque name/value pairs, so species, mode,
+    # season number and season endpoint (op/cl) are recovered by pattern
+    # matching on the input name (e.g. "codFH_seas2_op"). The year prefix is
+    # stripped from dates so seasons display as MM-DD. Any species/mode/season
+    # group containing a 0 (an unused extra season) is dropped.
     regs1 <- regs() %>%
       dplyr::rename("model" = "run_name") %>%
-      #dplyr::left_join(catch_agg, by = c("model")) %>%
       dplyr::mutate(
         species = stringr::str_extract(input, "^[a-z]+"),
         mode    = stringr::str_extract(input, "(FH|PR)"),
@@ -267,7 +342,6 @@ server <- function(input, output, session){
       dplyr::group_by(model, species, mode) %>%
       dplyr::summarise(season = paste(season_range, collapse = " ; "),.groups = "drop") %>%
       tidyr::pivot_wider(names_from = species, values_from = season, names_glue = "{species}season")
-
 
     bags <- regs1 %>%
       dplyr::filter(stringr::str_detect(input, "bag")) %>%
@@ -301,26 +375,27 @@ server <- function(input, output, session){
                     `Cod Total Catch` = Value_cod,
                     `Haddock Total Catch` = Value_hadd)
 
-
     DT::datatable(final_table)
   })
 
   output$totCatch <- plotly::renderPlotly({
 
     catch_agg<- outputs() %>%
-      #dat %>%
       dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                     mode == "all modes")%>%
       dplyr::group_by(model, species,draw) %>%
       dplyr::summarise(Value = sum(as.numeric(value))) %>%
       dplyr::mutate(Value = Value * lb_to_mt()) %>%
       dplyr::mutate(under_acl = dplyr::case_when(species == "cod" & Value <= cod_acl() ~ 1, TRUE ~ 0),
-                    under_acl = dplyr::case_when(species == "had" & Value <= had_acl() ~ 1, TRUE ~ under_acl)) %>%
+                    under_acl = dplyr::case_when(species == "hadd" & Value <= had_acl() ~ 1, TRUE ~ under_acl)) %>%
       dplyr::group_by(model, species) %>%
       dplyr::summarise(under_acl = sum(under_acl),
                        Value = round(median(Value),0)) %>%
       tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl))
 
+    # Bin the draw counts into the discrete legend categories used by the
+    # colour scale. Written as a chain of case_when()s that each fall through
+    # to the previously assigned value rather than one multi-arm case_when.
     catch_agg2<- catch_agg %>%
       dplyr::mutate(under_acl_cod2 = dplyr::case_when(under_acl_cod < 50 ~ "Less than 50%", TRUE ~ ""),
                     under_acl_cod2 = dplyr::case_when(under_acl_cod >= 50 & under_acl_cod < 60 ~ "50-59%", TRUE ~ under_acl_cod2),
@@ -344,6 +419,8 @@ server <- function(input, output, session){
       ggplot2::scale_color_manual(values = c("50-59%" = "#A9DFBF", "60-69%" = "#7DCEA0",
                                              "70-79%" = "#52BE80","80-89%" = "#27AE60",
                                              "90-100%" = "#1B5E20", "Less than 50%" = "red3"))+
+      # Every size is mapped to 1 and the size legend is suppressed below, so
+      # the haddock ACL bin currently has no visible effect on the plot.
       ggplot2::scale_size_manual(values = c("50-59%" = 1, "60-69%" = 1,
                                             "70-79%" = 1,"80-89%" = 1,
                                             "90-100%" = 1, "Less than 50%" = 1))+
@@ -359,16 +436,33 @@ server <- function(input, output, session){
       ggplot2::ylab("Median Recreational Haddock Mortality (mt)")+
       ggplot2::xlab("Median Recreational Cod Mortality (mt)")
 
-    fig<- plotly::ggplotly(p) %>% #,
+    fig<- plotly::ggplotly(p) %>%
       plotly::style(textposition = "top center")
     fig
   })
 
+################################################################################
+################################################################################
+# Section D: Supplemental figures (shown only when the user ticks the box)
+################################################################################
+################################################################################
+
+  # The six blocks below follow one template: guard on the checkbox group, then
+  # render a scatter of a performance measure against mortality for one
+  # species. Each block recomputes the same per-model median mortality table
+  # independently, so a change to that calculation must be made in all six.
+
+
+  # CV is compensating variation: dollars per choice occasion associated
+  # in change in trip outcomes from baseline summed over
+  # the year, i.e. how much better or worse off anglers are under this
+  # policy. The figures use the level, CV.
   output$addCVCod <- renderUI({
 
     if(any("Angler Satisfaction" == input$fig)){
 
       plotly::renderPlotly({
+
 
         welfare <-  outputs() %>%
           dplyr::filter(metric == c("CV"),
@@ -379,12 +473,11 @@ server <- function(input, output, session){
           tidyr::pivot_longer(-draw, names_to = "model", values_to = "value") %>%
           dplyr::group_by(draw) %>%
           dplyr::mutate(SQ_value = (value[model == "SQproposed"]),
-                 pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
+                        pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
           dplyr::ungroup() %>%
           dplyr::mutate(CV = value)
 
         catch<- outputs() %>%
-          #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
           dplyr::group_by(model, species,draw) %>%
@@ -434,7 +527,7 @@ server <- function(input, output, session){
           tidyr::pivot_longer(-draw, names_to = "model", values_to = "value") %>%
           dplyr::group_by(draw) %>%
           dplyr::mutate(SQ_value = (value[model == "SQproposed"]),
-                 pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
+                        pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
           dplyr::ungroup() %>%
           dplyr::mutate(CV = value)
 
@@ -466,10 +559,6 @@ server <- function(input, output, session){
           ggplot2::theme(legend.position = "none")
 
         fig2<- plotly::ggplotly(p2) %>%
-          # graphics::layout(title = list(text = paste0('Haddock Mortality (mt) compared to Angler Satisfaction',
-          #                                   '<br>',
-          #                                   '<sup>',
-          #                                   'More descirptuon of CV','</sup>'))) %>%
           plotly::style(textposition = "top center")
         fig2
       })
@@ -491,7 +580,6 @@ server <- function(input, output, session){
           dplyr::select(!c(metric,value))
 
         catch<- outputs() %>%
-          #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
           dplyr::group_by(model, species,draw) %>%
@@ -521,7 +609,6 @@ server <- function(input, output, session){
           ggplot2::theme(legend.position = "none")
 
         fig3<- plotly::ggplotly(p3)%>%
-          # graphics::layout(title = list(text = paste0('Cod Mortality (mt) compared to Cod Releases (mt)'))) %>%
           plotly::style(textposition = "top center")
         fig3
       })
@@ -530,7 +617,6 @@ server <- function(input, output, session){
 
   output$addReleaseHad <- renderUI({
     if(any("Discards" == input$fig)){
-
 
       plotly::renderPlotly({
         discmort <-  outputs() %>%
@@ -541,7 +627,6 @@ server <- function(input, output, session){
           dplyr::select(!c(metric,value))
 
         catch<- outputs() %>%
-          #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
           dplyr::group_by(model, species,draw) %>%
@@ -571,14 +656,12 @@ server <- function(input, output, session){
           ggplot2::theme(legend.position = "none")
 
         fig4<- plotly::ggplotly(p4)%>%
-          # graphics::layout(title = list(text = paste0('Haddock Mortality (mt) compared to Haddock Releases (mt)'))) %>%
           plotly::style(textposition = "top center")
         fig4
 
       })
     }
   })
-
 
   output$addTripsCod <- renderUI({
     if(any("Trips" == input$fig)){
@@ -593,7 +676,6 @@ server <- function(input, output, session){
           dplyr::ungroup()
 
         catch<- outputs() %>%
-          #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
           dplyr::group_by(model, species,draw) %>%
@@ -620,7 +702,6 @@ server <- function(input, output, session){
           ggplot2::theme(legend.position = "none")
 
         fig5<- plotly::ggplotly(p5)%>%
-          #graphics::layout(title = list(text = paste0('Cod Mortality (mt) compared to Total Number of Trips'))) %>%
           plotly::style(textposition = "top center")
         fig5
 
@@ -641,7 +722,6 @@ server <- function(input, output, session){
           dplyr::ungroup()
 
         catch<- outputs() %>%
-          #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes") %>%
           dplyr::group_by(model, species,draw) %>%
@@ -669,28 +749,42 @@ server <- function(input, output, session){
           ggplot2::theme(legend.position = "none")
 
         fig6<- plotly::ggplotly(p6)%>%
-          #layout(title = list(text = paste0('Haddock Mortality (mt) compared to Total Number of Trips'))) %>%
           plotly::style(textposition = "top center")
         fig6
       })
     }
   })
 
-  #### Toggle extra seasons on UI ####
-  # Allows for extra seasons to show and hide based on click
+################################################################################
+################################################################################
+# Section E: Regulation submission
+################################################################################
+################################################################################
+
   shinyjs::onclick("CODaddSeason",
                    shinyjs::toggle(id = "CodSeason2", anim = TRUE))
   shinyjs::onclick("HADaddSeason",
                    shinyjs::toggle(id = "HadSeason3", anim = TRUE))
 
-  #### Regulations ####
+  # Fires once per click of "Run Me": flattens the form into a long
+  # name/value table, writes it to saved_regs/, and puts a message on the
+  # queue that the model worker polls.
   regulations <- observeEvent(input$runmeplease,{
     library(httr)
     library(jsonlite)
     library(openssl)
     library(uuid)
 
-    print("before function is made")
+    #' @title Put a run request on the Azure Storage queue
+    #' @description Posts a small JSON payload naming the run. Authentication
+    #'   comes entirely from the shared-access-signature token embedded in the
+    #'   URL, so no credentials are handled here. Azure requires the message to
+    #'   be base64-encoded inside a <QueueMessage> XML envelope.
+    #' @param run_name The run identifier the worker should look for in
+    #'   saved_regs/.
+    #' @param queue_url_sas Full SAS URL of the queue; read from the
+    #'   GROUNDFISH_AZURE_STORAGE_QUEUE_URL environment variable by default.
+    #' @return TRUE invisibly; raises an error on a non-success HTTP status.
     enqueue_simple_sas <- function(run_name, queue_url_sas = Sys.getenv("GROUNDFISH_AZURE_STORAGE_QUEUE_URL")) {
       stopifnot(nzchar(run_name), nzchar(queue_url_sas))
 
@@ -719,34 +813,30 @@ server <- function(input, output, session){
       invisible(TRUE)
     }
 
-    print("after function is made")
     print(Sys.getenv("GROUNDFISH_AZURE_STORAGE_QUEUE_URL"))
 
-    print("before regs")
     regulations <- NULL
-    #if(any( )) will run all selected check boxes on UI-regulations selection tab
+    # The naming convention in `input` is what downstream code parses:
+    # <species><mode>_seas<n>_<op|cl> for season endpoints, and
+    # <species><mode>_<n>_<bag|len> for bag limits and minimum sizes.
+
     codregs <- data.frame(run_name = c(Run_Name()),
                           input =  c("codFH_seas1_op", "codFH_seas1_cl", "codPR_seas1_op", "codPR_seas1_cl",
                                      "codFH_seas2_op", "codFH_seas2_cl", "codPR_seas2_op", "codPR_seas2_cl",
-                                     "codFH_seas3_op", "codFH_seas3_cl", "codPR_seas3_op", "codPR_seas3_cl",
 
-                                     "codFH_1_bag", "codPR_1_bag", "codFH_2_bag" , "codPR_2_bag",  "codFH_3_bag", "codPR_3_bag",
+                                     "codFH_1_bag", "codPR_1_bag", "codFH_2_bag" , "codPR_2_bag",
 
-                                     "codFH_1_len", "codPR_1_len", "codFH_2_len", "codPR_2_len","codFH_3_len", "codPR_3_len"),
+                                     "codFH_1_len", "codPR_1_len", "codFH_2_len", "codPR_2_len",),
                           value =  c(as.character(input$CodFH_seas1[1]), as.character(input$CodFH_seas1[2]),
                                      as.character(input$CodPR_seas1[1]), as.character(input$CodPR_seas1[2]),
                                      as.character(input$CodFH_seas2[1]), as.character(input$CodFH_seas2[2]),
                                      as.character(input$CodPR_seas2[1]), as.character(input$CodPR_seas2[2]),
-                                     as.character(input$CodFH_seas3[1]), as.character(input$CodFH_seas3[2]),
-                                     as.character(input$CodPR_seas3[1]), as.character(input$CodPR_seas3[2]),
 
                                      as.character(input$CodFH_1_bag), as.character(input$CodPR_1_bag),
                                      as.character(input$CodFH_2_bag), as.character(input$CodPR_2_bag),
-                                     as.character(input$CodFH_3_bag), as.character(input$CodPR_3_bag),
 
                                      as.character(input$CodFH_1_len), as.character(input$CodPR_1_len),
-                                     as.character(input$CodFH_2_len), as.character(input$CodPR_2_len),
-                                     as.character(input$CodFH_3_len), as.character(input$CodPR_3_len)))
+                                     as.character(input$CodFH_2_len), as.character(input$CodPR_2_len)))
 
 
     hadregs <- data.frame(run_name = c(Run_Name()),
@@ -778,8 +868,9 @@ server <- function(input, output, session){
     regulations <- regulations %>% rbind(codregs, hadregs)
 
     print("before regs write")
+    # File name uses the raw input, while the run_name column inside the file
+    # uses the underscore-sanitized Run_Name(); the two can therefore differ.
     readr::write_csv(regulations, file = here::here(paste0("saved_regs/regs_", input$Run_Name, ".csv")))
-
 
     print("enqueue triggered")
     enqueue_simple_sas(input$Run_Name)
@@ -790,76 +881,7 @@ server <- function(input, output, session){
   })
 
   observeEvent(input$runmeplease, {
-    output$message <- renderText("Regulations saved - your model run has been queued. Results will appear in the output folder once processing completes. Be sure to change the run name before submitting another job.")
+    output$message <- renderText(paste0("Policy ", input$Run_Name," saved - your model run has been queued. Results will appear when the processing completes. Be sure to change the policy name before submitting again."))
   })
-
-
-  ###Output Tables
-  output$regtableout <- renderTable({
-    regs()
-  })
-
-  #### Catch tables
-  observeEvent(input$bymode, {
-    which_catch_out(!which_catch_out())
-  })
-
-  which_catch<- reactive({
-    if(which_catch_out()){
-      catch_agg()
-    } else{
-      catch_by_mode()
-    }
-  })
-
-  output$catch_tableout <- renderTable({
-    which_catch()
-  })
-
-  ### Keep Release
-  observeEvent(input$bymode, {
-    which_keep_out(!which_keep_out())
-  })
-
-  which_keep<- reactive({
-    if(which_keep_out()){
-      keep_agg()
-    } else{
-      keep_by_mode()
-    }
-  })
-
-  output$keep_tableout <- renderTable({
-    which_keep()
-  })
-
-
-  #### Welfare
-  observeEvent(input$bymode, {
-    which_welfare_out(!which_welfare_out())
-  })
-
-  which_welfare<- reactive({
-    if(which_welfare_out()){
-      welfare_agg()
-    } else{
-      welfare_by_mode()
-    }
-  })
-
-  output$welfare_tableout <- renderTable({
-    which_welfare()
-  })
-
-
-  # output$downloadData <- downloadHandler(
-  #   filename = function(){"RecDSToutput.xlsx"},
-  #   content = function(filename) {
-  #     df_list <- list(Regulations=regs_agg(), Catch_Mortality_aggregated = catch_agg(), Catch_Mortality_by_mode = catch_by_mode(),
-  #                     Keep_Release_aggregated = keep_agg(), Keep_Release_by_mode = keep_by_mode(),
-  #                     Satisfaction_trips_aggregated = welfare_agg(), Satisfaction_trips_by_mode = welfare_by_mode())
-  #     openxlsx::write.xlsx(append = TRUE, x = df_list , file = filename, row.names = FALSE)
-  #   })
-
 }
-shiny::shinyApp(ui = ui, server = server)
+  shiny::shinyApp(ui = ui, server = server)

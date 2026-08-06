@@ -1,6 +1,18 @@
-# Code to pull stock assessment (historical and projected) off google drive
-# you will run this occassionally. (or perhaps never)
-# it will be helpful to build your own code to get files and folders from google drive.
+################################################################################
+# Script:       find_files_on_googledrive.R  (helpers)
+# Purpose:      Reference / worked-example script showing how to resolve shared
+#               Google Drive folders and files (input_data, and the cod &
+#               haddock assessment files) from a human path to a Drive file id,
+#               which other scripts then use to download.
+# Inputs:       None (the paths and filenames are literals to copy/adapt).
+# Outputs:      None persisted; assigns folder/file ids to local objects for
+#               interactive use.
+# Dependencies: Requires a cached Drive token in .secrets (see
+#               googledrivesetup.R).
+# Pipeline:     Standalone helper / how-to; not called by any wrapper. Run
+#               occasionally when you need a file's Drive id.
+# Note:         data_version is a hardcoded vintage string
+################################################################################
 
 library(tidyverse)
 library(glue)

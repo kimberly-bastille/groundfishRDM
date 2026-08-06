@@ -1,10 +1,20 @@
-# this R helper file pulls MRIP data from Oracle using the mriptacklebox.
-# it takes 2 arguments, first_year and last_year, in sequence.
-# because it takes 2 arguments, you'll have to run it from the command line with
-# Rscript get_mrip_oracle.R 2023 2025
-# or you can run it from the stata wrapper.
-
-#
+################################################################################
+# Script:       get_mrip_oracle.R
+# Purpose:      Pulls MRIP recreational microdata (trip, catch, size, size_b2)
+#               from Oracle via the mriptacklebox package for a year range,
+#               lower-cases names, stamps a pull date, forces id columns to
+#               character, and writes per-element .dta files plus a combined .Rds.
+# Inputs:       Command-line args: first_year last_year. Live Oracle connection
+#               (mriptacklebox's nefscdb_con).
+# Outputs:      <gf.data.dir>/miscellaneous/mrip_{trip,catch,size,size_b2}.dta and
+#               mrip_pull<today>.Rds.
+# Dependencies: Sources developer_setup.R (for gf.data.dir). Requires Oracle
+#               access.
+# Pipeline:     Step 2 of model_wrapper.do (gated by pull_MRIP), invoked via
+#               `rscript using ... args(first last)`, and followed immediately by
+#               tidyup_mrip_data_fromR.do. Also runnable standalone:
+#               Rscript get_mrip_oracle.R 2023 2025.
+################################################################################
 
 
 # Define arguments
@@ -55,6 +65,7 @@ yearlist<-first_yr:last_yr
 wavelist<-1:6
 
 # pull data and then disconnect
+message("Pulling MRIP microdata from Oracle (this can take a while) ...")
 mrip_pull <- mrip_microdata(
   years = yearlist, waves = wavelist,
   typ = c('trip', 'catch', 'size', 'size_b2'),
@@ -70,7 +81,8 @@ dbDisconnect(con_name)
 mrip_pull <- map(mrip_pull, ~rename_with(.x, tolower)
                  )
 
-#append mrip_pull_date into all elements. Force it to July 16, 2026 format
+# append a mrip_pull_date column (today's date) to every element, formatted as
+# "Month DD, YYYY" (the %B %d, %Y example renders e.g. as "July 16, 2026")
 mrip_pull <- map(mrip_pull, ~ mutate(
   .x, mrip_pull_date =as.character(format(todaysdate,"%B %d, %Y") ) )
   )

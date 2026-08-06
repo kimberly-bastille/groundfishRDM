@@ -1,13 +1,37 @@
+/*******************************************************************************
+ Script:       calibration_catch_per_trip_part2.do
+ Purpose:      Assembles the per-iteration calibration catch-draw files that the
+               R simulation consumes. First builds an angler demographics pool
+               (age and avidity) from the FES 12-month person files. Then, for
+               each of $ndraws model iterations, expands every directed-trip day
+               to 50 simulated trips x 30 catch draws, attaches a resampled trip
+               cost and angler demographics (drawn once per iteration), samples
+               catch-per-trip outcomes from the copula output for that iteration
+               (by mode and month), and saves one calib_catch_draws_`i'.dta.
+ Inputs:       $misc_data_cd/fes_person_final_2023`w'.dta (waves 1-6),
+               $misc_data_cd/directed_trip_draws.csv,
+               $misc_data_cd/trip_costs.dta,
+               $calib_catch_draws_cd/calib_catch_draws_raw_`i'.dta (copula output).
+ Outputs:      $misc_data_cd/angler_dems.dta,
+               $calib_catch_draws_cd/calib_catch_draws_`i'.dta (i = 1..$ndraws).
+ Dependencies: Globals $misc_data_cd, $calib_catch_draws_cd, $ndraws (set in
+               model_wrapper.do). User command renvarlab. Must run AFTER
+               copula_modeling_calibration.R, which writes calib_catch_draws_raw_*.
+ Pipeline:     Step 5c. Gated by `catch_per_trip2' in model_wrapper.do; outputs
+               feed compare_calibration_data_to_MRIP.do and the R simulation.
+
+ Each output file contains, per directed-trip day in the calibration year: 50
+ trips, each with 30 draws of catch-per-trip, plus per-trip demographics that
+ are held constant across the 30 catch draws.
+*******************************************************************************/
 
 
-
-* This script create calibration catch draw files for each state that contains:
-	* 50 trips in each day of the calibration year in which there were directed trips, each with 30 draws of catch-per-trip
-	* demographics for each trip that are constant across catch draws
-	
-	
-********************************
-* Demographics: age and avidity (number trips past 12 months) 
+/******************************************************************************/
+/******************************************************************************/
+/* Section A: Build the angler demographics pool (age and avidity) */
+/******************************************************************************/
+/******************************************************************************/
+* Demographics: age and avidity (number trips past 12 months)
 	* Ages and avidity come from the fishing effort survey 12 MONTH files. 
 	* These data are NOT publicly available and the data have not been processeed for QA/QC like the publicly available 2-month files. 
 	* Data from 2018-2023 was delivered by Lucas Johanssen on 4/23/2025. A few notes/caveats from Lucas:
@@ -73,7 +97,12 @@ keep if inlist(state, "ME", "NH", "MA")
 save "$misc_data_cd\angler_dems.dta", replace 
 
 
-************** Generate catch draw files ******************
+/******************************************************************************/
+/******************************************************************************/
+/* Section B: Generate the per-iteration catch-draw files */
+/******************************************************************************/
+/******************************************************************************/
+di "Section B: generating catch-draw files for $ndraws iterations"
 
 import delimited using "$misc_data_cd\directed_trip_draws.csv", clear
 
@@ -120,7 +149,11 @@ quietly forvalues i=1/$ndraws {
         bysort mode date tripid: gen byte catch_draw = _n
 
 		egen group=group(date tripid mode)
-		
+
+		/* Count distinct trip-groups within each mode, month, and wave. These
+		   counts (n_pr, n_fh, n_month1..12, n_wave1..6) are the number of draws
+		   needed when resampling costs (by mode) and demographics (by wave)
+		   below, so each stratum is filled to exactly the right size. */
 		qui distinct group if mode=="pr"
 		local n_pr = `r(ndistinct)'
 		
@@ -235,6 +268,9 @@ quietly forvalues i=1/$ndraws {
 				
 				local n_needed = cond("`md'"=="pr", `n_pr', `n_fh')
 
+				/* Sample-with-replacement idiom (reused below for dems and
+				   catch): duplicate the pool `mult' times so it exceeds
+				   n_needed, then draw exactly n_needed rows at random. */
 				quietly count
 				local mult = ceil(`n_needed'/r(N))
 				expand `mult'

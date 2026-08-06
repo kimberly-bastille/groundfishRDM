@@ -1,6 +1,36 @@
-
-# iterative calibration routine for cod / hadd
-# bounded search with best-so-far selection; no catch-hold adjustment.
+################################################################################
+################################################################################
+# Script:       calibration_routine.R
+# Purpose:      Iterative calibration driver for cod and haddock. For each
+#               season x mode x draw, runs a bounded (bisection) search over the
+#               keep<->release reallocation fraction p: it repeatedly sets the
+#               reallocation globals, sources calibrate_rec_catch1.R, and
+#               compares simulated harvest to MRIP, keeping the best-scoring
+#               result ("best-so-far"). A second pass re-runs any rel_to_keep
+#               cells that did not converge, using an expanded sublegal-harvest
+#               floor (floor_below_min_in = 4 instead of 3). Writes the final
+#               calibrated model statistics.
+# Inputs:       final_process_misc_cd/Discard_Mortality.fst,
+#               final_process_misc_cd/simulated_catch_totals.dta,
+#               final_process_misc_cd/calibration_comparison.fst
+#               (pass-0 comparison from calibrate_rec_catch0.R). Per-run inputs
+#               are read inside calibrate_rec_catch1.R.
+# Outputs:      final_process_misc_cd/calibrated_model_stats.fst.
+# Dependencies: The final_process_* path objects, code_cd (directory holding the
+#               calibrate scripts), and n_simulations must exist in the calling
+#               environment (set by R code wrapper.R). Sources
+#               calibrate_rec_catch1.R, which reuses cod_hadd_season() and
+#               check_required_cols() defined here.
+# Pipeline:     The calibration driver of the R sim stage. Consumes the pass-0
+#               comparison and produces the calibrated stats used downstream
+#               (e.g. model_run.R / the projection).
+#
+# Convergence: a species cell is "achieved" when |diff_keep| < tol_abs_fish (500
+# fish) OR |pct_diff_keep| < tol_abs_pct (5%). The search brackets p in [0,1] by
+# bisection; score_species() ranks partial results so the best is retained if no
+# cell fully converges within max_iter (25) iterations.
+################################################################################
+################################################################################
 
 library(data.table)
 library(arrow)
@@ -117,6 +147,15 @@ p_tol        <- 1e-4
 
 species_vec <- c("cod", "hadd")
 
+#' @title Has a species cell hit the calibration tolerance?
+#' @description TRUE when simulated harvest is close enough to MRIP. When the
+#'   MRIP target is exactly 0, only the absolute-fish tolerance applies (percent
+#'   difference is undefined); otherwise either the absolute (tol_abs_fish) or
+#'   the percent (tol_abs_pct) tolerance passing counts as achieved.
+#' @param diff_keep Simulated minus MRIP kept fish.
+#' @param pct_diff_keep Percent difference in kept fish.
+#' @param MRIP_keep MRIP kept target (used to detect the zero-target case).
+#' @return TRUE/FALSE.
 is_achieved <- function(diff_keep, pct_diff_keep, MRIP_keep = NA_real_) {
   if (is.finite(MRIP_keep) && MRIP_keep == 0) {
     return(is.finite(diff_keep) && abs(diff_keep) < tol_abs_fish)
@@ -126,6 +165,16 @@ is_achieved <- function(diff_keep, pct_diff_keep, MRIP_keep = NA_real_) {
     (is.finite(pct_diff_keep) && abs(pct_diff_keep) < tol_abs_pct)
 }
 
+#' @title Score how far a species cell is from its MRIP target
+#' @description Lower is better. Combines a harvest ("keep") score and a catch
+#'   score, each the smaller of its absolute- and percent-tolerance-scaled
+#'   distances, then weights catch at 0.15. Used to pick the best-so-far result
+#'   when a cell never fully converges. Catch tolerances are looser than keep
+#'   (5x the absolute, 4x the percent) because harvest is the primary target.
+#' @param diff_keep,pct_diff_keep Kept-fish absolute and percent differences.
+#' @param diff_catch,pct_diff_catch Catch absolute and percent differences.
+#' @param MRIP_keep,MRIP_catch MRIP targets (for the zero-target handling).
+#' @return A non-negative score; 0 is a perfect match.
 score_species <- function(diff_keep, pct_diff_keep, diff_catch, pct_diff_catch,
                           MRIP_keep = NA_real_, MRIP_catch = NA_real_) {
 
@@ -165,6 +214,15 @@ extract_species_row <- function(dt, sp, md, s, i) {
   out[1]
 }
 
+#' @title Initialize the bracketed search state for one species cell
+#' @description Builds the list that tracks the bisection search: the
+#'   reallocation direction ("rel_to_keep", "keep_to_rel", or "none"), the
+#'   starting fraction p, the [lo, hi] bracket, and best-so-far bookkeeping.
+#'   Handles the zero-MRIP-target case specially (including a no-op run when the
+#'   model is also zero, so weights/discards still get computed).
+#' @param base_row One species row from the pass-0 comparison (supplies the
+#'   initial direction and p from the first-pass reallocation estimate).
+#' @return A list of search state consumed by update_bracket() and push_globals().
 make_season <- function(base_row) {
 
   mrip_keep  <- as.numeric(base_row$MRIP_keep)
@@ -240,6 +298,14 @@ make_season <- function(base_row) {
   )
 }
 
+#' @title Publish the current search state as the globals calibrate_rec_catch1 reads
+#' @description calibrate_rec_catch1.R reads its reallocation settings from bare
+#'   objects (rel_to_keep_cod, p_keep_to_rel_hadd, etc.) in its environment.
+#'   This assigns those from the per-species search state before each source().
+#'   all_keep_to_rel_<sp> is set when a keep_to_rel search has driven p to ~1.
+#' @param seasons_by_sp Named list (by species) of search-state lists.
+#' @param target_env Environment to assign into (the loop's local environment).
+#' @return Invisibly NULL; called for its side effect.
 push_globals <- function(seasons_by_sp, target_env = .GlobalEnv) {
   for (sp in species_vec) {
     season <- seasons_by_sp[[sp]]
@@ -261,6 +327,16 @@ push_globals <- function(seasons_by_sp, target_env = .GlobalEnv) {
   }
 }
 
+#' @title Advance the bisection search one step from the latest result
+#' @description Given the model-vs-MRIP row from the most recent
+#'   calibrate_rec_catch1 run, updates the [lo, hi] bracket and next p. For
+#'   rel_to_keep, a larger p means more kept fish (so a negative keep diff raises
+#'   lo, a positive keep diff lowers hi); keep_to_rel is the mirror image. Once
+#'   bracketed it bisects; before bracketing it grows p geometrically. Records
+#'   best-so-far, and sets convergence = 0 when p stops moving or pins at 1.
+#' @param season The species' current search-state list.
+#' @param row The latest comparison row for that species.
+#' @return The updated search-state list.
 update_bracket <- function(season, row) {
 
   if (isTRUE(season$frozen)) {
@@ -349,11 +425,19 @@ update_bracket <- function(season, row) {
 }
 
 
+################################################################################
+################################################################################
+# Section A: First-pass calibration (bracketed search over every cell)
+################################################################################
+################################################################################
+
 calibrated <- vector("list", length(season_draw) * length(mode_draw) * length(draws))
 k <- 1L
 for (s in season_draw) {
   for (md in mode_draw) {
     for (i in draws) {
+
+      message("Calibrating season=", s, " mode=", md, " draw=", i)
 
       baseline_targets_current <- baseline_output0[season == s & draw == i & mode == md]
       if (nrow(baseline_targets_current) == 0L) next
@@ -420,6 +504,8 @@ for (s in season_draw) {
         cod_row<- cod1[["best_row"]]
         hadd_row<- hadd1[["best_row"]]
 
+        # Note: these progress prints pass a literal iter_used = 0, so the
+        # "Iteration:" line always shows 0 rather than the running counter.
         print_calib_progress_cod(cod_row, iter_used = 0, s = s, md = md, i = i)
         print_calib_progress_hadd(hadd_row, iter_used = 0, s = s, md = md, i = i)
 
@@ -556,7 +642,13 @@ calibrated_combined[, (suffix_cols) := NULL]
 setcolorder(calibrated_combined, c("season", "mode", "draw", "species", base_names))
 
 
-# identify non-coverged cells and re-run with expanded floor_sublegal_harvest
+################################################################################
+################################################################################
+# Section B: Second pass - re-run non-converged rel_to_keep cells with a wider
+#            sublegal-harvest floor (floor_below_min_in = 4 instead of 3)
+################################################################################
+################################################################################
+# identify non-converged cells and re-run with expanded floor_sublegal_harvest
 library(data.table)
 
 # assume this is your first-pass output in the CURRENT naming format
@@ -568,7 +660,17 @@ library(data.table)
 
 calibrated_combined <- data.table::as.data.table(calibrated_combined)
 
-# helper for your current long-format output
+#' @title Should this cell be re-run with the wider floor?
+#' @description Flags only rel_to_keep cells that did not converge and still miss
+#'   the harvest target (|diff_keep| >= 500 fish, or |pct_diff_keep| >= 5%, or an
+#'   undefined percent difference). The zero-MRIP-keep case uses the absolute
+#'   test only. These rows are re-run in Section B with floor_below_min_in = 4.
+#' @param rel_to_keep 1 if the cell's direction was release-to-keep.
+#' @param convergence 0 if the first pass did not converge.
+#' @param diff_keep,pct_diff_keep Kept-fish absolute and percent differences.
+#' @param MRIP_keep MRIP kept target (for the zero-target case).
+#' @return TRUE if the cell should be re-run.
+# helper for the current long-format output
 needs_floor4_rerun <- function(rel_to_keep, convergence, diff_keep, pct_diff_keep, MRIP_keep) {
   # only rerun rel_to_keep cases that still did not converge
   if (!isTRUE(rel_to_keep == 1)) return(FALSE)
