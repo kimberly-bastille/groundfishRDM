@@ -43,9 +43,13 @@ library(haven)
 library(glue)
 library(googledrive)
 library(here)
+
 #load the haddock specific version of WHAM.
 haddock_wham_lib <- file.path(Sys.getenv("R_LIBS_USER"), "haddock_wham_install")
 library(wham,lib.loc = haddock_wham_lib)
+
+
+library(MASS)
 
 ###########Begin Housekeeping##################################################
 #Set paths, input names, and savefile names.
@@ -212,9 +216,10 @@ set.seed(6)
 
 
 # Define catch in previous years  ######################################################
-old_bridge_year_catch <- 2105 #GOM haddock 2024 MT PDT-supplied catch
+bridge_year_catch <- 2105 #GOM haddock 2024 MT PDT-supplied catch
 # I use GARFOs quota monitoring page for Rec, since the FY catch is equal to the CY catch.
 # Doesn't quite work for commercial
+# Only the 2024 actual catch is fed into the projection(so far)
 
 actual_2023_commercial_catch_mt<-2277
 actual_2024_commercial_catch_mt<-1405
@@ -430,9 +435,10 @@ NAA2026<-NAA %>%
 
 NAA2026<-data.matrix(NAA2026)
 
-
+################## PRINT NAA####################################
 # by Ages
 #summary(NAA2026)
+#### This is the wrong one (mean log)
 message("Mean of ", num_NAA_draws, " simulated NAA:")
 round(colMeans(NAA2026),0)
 
@@ -450,36 +456,81 @@ round(log(mean_NAA2026),3)
 message("NAA_logmean, straight from the projection:")
 round(NAA_logmean,3)
 
+######################################################
 # A pretty good match to ln(E[NAA])
+######################################################
+
+# check the standard deviations
+
+sd <- rbind(apply(log(NAA), 2, sd))
+NAA_logsd
+
+
+######################################################
+# Total N
+######################################################
+message("Total N, straight from the projection:")
+sum(exp(NAA_logmean))
+message("Total N from MY's sim method:")
+mean(rowSums(NAA2026))
+# Also pretty darn close
+
+
+# Are the variances correct?
+meanlog <- colMeans(log(NAA))
+logmean <- log(colMeans(NAA))
+
+
+sdlog <- sd(log(NAA2026))
+
+fit2 <- fitdistr(NAA$age2, "lognormal")
+fit3 <- fitdistr(NAA$age3, "lognormal")
+fit4 <- fitdistr(NAA$age4, "lognormal")
+fit5 <- fitdistr(NAA$age5, "lognormal")
 
 
 
 
 
 
-
-# Compute SSB
-waa_proj_ssb2026<-t(data.matrix(waa_proj_ssb2026))
-
-
-SSB2026<-NAA2026%*%waa_proj_ssb2026
-
-# Compare the mean of the individual reps to the 'model'
-# individuals
-
-mean_SSB2026<-SSB2026 %>%
-  colMeans(SSB2026)
-message("ln(E[(SSB)]), taken over ", num_NAA_draws, " draws:")
-
-round(log(mean_SSB2026),3)
+# Total biomass
+waa_proj_ssb2026<-data.matrix(waa_proj_ssb2026)
+waa_proj_ssb2026<-as.matrix(waa_proj_ssb2026, ncol=1)
+Biomass2026<-as.matrix(NAA2026)%*%waa_proj_ssb2026
 
 
-message("E[ln(SSB)]), taken over ", num_NAA_draws, " draws:")
-lnSSB2026<-log(SSB2026)
-colMeans(lnSSB2026)
+
+quantile(Biomass2026, c(.10,.50, .90))
+
+######################################################
+# Are the "individual" tracks reasonable?
+######################################################
 
 
-# Assessment
-SSB2026Assess
+NAAL<-NAA %>%
+  mutate(group= ceiling(row_number()/5)
+  ) %>%
+  group_by(group) %>%
+  mutate(rep_in_group=row_number()) %>%
+  ungroup() %>%
+  pivot_longer(
+    cols = starts_with("age"),
+    names_to = "age",
+    names_prefix = "age",
+    values_to = "count"
+  )
 
-SSB_logmean[RowPick]
+NAAL<-NAAL %>%
+  mutate(age=as.numeric(as.character((age)))
+  )
+
+plots<-ggplot(NAAL %>%dplyr::filter(group<=20) %>% filter(age>=2) ) +
+  geom_line(aes(x=age, y=count, group=as.factor(rep_in_group), color=as.factor(rep_in_group))) +
+  scale_color_viridis(discrete = TRUE) +
+    facet_wrap(vars(group), nrow=4)
+
+
+plots<-ggplot(NAAL %>%dplyr::filter(age>=2) ) +
+  geom_boxplot(aes(x=as.factor(age), y=count))
+
+
