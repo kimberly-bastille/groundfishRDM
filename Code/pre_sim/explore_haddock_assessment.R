@@ -409,37 +409,45 @@ names<-glue("age{ages}")
 TerminalAssess<-tail(mod_accepted$years_full,1)
 
 # Pick exactly 1 year. See the header.
-RowPick<-which(year==YearProj)
+RowPick<-which(year==TerminalAssess)
 stopifnot(length(RowPick)==1)
 
-
-#extract just 1 row
-NAA_logmean<-NAA_logmean[RowPick,]
-NAA_logsd<-NAA_logsd[RowPick,]
-
-stopifnot(length(NAA_logmean)==length(NAA_logsd))
+NAAstack<-list()
 
 
-# Simulate NAA
-NAA<-list()
+
+for(RowPick in 47:51){
+  #extract just 1 row
+
+  NAA_lm<-NAA_logmean[RowPick,]
+  NAA_lsd<-NAA_logsd[RowPick,]
+
+  stopifnot(length(NAA_lsd)==length(NAA_lm))
 
 
-for (ageclass in 1:length(NAA_logmean)){
-  # NOTE: Applies bias correction (- variance/2) to preserve the arithmetic mean when drawing from a lognormal distribution
-  NAA[[ageclass]]<-rlnorm(num_NAA_draws,NAA_logmean[ageclass]-NAA_logsd[ageclass]^2/2,NAA_logsd[ageclass])
+  # Simulate NAA
+  NAA<-list()
 
+
+  for (ageclass in 1:length(NAA_lm)){
+    # NOTE: Applies bias correction (- variance/2) to preserve the arithmetic mean when drawing from a lognormal distribution
+    NAA[[ageclass]]<-rlnorm(num_NAA_draws,NAA_lm[ageclass]-NAA_lsd[ageclass]^2/2,NAA_lsd[ageclass])
+
+  }
+
+  #smush the list to a Dataframe, give it nice names, add on the year and a replicate number.
+  NAA<-list2DF(NAA)
+  colnames(NAA)<-names
+  NAA <-NAA %>%
+    mutate(replicate= row_number(),
+           year=year[RowPick]
+    ) %>%
+    relocate(replicate,year)
+
+  NAAstack[[RowPick]]<-NAA
 }
 
-#smush the list to a Dataframe, give it nice names, add on the year and a replicate number.
-NAA<-list2DF(NAA)
-colnames(NAA)<-names
-NAA <-NAA %>%
-  mutate(replicate= row_number(),
-         year=YearProj
-  ) %>%
-  relocate(replicate,year)
-
-NAA2026<-NAA %>%
+NAA2026<-NAAstack[[which(year==2026)]] %>%
   dplyr::select(starts_with("age"))
 
 NAA2026<-data.matrix(NAA2026)
@@ -568,4 +576,29 @@ plots
 plots<-ggplot(NAAL %>%dplyr::filter(age>=2) ) +
   geom_boxplot(aes(x=as.factor(age), y=count))
 plots
+
+
+#################
+# What is the NAA in 2023 for A and in 2025 for A+2 ?
+
+mean2023<-as.matrix(exp(NAA_logmean[which(year==2023),]), ncol=1)
+
+new_vec <- c(mean2023[1:6], sum(mean2023[7:9]))
+
+
+ages<-c(3:9)
+ages<-glue("age{ages}")
+
+names(new_vec)<-ages
+
+# pick the 2025 NAA, just age 3-9+
+NAA2025<-NAAstack[[which(year==2025)]] %>%
+  dplyr::select(c(age3,age4, age5, age6, age7, age8, age9))
+NAA2025<-data.matrix(NAA2025)
+
+
+
+too_big <- colSums(sweep(NAA2025, 2, as.vector(new_vec), ">"))/nrow(NAA2025)
+
+at_least_one_too_big<-sum(rowSums(sweep(NAA2025, 2, as.vector(new_vec), ">")) > 0)/nrow(NAA2025)
 
