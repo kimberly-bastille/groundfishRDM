@@ -597,8 +597,15 @@ NAA2025<-NAAstack[[which(year==2025)]] %>%
 NAA2025<-data.matrix(NAA2025)
 
 
-
 too_big <- colSums(sweep(NAA2025, 2, as.vector(new_vec), ">"))/nrow(NAA2025)
 
 at_least_one_too_big<-sum(rowSums(sweep(NAA2025, 2, as.vector(new_vec), ">")) > 0)/nrow(NAA2025)
 
+
+#pull NAA from rep$NAA
+zz<-drop(mod_accepted$rep$NAA)
+modNAA<-zz[which(year==2023),]
+
+modNAA
+
+mean2023
