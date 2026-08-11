@@ -50,6 +50,7 @@ library(wham,lib.loc = haddock_wham_lib)
 
 
 library(MASS)
+library(viridis)
 
 ###########Begin Housekeeping##################################################
 #Set paths, input names, and savefile names.
@@ -150,10 +151,10 @@ waa_proj_ssb <-
 waa_proj_ssb2026 <-
   waa_proj_ssb %>%
   filter(YEAR %in% 2026) %>%
-  select(-YEAR)
+  dplyr::select(-YEAR)
 
 waa_proj_ssb <-waa_proj_ssb %>%
-  select(-YEAR)
+  dplyr::select(-YEAR)
 
 
 
@@ -162,7 +163,7 @@ waa_proj_catch <-
   readxl::read_excel(path=temp_path,
                      sheet = "Catch WAA") %>%
   filter(YEAR %in% 2024:2027) %>%
-select(-YEAR)
+  dplyr::select(-YEAR)
 
 
 # cleanup
@@ -177,6 +178,14 @@ model_name <- "2024MT"
 mod_accepted$model_name <- "Accepted"
 mod_list <- list(mod_accepted)
 
+
+# extract maturity
+maturity<-mod_accepted$input$data$mature
+maturity<-drop(maturity)
+
+# all rows are the same, so just take the last row
+
+maturity<-maturity[nrow(maturity),1:9]
 
 ###################################################################################
 ###################################################################################
@@ -431,7 +440,7 @@ NAA <-NAA %>%
   relocate(replicate,year)
 
 NAA2026<-NAA %>%
-  select(starts_with("age"))
+  dplyr::select(starts_with("age"))
 
 NAA2026<-data.matrix(NAA2026)
 
@@ -463,6 +472,7 @@ round(NAA_logmean,3)
 # check the standard deviations
 
 sd <- rbind(apply(log(NAA), 2, sd))
+sd[1,3:11]
 NAA_logsd
 
 
@@ -494,16 +504,41 @@ fit5 <- fitdistr(NAA$age5, "lognormal")
 
 
 # Total biomass
+
 waa_proj_ssb2026<-data.matrix(waa_proj_ssb2026)
-waa_proj_ssb2026<-as.matrix(waa_proj_ssb2026, ncol=1)
-Biomass2026<-as.matrix(NAA2026)%*%waa_proj_ssb2026
 
+waa_proj_ssb2026<-matrix(waa_proj_ssb2026, ncol=1)
 
-
+Biomass2026<-NAA2026%*%waa_proj_ssb2026
 quantile(Biomass2026, c(.10,.50, .90))
+
+
+# SSB ish (ignores the 25% thing).
+maturity<-as.matrix(maturity, ncol=1)
+
+SSB2026<-as.matrix(NAA2026)%*%(maturity*waa_proj_ssb2026)
+
+quantile(SSB2026, c(.10,.50, .90))
+mean(SSB2026)
+
+fit_SSB <- fitdistr(SSB2026, "lognormal")
+
+fit_SSB
+
+
+# From assessment
+SSB_logmean[RowPick]
+
+SSB_logsd[RowPick]
+
+
+proj_out[9,]
+
+
 
 ######################################################
 # Are the "individual" tracks reasonable?
+# who really knows?
 ######################################################
 
 
@@ -528,9 +563,9 @@ plots<-ggplot(NAAL %>%dplyr::filter(group<=20) %>% filter(age>=2) ) +
   geom_line(aes(x=age, y=count, group=as.factor(rep_in_group), color=as.factor(rep_in_group))) +
   scale_color_viridis(discrete = TRUE) +
     facet_wrap(vars(group), nrow=4)
-
+plots
 
 plots<-ggplot(NAAL %>%dplyr::filter(age>=2) ) +
   geom_boxplot(aes(x=as.factor(age), y=count))
-
+plots
 
