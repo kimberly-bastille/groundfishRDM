@@ -67,8 +67,6 @@ set seed $seed
 di "directed_trips_calibration: estimating directed trips from MRIP; this may take a while ..."
 
 clear
-global 
-
 tempfile tl1 cl1
 dsconcat $triplist
 
@@ -607,8 +605,6 @@ export delimited using "$misc_data_cd\next_year_calendar_adjustments.csv",  repl
 di "directed_trips_calibration: estimating MRIP directed-trip totals by mode ..."
 
 clear
-global 
-
 tempfile tl1 cl1
 dsconcat $triplist
 
@@ -796,7 +792,7 @@ save "$misc_data_cd\mrip_dtrip_by_mode.dta", replace
 di "directed_trips_calibration: estimating MRIP directed-trip totals by mode and month ..."
 
 clear
-global 
+ 
 
 tempfile tl1 cl1
 dsconcat $triplist
@@ -985,7 +981,7 @@ save "$misc_data_cd\mrip_dtrip_by_mode_month.dta", replace
 di "directed_trips_calibration: estimating MRIP directed-trip totals by mode and season ..."
 
 clear
-global 
+ 
 
 tempfile tl1 cl1
 dsconcat $triplist

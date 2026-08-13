@@ -75,29 +75,10 @@ mrip_pull <- mrip_microdata(
 dbDisconnect(con_name)
 
 
-# A little data munging
-
-# all lower case
-mrip_pull <- map(mrip_pull, ~rename_with(.x, tolower)
-                 )
-
 # append a mrip_pull_date column (today's date) to every element, formatted as
 # "Month DD, YYYY" (the %B %d, %Y example renders e.g. as "July 16, 2026")
 mrip_pull <- map(mrip_pull, ~ mutate(
-  .x, mrip_pull_date =as.character(format(todaysdate,"%B %d, %Y") ) )
-  )
-
-#force certain things to character
-mrip_pull <- map(mrip_pull, ~ mutate(
-  .x, across(c(strat_id, psu_id, id_code,zip), as.character))
-  )
-
-
-# write all the elements of x to a dta file
-walk2(mrip_pull, names(mrip_pull), ~ write_dta(
-  .x,
-  path=file.path(output_folder, glue("mrip_{.y}.dta"))
-  )
+  .x, MRIP_PULL_DATE =as.character(format(todaysdate,"%B %d, %Y") ) )
 )
 
 # append the mrip_pull_date to the mrip_pull list as a tibble
@@ -113,4 +94,29 @@ message("First Year in Data: ",first_yr)
 message("Last Year in Data: ",last_yr)
 
 message("MRIP data successfully pulled on: ", format(todaysdate,"%B %d, %Y") )
+
+
+
+# A little data munging
+# Downstream stata code needs to be in all caps and we need to ensure the date formats are done properly
+# all lower case
+
+mrip_pull$mrip_pull_date<-NULL
+
+mrip_pull <- map(mrip_pull, ~rename_with(.x, tolower)
+                 )
+
+#force certain things to character
+mrip_pull <- map(mrip_pull, ~ mutate(
+  .x, across(c(strat_id, psu_id, id_code,zip), as.character))
+  )
+
+
+# write all the elements of x to a dta file
+walk2(mrip_pull, names(mrip_pull), ~ write_dta(
+  .x,
+  path=file.path(output_folder, glue("mrip_{.y}.dta"))
+  )
+)
+
 

@@ -91,10 +91,18 @@ final_process_choice_occasions_cd=file.path(final_process_data_cd,"n_choice_occa
 final_process_misc_cd=file.path(final_process_data_cd,"miscellaneous")
 final_process_calib_catch_cd=file.path(final_process_data_cd,"calib_catch_draws")
 
-# Number of model iterations. Should match Stata's $ndraws
-# (model_wrapper.do); the two are not linked in code, so a
-# prototyping run that changes $ndraws must change this too.
-n_simulations<-101
+# Number of model iterations. Match Stata's $ndraws
+# (model_wrapper.do) using the argument in Stata call
+# Define arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 1) {
+  stop("Error: This script requires exactly one argument.", call. = FALSE)
+}
+n_simulations  <- as.numeric(args[1]) # Number of model iterations.
+
+# Show them, just in case.
+cat("Number of model iterations selected:", n_simulations, "\n")
+
 n_draws<-50 # Number of simulated trips per day
 
 #' @title Parse dates of unknown format to IDate

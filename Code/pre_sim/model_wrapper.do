@@ -175,15 +175,15 @@ global trawl_survey_start_year 2022
 /******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
-loc pull_assessment = 1		 		// Pull Assessment data
-loc pull_MRIP = 1		 			// Pull MRIP data.
+loc pull_assessment = 0		 		// Pull Assessment data
+loc pull_MRIP = 0		 			// Pull MRIP data.
 
-loc processMRIP = 1		 			// deal with casing MRIP data
-loc assemblemriplists =1		 	// deal with casing MRIP data
-loc estimate_dtrips = 1				// Estimate Directed Trips
-loc costs_per_trip = 1  			// Create Distributions of costs per trip (run 1x)
-loc draw_angler_preferences = 1		// Create draw of angler preference parameters (run 1x)
-loc catch_per_trip1 = 1				// Part 1 of catch per trip
+loc processMRIP = 0	 			// deal with casing MRIP data
+loc assemblemriplists =0		 	// deal with casing MRIP data
+loc estimate_dtrips = 0				// Estimate Directed Trips
+loc costs_per_trip = 0  			// Create Distributions of costs per trip (run 1x)
+loc draw_angler_preferences = 0		// Create draw of angler preference parameters (run 1x)
+loc catch_per_trip1 = 0				// Part 1 of catch per trip
 loc copula_in_R = 1					// Copula model in R
 loc catch_per_trip2 = 1				// Part 2 of catch per trip
 loc compare_calibration_MRIP = 1	// compare calibration output to MRIP
@@ -308,7 +308,7 @@ if `copula_in_R' {
 	 /* this takes a while and will look like it's hung. it's not */
     	di "Estimating copula in R. This takes a while and will look like it's hung"
 
-		rscript using "$input_code_cd\copula_modeling_calibration.R"
+		rscript using "$input_code_cd\copula_modeling_calibration.R", args($ndraws)
     	di "Copula in R estimated"
 
 }
@@ -391,7 +391,7 @@ if `run_calibration'{
 		di "Running calibration routine in R"
 	cd $here
 
-		rscript using "$here\Code\sim\R code wrapper.R"
+		rscript using "$here\Code\sim\R code wrapper.R", args($ndraws)
     	di "Simulation model calibrated and files exported to Google Drive"
 
 		}

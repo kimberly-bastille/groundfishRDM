@@ -67,9 +67,22 @@ conflicts_prefer(dplyr::summarise)
 here::i_am("Code/pre_sim/copula_modeling_calibration.R")
 source(here("Code", "helpers", "developer_setup.R"))
 
+
+
+
 # ---- controls ----
-n_sim   <- 5000
-n_draws <- 100
+# Define arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 1) {
+  stop("Error: This script requires exactly one argument.", call. = FALSE)
+}
+#read in arguments. Ensure they are numeric
+n_draws  <- as.numeric(args[1])
+
+# Show them, just in case.
+cat("Number of model iterations selected:", n_draws, "\n")
+
+n_sim   <- 20000
 n_reps  <- 200
 
 statez <- c("all") #holdover from SFRDM
