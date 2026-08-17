@@ -4,12 +4,12 @@
 #               using MRIP tacklebox. Verify that MRIP tacklebox matches known good code
 #               before switching to other harder metrics (catch by weight)
 # Inputs:       mrip_pull{}.Rds
-# Outputs:      None yet
+# Outputs:      groundfish_effort{}.Rds containing trip, catch, size, size_b2 files
 # Dependencies: mriptacklebox
 #               Sources developer_setup.R (for gf.data.dir).
-# Pipeline:     Not in pipeline yet
-#
-# To Do:        Subset geographically.  Disaggregate to "combined mode"
+# Pipeline:     Called by model_wrapper.do
+#                 Effort can be sent to Dashboard
+# To Do:        PSEs for Effort
 ################################################################################
 
 
@@ -45,28 +45,6 @@ mrip_pull<-read_rds(file=file.path(output_folder, glue("mrip_pull{data_vintage}.
 
 # cast to upper case
 mrip_pull <- map(mrip_pull, ~rename_with(.x, toupper))
-
-# Do this, and then you can use MODE_COMBINED as one of the domains
-# mrip_pull <- mrip_pull %>%
-#   modify_at(c("trip", "catch","size","size_b2"), ~ .x %>%
-#               mutate(MODE_COMBINED = case_when(
-#                 MODE_FX == "SOMETHING" ~ "FORHIRE",
-#                 MODE_FX == "SOMETHING_ELSE" ~ "PRIVATE",
-#                 MODE_FX == "THIRD_THING" ~ "SHORE",
-#                 TRUE ~ MODE_FX
-#               ))
-#   )
-
-# Sample code to create a my_dom_id var based on state
-# mrip_pull <- mrip_pull %>%
-#   modify_at("trip", ~ .x %>%
-#               mutate(my_dom_id = case_when(
-#                 ST_ABB %in% c("ME", "NH", "MA") ~ "InDom",
-#                 TRUE ~ "NotInDom"
-#               )))
-#   )
-
-
 
 # Compute Effort for different kind of targeting
 
@@ -109,7 +87,7 @@ list_names <- types %>%
 
 targets_EITHER <- types %>%
   map(~ mrip_effort(
-    dom = c("YEAR", "WAVE"),
+    dom = c("YEAR", "WAVE","MODE1", "AREA_S"),
     microdata = mrip_pull,
     dir_trip = list(
       comname =  c('ATLANTIC COD', 'HADDOCK'),
@@ -119,7 +97,7 @@ targets_EITHER <- types %>%
   set_names(list_names)
 
 
-groundfish_effort<-write_rds(targets_EITHER,file=file.path(output_folder, glue("groundfish_effort{data_vintage}.Rds")))
+write_rds(targets_EITHER,file=file.path(output_folder, glue("groundfish_effort{data_vintage}.Rds")))
 
 
 # The relationship of some of the entries
