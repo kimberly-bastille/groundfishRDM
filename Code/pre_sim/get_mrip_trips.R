@@ -4,7 +4,10 @@
 #               using MRIP tacklebox. Verify that MRIP tacklebox matches known good code
 #               before switching to other harder metrics (catch by weight)
 # Inputs:       mrip_pull{}.Rds
-# Outputs:      groundfish_effort{}.Rds containing trip, catch, size, size_b2 files
+# Outputs:      groundfish_effort{}.Rds is a list containing estimates at different definitions
+#               of effort. For the groundfishRDM, we use the item
+#                  groundfish_effort$"PRIM1|PRIM2|A|B1|B2"
+#               YEAR, WAVE, MODE, and AREA levels.
 # Dependencies: mriptacklebox
 #               Sources developer_setup.R (for gf.data.dir).
 # Pipeline:     Called by model_wrapper.do
@@ -85,7 +88,7 @@ list_names <- types %>%
 
 # Target or caught Either
 
-targets_EITHER <- types %>%
+groundfish_effort <- types %>%
   map(~ mrip_effort(
     dom = c("YEAR", "WAVE","MODE1", "AREA_S"),
     microdata = mrip_pull,
@@ -97,7 +100,7 @@ targets_EITHER <- types %>%
   set_names(list_names)
 
 
-write_rds(targets_EITHER,file=file.path(output_folder, glue("groundfish_effort{data_vintage}.Rds")))
+write_rds(groundfish_effort,file=file.path(output_folder, glue("groundfish_effort{data_vintage}.Rds")))
 
 
 # The relationship of some of the entries
