@@ -269,6 +269,9 @@ if `assemblemriplists' {
 // 2) Estimate directed trips at the month, mode, kind-of day level
 
 if `estimate_dtrips' {
+  di "Compiling Aggregate Effort"
+		rscript using "$input_code_cd\get_mrip_trips.R"
+
 	di "Estimating Directed trips"
 	*This file calls "set_regulations.do". In it you must enter the SQ regulations in the calibration and projection year.
 	*THIS NEEDS TO BE ADJUSTED EVERY YEAR.
