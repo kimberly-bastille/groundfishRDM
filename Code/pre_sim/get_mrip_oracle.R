@@ -84,7 +84,7 @@ new_site_list<-glue("select * from RECDBS.MRIP_COD_ALL_SITE_LIST")
 site_list<-dbGetQuery(con_name, new_site_list)
 dbDisconnect(con_name)
 
-message("Processing Site List from Oracle...")
+message("Processing MA and ME Sites")
 site_list_WGOM_COD<-site_list %>%
   filter(STATE %in% c("MA", "ME")) %>%
   select(c(STATE, INTSITE, NMFS_STOCK_AREA, NMFS_STAT_AREA))  %>%
@@ -115,6 +115,8 @@ mrip_pull <- map(mrip_pull, ~ mutate(
 )
 
 #Bring the site list info into trip
+#Everything not in WGOM is allocated to XX, but they could be allocated to other stockareas
+#If you had the definitions.
 mrip_pull$trip <- mrip_pull$trip %>%
   left_join(
   site_list_WGOM_COD, by=join_by(INTSITE==INTSITE, ST_ABB==STATE)
