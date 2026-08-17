@@ -9,7 +9,7 @@
 # Outputs:      <gf.data.dir>/miscellaneous/mrip_{trip,catch,size,size_b2}.dta and
 #               mrip_pull<today>.Rds.
 # Dependencies: Sources developer_setup.R (for gf.data.dir). Requires Oracle
-#               access.
+#               access to MRIP data tables and RECDBS schema
 # Pipeline:     Step 2 of model_wrapper.do (gated by pull_MRIP), invoked via
 #               `rscript using ... args(first last)`, and followed immediately by
 #               tidyup_mrip_data_fromR.do. Also runnable standalone:
