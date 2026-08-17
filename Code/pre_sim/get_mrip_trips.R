@@ -68,51 +68,48 @@ mrip_pull <- map(mrip_pull, ~rename_with(.x, toupper))
 
 
 
-
+# Compute Effort for different kind of targeting
 
 types<-list(
-  'PRIM1',
-  'PRIM2',
-  'A',
-  'B1',
-  'B2',
-  c('PRIM1', 'PRIM2', 'A','B1', 'B2'),
-  c('PRIM1', 'PRIM2'),
-  c('A','B1', 'B2'),
-  c('A','B1')
+  c('PRIM1', 'PRIM2'), # Targeting
+  'A', # landing and seen
+   c('A','B1'), # landed + dead
+  'B2', # Releases
+  c('PRIM1', 'PRIM2', 'A','B1', 'B2'), # any
+  c('A','B1', 'B2') # Any catch
 )
 list_names <- types %>%
   map_chr(~ paste(.x, collapse = "|"))
 
 
-
-targets_COD <- types %>%
-  map(~ mrip_effort(
-    dom = c("YEAR"),
-    microdata = mrip_pull,
-    dir_trip = list(
-      comname = c('ATLANTIC COD'),
-      typ = .x
-    )
-  )) %>%
-  set_names(list_names)
-
-targets_HADDOCK <- types %>%
-  map(~ mrip_effort(
-    dom = c("YEAR"),
-    microdata = mrip_pull,
-    dir_trip = list(
-      comname = c('HADDOCK'),
-      typ = .x
-    )
-  )) %>%
-  set_names(list_names)
+# Sample code to get just Cod or Just Haddock
+# targets_COD <- types %>%
+#   map(~ mrip_effort(
+#     dom = c("YEAR", "WAVE"),
+#     microdata = mrip_pull,
+#     dir_trip = list(
+#       comname = c('ATLANTIC COD'),
+#       typ = .x
+#     )
+#   )) %>%
+#   set_names(list_names)
+#
+# targets_HADDOCK <- types %>%
+#   map(~ mrip_effort(
+#     dom = c("YEAR", "WAVE"),
+#     microdata = mrip_pull,
+#     dir_trip = list(
+#       comname = c('HADDOCK'),
+#       typ = .x
+#     )
+#   )) %>%
+#   set_names(list_names)
 
 # Target or caught Either
 
 targets_EITHER <- types %>%
   map(~ mrip_effort(
-    dom = c("YEAR"),
+    dom = c("YEAR", "WAVE"),
     microdata = mrip_pull,
     dir_trip = list(
       comname =  c('ATLANTIC COD', 'HADDOCK'),
@@ -120,6 +117,10 @@ targets_EITHER <- types %>%
     )
   )) %>%
   set_names(list_names)
+
+
+groundfish_effort<-write_rds(targets_EITHER,file=file.path(output_folder, glue("groundfish_effort{data_vintage}.Rds")))
+
 
 # The relationship of some of the entries
 # PRIM1 : Cod + haddock=Either by definition
