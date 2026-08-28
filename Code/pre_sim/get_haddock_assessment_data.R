@@ -444,14 +444,20 @@ historical_NAA<-historical_NAA %>%
   cross_join(stock_stats_df)%>%
   mutate(metric="Historical Mean Numbers of Age")
 
+age_classes<-historical_NAA%>%
+  select(starts_with("age")) %>%
+  ncol()
+
+
 historical_NAA_long<-pivot_naa_long(historical_NAA)
 
 
 ############### Validate ###############
-
 # Apply the validation function to the historical data
-validate_naa_data(historical_NAA_long)
-
+validate_naa_data(df=historical_NAA_long,
+                  age_classes=age_classes,
+                  ndraws=1,
+                  years=yearinwindow)
 
 
 
@@ -515,7 +521,15 @@ NAA <-NAA %>%
 NAA_long<-pivot_naa_long(NAA)
 
 #validate
-validate_naa_data(NAA_long)
+
+
+# Validate
+
+validate_naa_data(df=NAA_long,
+                  age_classes=age_classes,
+                  ndraws=num_NAA_draws,
+                  years=1)
+
 
 write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")))
 write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))

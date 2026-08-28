@@ -9,7 +9,7 @@
 # Outputs:      <gf.data.dir>/miscellaneous/mrip_{trip,catch,size,size_b2}.dta and
 #               mrip_pull<today>.Rds.
 # Dependencies: Sources developer_setup.R (for gf.data.dir). Requires Oracle
-#               access.
+#               access to MRIP data tables and RECDBS schema
 # Pipeline:     Step 2 of model_wrapper.do (gated by pull_MRIP), invoked via
 #               `rscript using ... args(first last)`, and followed immediately by
 #               tidyup_mrip_data_fromR.do. Also runnable standalone:
@@ -26,6 +26,8 @@ if (length(args) != 2) {
 #read in arguments. Ensure they are numeric
 first_yr  <- as.numeric(args[1])
 last_yr   <-  as.numeric(args[2])
+#first_yr<-2023
+#last_yr<-2025
 
 # Show them, just in case.
 cat("First Year:", first_yr, "\n")
@@ -72,13 +74,59 @@ mrip_pull <- mrip_microdata(
   format = c('nefsc_db'),
   nefsc_db_con=con_name
 )
+message("MRIP microdata from Oracle read in...")
+
+
+
+message("Pulling Site List from Oracle...")
+
+new_site_list<-glue("select * from RECDBS.MRIP_COD_ALL_SITE_LIST")
+site_list<-dbGetQuery(con_name, new_site_list)
 dbDisconnect(con_name)
 
+message("Processing MA and ME Sites")
+site_list_WGOM_COD<-site_list %>%
+  filter(STATE %in% c("MA", "ME")) %>%
+  select(c(STATE, INTSITE, NMFS_STOCK_AREA, NMFS_STAT_AREA))  %>%
+  mutate(NMFS_STOCK_AREA=case_when(
+    NMFS_STAT_AREA %in% c("521", "526", "541", "514", "513", "515") ~ "WGOM",
+    TRUE ~ "XX"
+    )
+  ) %>%
+  distinct()
+
+
+message("Data Munging")
 
 # append a mrip_pull_date column (today's date) to every element, formatted as
 # "Month DD, YYYY" (the %B %d, %Y example renders e.g. as "July 16, 2026")
 mrip_pull <- map(mrip_pull, ~ mutate(
   .x, MRIP_PULL_DATE =as.character(format(todaysdate,"%B %d, %Y") ) )
+)
+
+# Consolidate modes
+mrip_pull <- map(mrip_pull, ~ mutate(
+  .x, MODE1 =case_when(
+    MODE_FX %in% c("1","2","3") ~ "sh",
+    MODE_FX %in% c("7") ~ "pr",
+    MODE_FX %in% c("4","5") ~ "fh",
+    TRUE ~ "oth")
+  )
+)
+
+#Bring the site list info into trip
+#Everything not in WGOM is allocated to XX, but they could be allocated to other stockareas
+#If you had the definitions.
+mrip_pull$trip <- mrip_pull$trip %>%
+  left_join(
+  site_list_WGOM_COD, by=join_by(INTSITE==INTSITE, ST_ABB==STATE)
+  ) %>%
+  mutate(AREA_S=case_when(
+    ST =="33" ~ "WGOM",
+    ST %in%  c("25","23") ~ NMFS_STOCK_AREA,
+    TRUE ~ "XX"
+  )) %>%
+    select(-c("NMFS_STAT_AREA","NMFS_STOCK_AREA")
 )
 
 # append the mrip_pull_date to the mrip_pull list as a tibble
@@ -110,6 +158,9 @@ mrip_pull <- map(mrip_pull, ~rename_with(.x, tolower)
 mrip_pull <- map(mrip_pull, ~ mutate(
   .x, across(c(strat_id, psu_id, id_code,zip), as.character))
   )
+
+# You might need to delete a few columns of of data if the downstream stata code doesn't work.
+#MODE1, AREA_S
 
 
 # write all the elements of x to a dta file
