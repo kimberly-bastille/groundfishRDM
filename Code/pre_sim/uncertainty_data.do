@@ -49,7 +49,7 @@
 
 /******************************************************************************/
 /******************************************************************************/
-/* Section A: Take medians of fitted catch-at-length probability for Cod */
+/* Section A: Take medians of fitted baseline catch-at-length for Cod */
 /******************************************************************************/
 /******************************************************************************/
 
@@ -91,7 +91,7 @@ tab length if species=="cod" & season=="summer"
 
 /******************************************************************************/
 /******************************************************************************/
-/* Section B: Take medians of fitted catch-at-length probability for Haddock */
+/* Section B: Take medians of fitted baseline catch-at-length for Haddock */
 /******************************************************************************/
 /******************************************************************************/
 
@@ -120,16 +120,86 @@ append using `hadd_med'
 export delimited using "$misc_data_cd/uncertain_hadd_at_length.csv", replace
 restore
 
-////DO WE ALSO WANT MEANS?
+////DO WE ALSO WANT MEANS? not now. maybe later
 // DO WE ALSO WANT A VERSION WITH THE MEDIANS FOR BOTH COD AND HADD
+//projected_catch_at_length gets used in predict rec catch functions so make medians for that
 
-//Save a version that has median catch at length for both Cod and Haddock
+/******************************************************************************/
+/******************************************************************************/
+/* Section C: Take medians of fitted baseline catch-at-length for Both*/
+/******************************************************************************/
+/******************************************************************************/
 use `cod_med', clear
 append using `hadd_med'
 export delimited using "$misc_data_cd/uncertain_gf_at_length.csv", replace
 
 
-//CATCH AT LENGTH is called in calibrate_rec_catch0.R and calibrate_rec_catch1.R
+//baseline CATCH AT LENGTH is called in calibrate_rec_catch0.R and calibrate_rec_catch1.R
+
+
+
+/******************************************************************************/
+/******************************************************************************/
+/* Section D: Take medians of projected catch-at-length for Cod, Haddock, then Both (Steps A-C)*/
+/******************************************************************************/
+/******************************************************************************/
+* Import 101 draws of projected catch at length probabilities
+import delimited "$misc_data_cd\projected_catch_at_length.csv", clear
+
+*Take medians of 101 draws of the projected catch at length probabilities for Cod
+preserve  
+collapse (median) fitted_prob, by(season species length)
+keep if species=="cod"
+//expand out the medians so there are 101 draws of them
+gen row_id = _n
+expand 101
+bysort row_id: gen draw = _n
+sort draw row_id
+drop row_id
+order draw season species length fitted_prob
+tempfile cod_med
+save `cod_med', replace
+
+//merge the expanded medians with the original haddock catch at length draws
+import delimited "$misc_data_cd\projected_catch_at_length.csv", clear
+keep if species=="hadd"
+append using `cod_med'
+
+export delimited using "$misc_data_cd/uncertain_proj_cod_at_length.csv", replace
+restore
+
+*Take medians of 101 draws of the projected catch at length probabilities for Haddock
+preserve  
+collapse (median) fitted_prob, by(season species length)
+keep if species=="hadd"
+//expand out the medians so there are 101 draws of them
+gen row_id = _n
+expand 101
+bysort row_id: gen draw = _n
+sort draw row_id
+drop row_id
+order draw season species length fitted_prob
+tempfile hadd_med
+save `hadd_med', replace
+
+//merge the expanded medians with the original haddock catch at length draws
+import delimited "$misc_data_cd\projected_catch_at_length.csv", clear
+keep if species=="cod"
+append using `hadd_med'
+
+export delimited using "$misc_data_cd/uncertain__proj_hadd_at_length.csv", replace
+restore
+
+*Dataset with medians for both species
+use `cod_med', clear
+append using `hadd_med'
+export delimited using "$misc_data_cd/uncertain_proj_gf_at_length.csv", replace
+
+
+//projected CATCH AT LENGTH is called in predict_rec_catch_functions.R
+
+
+
 
 
 /******************************************************************************/
