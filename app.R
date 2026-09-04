@@ -826,7 +826,7 @@ server <- function(input, output, session){
 
                                      "codFH_1_bag", "codPR_1_bag", "codFH_2_bag" , "codPR_2_bag",
 
-                                     "codFH_1_len", "codPR_1_len", "codFH_2_len", "codPR_2_len",),
+                                     "codFH_1_len", "codPR_1_len", "codFH_2_len", "codPR_2_len"),
                           value =  c(as.character(input$CodFH_seas1[1]), as.character(input$CodFH_seas1[2]),
                                      as.character(input$CodPR_seas1[1]), as.character(input$CodPR_seas1[2]),
                                      as.character(input$CodFH_seas2[1]), as.character(input$CodFH_seas2[2]),
