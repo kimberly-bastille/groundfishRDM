@@ -79,7 +79,7 @@ append using `cod_med'
 
 //there are 18,455 rows in baseline_catch_at_length but there are 18,481 now.
 //maybe there was an extra length for cod in only some of the draws?
-export delimited using "$misc_data_cd/uncertain_cod_at_length.csv", replace
+export delimited using "$misc_data_cd/baseline_catch_at_length_uc_cod.csv", replace
  
 restore
 
@@ -87,6 +87,7 @@ restore
 //and winter haddock has less than 101 draws for every length from 54 cm to 72cm
 // but maybe that is fine 
 tab length if species=="cod" & season=="summer"
+
 
 
 /******************************************************************************/
@@ -117,7 +118,7 @@ append using `hadd_med'
 
 //there are 18,455 rows in baseline_catch_at_length but there are 19,467 now.
 //see note above. some lengths only show up in some draws
-export delimited using "$misc_data_cd/uncertain_hadd_at_length.csv", replace
+export delimited using "$misc_data_cd/baseline_catch_at_length_uc_hadd.csv", replace
 restore
 
 ////DO WE ALSO WANT MEANS? not now. maybe later
@@ -131,7 +132,7 @@ restore
 /******************************************************************************/
 use `cod_med', clear
 append using `hadd_med'
-export delimited using "$misc_data_cd/uncertain_gf_at_length.csv", replace
+export delimited using "$misc_data_cd/baseline_catch_at_length_uc_gf.csv", replace
 
 
 //baseline CATCH AT LENGTH is called in calibrate_rec_catch0.R and calibrate_rec_catch1.R
@@ -165,7 +166,7 @@ import delimited "$misc_data_cd\projected_catch_at_length.csv", clear
 keep if species=="hadd"
 append using `cod_med'
 
-export delimited using "$misc_data_cd/uncertain_proj_cod_at_length.csv", replace
+export delimited using "$misc_data_cd/projected_catch_at_length_uc_cod.csv", replace
 restore
 
 *Take medians of 101 draws of the projected catch at length probabilities for Haddock
@@ -182,22 +183,33 @@ order draw season species length fitted_prob
 tempfile hadd_med
 save `hadd_med', replace
 
-//merge the expanded medians with the original haddock catch at length draws
+//merge the expanded medians with the original cod catch at length draws
 import delimited "$misc_data_cd\projected_catch_at_length.csv", clear
 keep if species=="cod"
 append using `hadd_med'
 
-export delimited using "$misc_data_cd/uncertain__proj_hadd_at_length.csv", replace
+export delimited using "$misc_data_cd/projected_catch_at_length_uc_hadd.csv", replace
 restore
 
 *Dataset with medians for both species
 use `cod_med', clear
 append using `hadd_med'
-export delimited using "$misc_data_cd/uncertain_proj_gf_at_length.csv", replace
+export delimited using "$misc_data_cd/projected_catch_at_length_uc_gf.csv", replace
 
 
 //projected CATCH AT LENGTH is called in predict_rec_catch_functions.R
 
+
+//think you need to rename things so that they all contain the same pattern, so 
+//baseline_catch_at_length.csv
+//baseline_catch_at_length_uc_cod.csv
+//baseline_catch_at_length_uc_hadd.csv
+//baseline_catch_at_length_uc_gf.csv
+
+//projected_catch_at_length.csv
+//projected_catch_at_length_uc_cod.csv
+//projected_catch_at_length_uc_hadd.csv
+//projected_catch_at_length_uc_gf.csv
 
 
 
