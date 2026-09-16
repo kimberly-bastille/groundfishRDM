@@ -7,23 +7,23 @@
 *******************************************************************************/
 
 * We originally used MRIP data from (year==2025 & inlist(wave, 1, 2, 3, 4)) | (year==2024 & inlist(wave, 5, 6)) for the groundfish RDM in FY2026's mgt. cycle.
-* MRIP released preliminary 2025w5 and updated preliminary 2025w4 data on January 21, 2026. 
+* MRIP released preliminary 2025w5 and updated preliminary 2025w4 data on January 21, 2026.
 * This file computes a scalar to adjust the original RDM output based on newly available/updated data MRIP data.
 
-* I compute total directed trips at the same strata as in the RDM: wave, month, kind-of-day, mode 
-* I compute mean catch-per-trip at the same strata as in the RDM: wave and mode 
+* I compute total directed trips at the same strata as in the RDM: wave, month, kind-of-day, mode
+* I compute mean catch-per-trip at the same strata as in the RDM: wave and mode
 * I then multiply total directed trips by the corresponding mean catch-per-trip point estimate to arrive at total catch.
-* I do this based on data that was actually used in the RDM and based on the new data. 
-* multiplier = (rec. catch in Wave 5 of 2025) / (rec. catch in Wave 5 of 2024) 
+* I do this based on data that was actually used in the RDM and based on the new data.
+* multiplier = (rec. catch in Wave 5 of 2025) / (rec. catch in Wave 5 of 2024)
 
 * set a global seed #
 global seed 03211990
 
-* years/waves of MRIP data. 
+* years/waves of MRIP data.
 global yr_wvs 20231 20232 20233 20234 20235 20236  ///
 					 20241 20242 20243 20244 20245 20246  ///
 					 20251 20252 20253 20254 20255 20256
-					 
+
 global yearlist 2023 2024 2025
 global wavelist 1 2 3 4 5 6
 
@@ -49,7 +49,7 @@ global calibration_year "(year==2025 & inlist(wave, 1, 2, 3, 4, 5)) | (year==202
 *This code only needs to be run once after new MRIP data enters the repo
 cd $input_data_cd
 
-foreach wave in	$yr_wvs {				
+foreach wave in	$yr_wvs {
 
 capture confirm file "trip_`wave'.dta"
 if _rc==0{
@@ -59,7 +59,7 @@ if _rc==0{
 }
 
 else{
-	
+
 }
 
 capture confirm file "size_b2_`wave'.dta"
@@ -70,7 +70,7 @@ if _rc==0{
 }
 
 else{
-	
+
 }
 
 capture confirm file "size_`wave'.dta"
@@ -81,7 +81,7 @@ if _rc==0{
 }
 
 else{
-	
+
 }
 
 capture confirm file "catch_`wave'.dta"
@@ -92,7 +92,7 @@ if _rc==0{
 }
 
 else{
-	
+
 }
 
 }
@@ -109,14 +109,14 @@ foreach year in $yearlist{
 		quietly count
 		scalar tt=r(N)
 		if scalar(tt)>0{
-			global catchlist "$catchlist "catch_`year'`wave'.dta " " 
+			global catchlist "$catchlist "catch_`year'`wave'.dta " "
 		}
 		else{
 		}
 	}
 	else{
 	}
-	
+
 }
 }
 
@@ -131,14 +131,14 @@ foreach year in $yearlist{
 		quietly count
 		scalar tt=r(N)
 		if scalar(tt)>0{
-			global triplist "$triplist "trip_`year'`wave'.dta " " 
+			global triplist "$triplist "trip_`year'`wave'.dta " "
 		}
 		else{
 		}
 	}
 	else{
 	}
-	
+
 }
 }
 
@@ -153,7 +153,7 @@ dsconcat $triplist
 
 sort year strat_id psu_id id_code
 drop if strmatch(id_code, "*xx*")==1
-duplicates drop 
+duplicates drop
 save `tl1'
 clear
 
@@ -169,7 +169,7 @@ merge 1:m year strat_id psu_id id_code using `cl1', keep(1 3) nogenerate /*Keep 
 replace var_id=strat_id if strmatch(var_id,"")
 
 
-* Format MRIP data for estimation 
+* Format MRIP data for estimation
 gen state="MA" if st==25
 replace state="MD" if st==24
 replace state="RI" if st==44
@@ -182,12 +182,12 @@ replace state="NC" if st==37
 replace state="ME" if st==23
 replace state="NH" if st==33
 
-* Ensure only relevant states 
+* Ensure only relevant states
 keep if inlist(st, 23, 33, 25)
 
 
 keep if $calibration_year
- 
+
 gen st2 = string(st,"%02.0f")
 
 gen mode1="sh" if inlist(mode_fx, "1", "2", "3")
@@ -197,9 +197,9 @@ replace mode1="fh" if inlist(mode_fx, "4", "5")
 *drop shore trips
 drop if mode1=="sh"
 
-* classify trips that I care about into the things I care about (caught or targeted sf/bsb) and things I don't care about "ZZ" 
+* classify trips that I care about into the things I care about (caught or targeted sf/bsb) and things I don't care about "ZZ"
 replace prim1_common=subinstr(lower(prim1_common)," ","",.)
-replace prim2_common=subinstr(lower(prim1_common)," ","",.)
+replace prim2_common=subinstr(lower(prim2_common)," ","",.)
 
 * We need to retain 1 observation for each strat_id, psu_id, and id_code
 /* A.  Trip (Targeted or Caught) (fluke, sea bass, or scup) then it should be marked in the domain "_ATLCO"
@@ -207,24 +207,24 @@ replace prim2_common=subinstr(lower(prim1_common)," ","",.)
 */
 
 gen common_dom="ZZ"
-replace common_dom="ATLCO" if inlist(common, "atlanticcod") 
-replace common_dom="ATLCO" if inlist(common, "haddock") 
+replace common_dom="ATLCO" if inlist(common, "atlanticcod")
+replace common_dom="ATLCO" if inlist(common, "haddock")
 
-replace common_dom="ATLCO"  if inlist(prim1_common, "atlanticcod") 
-replace common_dom="ATLCO"  if inlist(prim1_common, "haddock") 
+replace common_dom="ATLCO"  if inlist(prim1_common, "atlanticcod")
+replace common_dom="ATLCO"  if inlist(prim1_common, "haddock")
 
 *New MRIP site allocations
-preserve 
-import delimited using "E:\Lou_projects\groundfishRDM\input_data\MRIP_COD_ALL_SITE_LIST.csv", clear 
+preserve
+import delimited using "E:\Lou_projects\groundfishRDM\input_data\MRIP_COD_ALL_SITE_LIST.csv", clear
 keep if inlist(state, "MA", "ME")
 keep state intsite nmfs_stock_area nmfs_stat_area
-sort intsite nmfs_stock_area  
+sort intsite nmfs_stock_area
 replace nmfs_stock_area="WGOM" if inlist(nmfs_stat_area, 521, 526, 541, 514, 513, 515)
 replace nmfs_stock_area="XX" if !inlist(nmfs_stat_area, 521, 526, 541, 514, 513, 515)
 keep nmfs_stock_area intsite nmfs_stat_area state
 duplicates drop
 tempfile mrip_sites
-save `mrip_sites', replace 
+save `mrip_sites', replace
 restore
 
 merge m:1 intsite state using `mrip_sites',  keep(1 3) nogen
@@ -232,7 +232,7 @@ merge m:1 intsite state using `mrip_sites',  keep(1 3) nogen
 /*classify into WGOM or not WGOM */
 gen str3 area_s="XX"
 replace area_s="WGOM" if st2=="33"
-replace area_s=nmfs_stock_area if inlist(st2, "25", "23") 
+replace area_s=nmfs_stock_area if inlist(st2, "25", "23")
 
 tostring wave, gen(wv2)
 tostring year, gen(yr2)
@@ -271,7 +271,7 @@ rename sum_hadd_harvest hadd_keep
 rename sum_hadd_releases hadd_rel
 
 * Set a variable "no_dup"=0 if the record is "$my_common" catch and no_dup=1 otherwise
-  
+
 gen no_dup=0
 replace no_dup=1 if  strmatch(common, "atlanticcod")==0
 replace no_dup=1 if strmatch(common, "haddock")==0
@@ -304,9 +304,9 @@ encode my_dom_id_string, gen(my_dom_id)
 
 preserve
 keep my_dom_id my_dom_id_string
-duplicates drop 
+duplicates drop
 tempfile domains_catch
-save `domains_catch', replace 
+save `domains_catch', replace
 restore
 
 
@@ -349,24 +349,24 @@ split domain21, parse(b)
 drop domain2 domain21 domain22 domain212
 destring domain211, replace
 rename domain211 my_dom_id
-merge m:1 my_dom_id using `domains_catch' 
+merge m:1 my_dom_id using `domains_catch'
 sort varname  my_dom_id
 
-*keep varname mean se 
+*keep varname mean se
 
 split my_dom_id_s, parse(_)
 rename my_dom_id_string2 wave
 rename my_dom_id_string3 mode
 
-*destring month, replace 
+*destring month, replace
 drop my*
 drop _merge
-drop se ll ul 
+drop se ll ul
 drop domain
 gen kod="wd"
 expand 2, gen(dup)
 replace kod="we" if dup==1
-drop dup 
+drop dup
 
 expand 2, gen(dup)
 gen month="03" if dup==0 & wave=="2"
@@ -383,11 +383,11 @@ replace month="12" if dup==1 & wave=="6"
 drop dup
 
 
-tempfile catch 
-save `catch', replace 
+tempfile catch
+save `catch', replace
 
 
-*******Trips 
+*******Trips
 clear
 
 tempfile tl1 cl1
@@ -413,7 +413,7 @@ replace prim1_common=subinstr(lower(prim1_common)," ","",.)
 replace prim2_common=subinstr(lower(prim2_common)," ","",.)
 
 drop _merge
- 
+
 keep if $calibration_year
 
  /* ensure only relevant states */
@@ -422,11 +422,11 @@ keep if inlist(st, 23, 33, 25)
 
  /* classify trips into dom_id=1 (DOMAIN OF INTEREST) and dom_id=2 ('OTHER' DOMAIN). */
 gen str1 dom_id="2"
-replace dom_id="1" if strmatch(common, "atlanticcod") 
-replace dom_id="1" if strmatch(prim1_common, "atlanticcod") 
+replace dom_id="1" if strmatch(common, "atlanticcod")
+replace dom_id="1" if strmatch(prim1_common, "atlanticcod")
 
-replace dom_id="1" if strmatch(common, "haddock") 
-replace dom_id="1" if strmatch(prim1_common, "haddock") 
+replace dom_id="1" if strmatch(common, "haddock")
+replace dom_id="1" if strmatch(prim1_common, "haddock")
 
 tostring wave, gen(w2)
 tostring year, gen(year2)
@@ -451,18 +451,18 @@ replace mode1="fh" if inlist(mode_fx, "4", "5")
 gen date=substr(id_code, 6,8)
 gen month1=substr(date, 5, 2)
 gen day1=substr(date, 7, 2)
-drop if inlist(day1,"9x", "xx") 
+drop if inlist(day1,"9x", "xx")
 destring day1, replace
 
 
-// Deal with Group Catch: 
+// Deal with Group Catch:
 	// This bit of code generates a flag for each year-strat_id psu_id leader. (equal to the lowest of the dom_id)
-	// Then it generates a flag for claim equal to the largest claim.  
-	// Then it re-classifies the trip into dom_id=1 if that trip had catch of species in dom_id1 
+	// Then it generates a flag for claim equal to the largest claim.
+	// Then it re-classifies the trip into dom_id=1 if that trip had catch of species in dom_id1
 
 replace claim=0 if claim==.
 
-gen domain_claim=claim if inlist(common, "atlanticcod", "haddock") 
+gen domain_claim=claim if inlist(common, "atlanticcod", "haddock")
 mvencode domain_claim, mv(0) override
 
 bysort strat_id psu_id leader (dom_id): gen gc_flag=dom_id[1]
@@ -473,17 +473,17 @@ replace dom_id="1" if strmatch(dom_id,"2") & claim_flag>0 & claim_flag!=. & strm
 * generate estimation strata
 
 *New MRIP site allocations
-preserve 
-import delimited using "E:\Lou_projects\groundfishRDM\input_data\MRIP_COD_ALL_SITE_LIST.csv", clear 
+preserve
+import delimited using "E:\Lou_projects\groundfishRDM\input_data\MRIP_COD_ALL_SITE_LIST.csv", clear
 keep if inlist(state, "MA", "ME")
 keep state intsite nmfs_stock_area nmfs_stat_area
-sort intsite nmfs_stock_area  
+sort intsite nmfs_stock_area
 replace nmfs_stock_area="WGOM" if inlist(nmfs_stat_area, 521, 526, 541, 514, 513, 515)
 replace nmfs_stock_area="XX" if !inlist(nmfs_stat_area, 521, 526, 541, 514, 513, 515)
 keep nmfs_stock_area intsite nmfs_stat_area state
 duplicates drop
 tempfile mrip_sites
-save `mrip_sites', replace 
+save `mrip_sites', replace
 restore
 
 merge m:1 intsite state using `mrip_sites',  keep(1 3)
@@ -491,7 +491,7 @@ merge m:1 intsite state using `mrip_sites',  keep(1 3)
 /*classify into WGOM or not WGOM */
 gen str3 area_s="XX"
 replace area_s="WGOM" if st2=="33"
-replace area_s=nmfs_stock_area if inlist(st2, "25", "23") 
+replace area_s=nmfs_stock_area if inlist(st2, "25", "23")
 
 
 /* generate the estimation strata - year, month, kind-of-day (weekend including fed holidays/weekday), mode (pr/fh)*/
@@ -514,16 +514,16 @@ svyset psu_id [pweight= wp_int], strata(strat_id) singleunit(certainty)
 
 preserve
 keep my_dom_id my_dom_id_string
-duplicates drop 
+duplicates drop
 tostring my_dom_id, gen(my_dom_id2)
 keep my_dom_id2 my_dom_id_string
 tempfile domains
-save `domains', replace 
+save `domains', replace
 restore
 
 encode mode1, gen(mode2)
 
-svy: total dtrip, over(my_dom_id)  
+svy: total dtrip, over(my_dom_id)
 
 xsvmat, from(r(table)') rownames(rname) names(col) norestor
 split rname, parse("@")
@@ -532,7 +532,7 @@ split rname2, parse(.)
 drop rname2 rname22
 rename rname21 my_dom_id2
 merge 1:1 my_dom_id2 using `domains'
-drop rname my_dom_id2 _merge 
+drop rname my_dom_id2 _merge
 order my_dom_id_string
 
 keep my b se  ll ul
@@ -562,7 +562,7 @@ drop dup
 gen varname="cod_cat"
 expand 2, gen(dup)
 replace varname="hadd_cat" if dup==1
-drop dup 
+drop dup
 merge 1:m varname month wave mode kod using `catch'
 keep if _merge==3
 

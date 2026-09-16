@@ -176,11 +176,9 @@ program define prep_mrip_trip_catch ;
     drop if mode1=="sh" ;
 
     /* classify trips into the domain we care about (caught or targeted cod
-       or haddock) and everything else, marked "ZZ".
-       PRESERVED: prim2_common is assigned from prim1_common, as in the
-       original (probably a bug there). prim2_common is not used downstream. */
+       or haddock) and everything else, marked "ZZ". */
     replace prim1_common=subinstr(lower(prim1_common)," ","",.) ;
-    replace prim2_common=subinstr(lower(prim1_common)," ","",.) ;
+    replace prim2_common=subinstr(lower(prim2_common)," ","",.) ;
 
     /* We need to retain 1 observation for each strat_id, psu_id, and id_code
        A.  Trip targeted or caught cod or haddock -> domain "ATLCO"
@@ -634,9 +632,7 @@ mvencode se*, mv(0) override ;
 mvencode missing*, mv(0) override ;
 mvencode mean*, mv(0) override ;
 replace cod_no_catch=1 if meancod_rel==0 & meancod_keep==0 ;
-/* PRESERVED: the hadd flag is set from the cod means, as in the original
-   (probably a bug there). Left as is so the outputs stay identical. */
-replace hadd_no_catch=1 if meancod_rel==0 & meancod_keep==0 ;
+replace hadd_no_catch=1 if meanhadd_rel==0 & meanhadd_keep==0 ;
 
 /* The .dta is saved from a re-import of the .xlsx, so its types are whatever
    survived the Excel round-trip. Preserved exactly. */
