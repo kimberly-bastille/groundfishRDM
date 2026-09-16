@@ -550,7 +550,7 @@ server <- function(input, output, session){
                 x = 0.05, y = -0.30,
                 xref = "paper", yref = "paper",
                 showarrow = FALSE,
-                text = "Better",
+                text = "Better policy for anglers",
                 font = list(size = 12)
               ),
               # "Worse" label, right side
@@ -647,7 +647,7 @@ server <- function(input, output, session){
                 x = 0.05, y = -0.30,
                 xref = "paper", yref = "paper",
                 showarrow = FALSE,
-                text = "Better",
+                text = "Better policy for anglers",
                 font = list(size = 12)
               ),
               # "Worse" label, right side
