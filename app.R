@@ -74,7 +74,7 @@ ui <- fluidPage(
                    "CV",
                    tags$a(
                      icon("circle-info"),
-                     href = "https://google.com",
+                     href = "https://github.com/kimberly-bastille/groundfishRDM/blob/main/docs/USER_GUIDE_GROUNDFISH.md",
                      target = "_blank",
                      title = "Learn more about CV (compensating variation)",
                      style = "margin-left: 1px; color: #337ab7;"
