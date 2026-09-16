@@ -17,8 +17,8 @@
                (`ssc install` each once). Code/helpers/developer_setup_stata.do.
                Google Drive mounted to D: (for get_assessment_from_gdrive.do).
                MRIP source data mounted (see "Data availability" below).
-			   Some R scripts that are called will copy files from Google Drive or write files to 
-			   Google Drive.  If you have not already connected to google drive, 
+			   Some R scripts that are called will copy files from Google Drive or write files to
+			   Google Drive.  If you have not already connected to google drive,
 			   run "Code/helpers/googledrivesetup.R".  If you do not the
 			   the R scripts that use googledrive will fail ungracefully.
  Pipeline:     Step 0 / very top of the whole pipeline. Each toggle below runs
@@ -177,8 +177,8 @@ global trawl_survey_start_year 2022
 loc pull_assessment = 1		 		// Pull Assessment data
 loc pull_MRIP = 1		 			// Pull MRIP data.
 
-loc processMRIP = 0	 			// deal with casing MRIP data
-loc assemblemriplists =0		 	// deal with casing MRIP data
+loc processMRIP = 0	 			// deal with casing MRIP data, this should be retired
+loc assemblemriplists =0		 	// deal with casing MRIP data, this should be retired
 loc estimate_dtrips = 1				// Estimate Directed Trips
 loc costs_per_trip = 1  			// Create Distributions of costs per trip (run 1x)
 loc draw_angler_preferences = 1		// Create draw of angler preference parameters (run 1x)
@@ -246,7 +246,7 @@ if `pull_MRIP' {
 
 
 
-// 1) Process MRIP data
+// 1) Process MRIP data - this block of code is intended to be retired.
 
 
 if `processMRIP' {
@@ -338,7 +338,7 @@ if `prep_cpt_for_dashboard'{
 		}
 		//run this script in R to read in the catch per trip processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `Rpush_cpt_to_gdrive'{
-    	di "Pushing rec dashboard data to gdrive using R" 
+    	di "Pushing rec dashboard data to gdrive using R"
 
 		rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R"
 	    di "Rec dashboard data pushed to gdrive "
@@ -373,9 +373,9 @@ if `Rpush_catch_at_length_to_gdrive'{
     	di "Pushing rec dashboard catch at length data to gdrive using R"
 
 		rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R"
-	    di "Rec dashboard catch at length data pushed to gdrive " 
+	    di "Rec dashboard catch at length data pushed to gdrive "
 
-}		
+}
 // 10) Generate projection-year catch-at-length, incorporating the stock assessment data
 if `catch_at_length_project'{
 		di "Generating projection year catch-at-length"
