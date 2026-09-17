@@ -206,13 +206,21 @@ export delimited using "$misc_data_cd/projected_catch_at_length_uc_gf.csv", repl
 /******************************************************************************/
 import delimited "$misc_data_cd\directed_trip_draws.csv", clear
 
-//am i just collapsing dtrip across  draws? so just have the median by day-mode?
-//or do I need to do other steps like use the next year calendar adjustment 
+//collapse to median dtrip across draws at the day-mode level 
+preserve
+collapse (median) dtrip, by(mode day)
+tempfile trip_med
+save `trip_med', replace
 
+restore
 
+drop dtrip
+merge m:1 mode day using `trip_med'
+drop _merge
 
+label variable dtrip ""
 
-
+export delimited using "$misc_data_cd/directed_trip_draws_uc_gf.csv", replace
 
 
 
