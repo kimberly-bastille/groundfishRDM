@@ -37,6 +37,17 @@
   
 */
 
+//need to run the pre sim pipeline first
+
+do "${here}/Code/helpers/developer_setup_stata.do"
+
+* adjust project paths based on user
+global input_code_cd "${here}/Code/pre_sim"
+global misc_data_cd "${gfdatadir}/miscellaneous"
+global calib_catch_draws_cd "${gfdatadir}/calib_catch_draws"
+
+global ndraws 101
+
 
 
 //I'm not sure how the pipeline will work
@@ -204,6 +215,7 @@ export delimited using "$misc_data_cd/projected_catch_at_length_uc_gf.csv", repl
 /* Section C: Take medians of directed trips  */
 /******************************************************************************/
 /******************************************************************************/
+
 import delimited "$misc_data_cd\directed_trip_draws.csv", clear
 
 //collapse to median dtrip across draws at the day-mode level 
@@ -224,7 +236,7 @@ export delimited using "$misc_data_cd/directed_trip_draws_uc_gf.csv", replace
 
 
 
-
+//Lou suggested doing means rather than medians 
 
 
 /******************************************************************************/
@@ -242,7 +254,38 @@ gets used in the catch at length calibration but these are too aggregated?
  that's collapsed to the median (look at compare_calibration_data_to_MRIP.do)
 */
 
+//look at the end of the additional angler demos do file
+//its the calib catch draw files. collapse these to the median at the mode-month level and they get pulled into the R sim pipeline 
 
+//Inputs:       $calib_catch_draws_cd/calib_catch_draws_<i>.dta (i = 1..$ndraws)
+//Outputs:      $calib_catch_draws_cd/calib_catch_draws_<i>_uc.dta
+
+
+//ask lou: looks like in each catch draw file, each day-mode has 50 trips, each with 30 catch draws. so are we sure we want to collapse it down that far. calib_catch_draws_1 would go from 577500 observations to just 14 observations cause 7 months for each mode
+
+use "C:\Users\theresa.petesch\Documents\GitHub\groundfishRDM\Data\2027_mgt_cycle\calib_catch_draws\calib_catch_draws_1.dta", clear 
+collapse (median) cod_keep_sim cod_rel_sim hadd_keep_sim hadd_rel_sim cod_cat_sim hadd_cat_sim, by (mode month)
+collapse (median) cod_keep_sim cod_rel_sim cod_cat_sim, by (mode month)
+collapse (median) hadd_keep_sim hadd_rel_sim hadd_cat_sim, by (mode month)
+
+forvalues i = 1/$ndraws {
+
+	*local i=1
+	   use "$calib_catch_draws_cd\calib_catch_draws_`i'.dta", clear
+	   
+	   preserve 
+	   collapse (median) cod_keep_sim cod_rel_sim cod_cat_sim, by (mode month)
+	   tempfile cod_med 
+	   save `cod_med', replace 
+	   restore 
+	   
+	   drop cod_keep_sim cod_rel_sim cod_cat_sim
+	   merge m:1 mode month using `cod_med'
+	   drop _merge
+	   
+	   
+	   save  "$calib_catch_draws_cd\calib_catch_draws_`i'_uc_cod.dta", replace
+	}
 
 
 /******************************************************************************/
@@ -251,12 +294,52 @@ gets used in the catch at length calibration but these are too aggregated?
 /******************************************************************************/
 /******************************************************************************/
 
+forvalues i = 1/$ndraws {
+
+	*local i=1
+	   use "$calib_catch_draws_cd\calib_catch_draws_`i'.dta", clear
+	   
+	   preserve 
+	   collapse (median) hadd_keep_sim hadd_rel_sim hadd_cat_sim, by (mode month)
+	   tempfile hadd_med 
+	   save `hadd_med', replace 
+	   restore 
+	   
+	   drop hadd_keep_sim hadd_rel_sim hadd_cat_sim
+	   merge m:1 mode month using `hadd_med'
+	   drop _merge
+	   
+	   
+	   save  "$calib_catch_draws_cd\calib_catch_draws_`i'_uc_hadd.dta", replace
+	}
 
 
 
 
+/******************************************************************************/
+/******************************************************************************/
+/* Section F: Take medians of catch per trip for Cod & Haddock */
+/******************************************************************************/
+/******************************************************************************/
 
+forvalues i = 1/$ndraws {
 
+	*local i=1
+	   use "$calib_catch_draws_cd\calib_catch_draws_`i'.dta", clear
+	   
+	   preserve 
+	   collapse (median) cod_keep_sim cod_rel_sim hadd_keep_sim hadd_rel_sim cod_cat_sim hadd_cat_sim, by (mode month)
+	   tempfile gf_med 
+	   save `gf_med', replace 
+	   restore 
+	   
+	   drop cod_keep_sim cod_rel_sim hadd_keep_sim hadd_rel_sim cod_cat_sim hadd_cat_sim
+	   merge m:1 mode month using `gf_med'
+	   drop _merge
+	   
+	   
+	   save  "$calib_catch_draws_cd\calib_catch_draws_`i'_uc_gf.dta", replace
+	}
 
 
 
