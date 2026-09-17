@@ -103,13 +103,7 @@ ui <- fluidPage(
   # NOAA masthead: logo + agency name + app title, replacing the plain
   # titlePanel() that was here before.
   div(class = "noaa-header",
-      # Shiny serves anything placed in a top-level www/ folder (next to
-      # app.R) at this path, so drop the official logo file at
-      # www/noaa-logo.svg. Get it from NOAA's own logo/emblem page rather
-      # than hotlinking a NOAA-hosted URL: https://www.noaa.gov/office-of-communication/about-noaa-emblem-and-logo
-      # (NOAA's usage guidance also requires the agency name and
-      # "U.S. Department of Commerce" to appear alongside the logo, which
-      # is why both are repeated in the header text and the footer below.)
+
       tags$img(src = "https://www.fisheries.noaa.gov/themes/custom/noaa_components/images/fisheries_header_logo_jul2019.png",
                alt = "NOAA logo"),
       div(class = "noaa-title-block",
@@ -592,7 +586,7 @@ server <- function(input, output, session){
           ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=max(`CV($M)`))) +
           ggplot2::xlab("CV ($M)")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
-          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers)",
+          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers",
                         subtitle = "testing")+
           ggplot2::theme(legend.position = "none")
 
@@ -690,7 +684,7 @@ server <- function(input, output, session){
           ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=max(`CV($M)`))) +
           ggplot2::xlab("CV ($M)")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
-          ggplot2::labs(title = "<b>Haddock Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers)",
+          ggplot2::labs(title = "<b>Haddock Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers",
                         subtitle = "testing")+
           ggplot2::theme(legend.position = "none")
 
