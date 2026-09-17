@@ -263,7 +263,7 @@ gets used in the catch at length calibration but these are too aggregated?
 
 //ask lou: looks like in each catch draw file, each day-mode has 50 trips, each with 30 catch draws. so are we sure we want to collapse it down that far. calib_catch_draws_1 would go from 577500 observations to just 14 observations cause 7 months for each mode
 
-use "C:\Users\theresa.petesch\Documents\GitHub\groundfishRDM\Data\2027_mgt_cycle\calib_catch_draws\calib_catch_draws_1.dta", clear 
+use "$calib_catch_draws_cd\calib_catch_draws_1.dta", clear
 collapse (median) cod_keep_sim cod_rel_sim hadd_keep_sim hadd_rel_sim cod_cat_sim hadd_cat_sim, by (mode month)
 collapse (median) cod_keep_sim cod_rel_sim cod_cat_sim, by (mode month)
 collapse (median) hadd_keep_sim hadd_rel_sim hadd_cat_sim, by (mode month)
