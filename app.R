@@ -110,7 +110,8 @@ ui <- fluidPage(
       # (NOAA's usage guidance also requires the agency name and
       # "U.S. Department of Commerce" to appear alongside the logo, which
       # is why both are repeated in the header text and the footer below.)
-      tags$img(src = "noaa-logo.svg", alt = "NOAA logo"),
+      tags$img(src = "https://www.fisheries.noaa.gov/themes/custom/noaa_components/images/fisheries_header_logo_jul2019.png",
+               alt = "NOAA logo"),
       div(class = "noaa-title-block",
           div(class = "agency-line", "National Oceanic and Atmospheric Administration"),
           div(class = "app-title", "Western Gulf of Maine Cod and Haddock Recreational Fisheries Decision Support Tool")
@@ -556,7 +557,7 @@ server <- function(input, output, session){
       plotly::renderPlotly({
 
 
-        welfare <-  df %>% #outputs() %>%
+        welfare <-  outputs() %>%
           dplyr::filter(metric == c("CV"),
                         mode == "all modes") %>%
           dplyr::group_by(model,  draw) %>%
@@ -569,7 +570,7 @@ server <- function(input, output, session){
           dplyr::ungroup() %>%
           dplyr::mutate(CV = value)
 
-        catch<- df %>% #outputs() %>%
+        catch<- outputs() %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
           dplyr::group_by(model, species,draw) %>%
@@ -588,7 +589,7 @@ server <- function(input, output, session){
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept =cod_acl())+
           ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
-          ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=0)) +
+          ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=max(`CV($M)`))) +
           ggplot2::xlab("CV ($M)")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
           ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers)",
@@ -653,6 +654,7 @@ server <- function(input, output, session){
     if(any("CV" == input$fig)){
 
       plotly::renderPlotly({
+
         welfare <-  outputs() %>%
           dplyr::filter(metric == c("CV"),
                         mode == "all modes") %>%
@@ -667,7 +669,6 @@ server <- function(input, output, session){
           dplyr::mutate(CV = value)
 
         catch<- outputs() %>%
-          #dat %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
           dplyr::group_by(model, species,draw) %>%
@@ -686,9 +687,10 @@ server <- function(input, output, session){
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept =had_acl())+
           ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
+          ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=max(`CV($M)`))) +
           ggplot2::xlab("CV ($M)")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
-          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers)",
+          ggplot2::labs(title = "<b>Haddock Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers)",
                         subtitle = "testing")+
           ggplot2::theme(legend.position = "none")
 
@@ -826,7 +828,7 @@ server <- function(input, output, session){
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept =had_acl())+
           ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
-          ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=290)) +
+          ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=max(`Haddock Discard Mortality`))) +
           ggplot2::xlab("Haddock Discard Mortality (mt)")+
           ggplot2::ylab("Total Recreational Haddock Mortality (mt)")+
           ggplot2::labs(title = "Total Haddock Mortality (mt) compared to Discard Mortality (mt)",
@@ -872,7 +874,7 @@ server <- function(input, output, session){
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept = cod_acl())+
           ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
-          ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=220000), angle=90) +
+          ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=max(Trips)), angle=90) +
           ggplot2::xlab("Number of Trips")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
           ggplot2::labs(title = "Cod Mortality (mt) compared to Total Number of Trips",
@@ -919,7 +921,7 @@ server <- function(input, output, session){
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept = had_acl())+
           ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
-          ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=220000)) +
+          ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=max(Trips))) +
           ggplot2::xlab("Number of Trips")+
           ggplot2::ylab("Total Recreational Haddock Mortality (mt)")+
           ggplot2::labs(title = "Haddock Mortality (mt) compared to Total Number of Trips",
