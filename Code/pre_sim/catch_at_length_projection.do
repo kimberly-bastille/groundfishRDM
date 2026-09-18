@@ -147,17 +147,17 @@ program define build_alk ;
     /* 2b. lowess writes its smoothed values into a separate variable per age,
        and each of those is missing outside that age's rows; the rowtotal
        below folds them back into one column. Negative smoothed counts are
-       truncated at zero. PRESERVED: s0-s<plusage> is a variable range, so it
-       assumes age 0 is present in the data and that the s<age> columns were
-       generated in age order, exactly as the original assumed. */
+       truncated at zero. */
     levelsof age, local(ages) ;
     foreach a of local ages {;
         lowess count length if age==`a' , adjust bwidth(.3) gen(s`a') nograph ;
         replace s`a'=0 if s`a'<=0 ;
     };
+	
+    local newages = "s" + subinstr("`ages'", " ", " s", .) ;
+    egen smoothed=rowtotal(`newages') ; 
 
-    egen smoothed=rowtotal(s0-s`plusage') ;
-    drop s0-s`plusage' ;
+    drop `newages' ;
 
     egen sum=sum(smoothed), by(age) ;
     gen prop_smoothed=smoothed/sum ;
