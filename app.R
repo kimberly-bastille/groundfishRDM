@@ -879,7 +879,7 @@ server <- function(input, output, session){
     queue_url <- Sys.getenv("GROUNDFISH_AZURE_STORAGE_QUEUE_URL",unset = NA_character_)
     message("Queue URL set: ", !is.na(queue_url) && nzchar(queue_url))
     message("Queue URL length: ", ifelse(is.na(queue_url), 0, nchar(queue_url)))
-    print(queue_url)
+    message(queue_url)
 
     #' @title Put a run request on the Azure Storage queue
     #' @description Posts a small JSON payload naming the run. Authentication
