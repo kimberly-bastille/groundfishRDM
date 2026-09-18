@@ -139,10 +139,7 @@ program define prep_mrip_trip_catch ;
     sort year strat_id psu_id id_code ;
     replace common=subinstr(lower(common)," ","",.) ;
     save `cl1' ;
-
-    /* PRESERVED: this replace acts on the in-memory copy after cl1 was
-       saved, so it has no effect on cl1. Kept as in the original. */
-    replace var_id=strat_id if strmatch(var_id,"") ;
+	
 
     use `tl1' ;
     /* Keep all trips including catch==0 */
