@@ -23,9 +23,7 @@ RUN install2.r -e -s \
     graphics \
     data.table \
     knitr \
-    openxlsx \
     plyr \
-    markdown \
     future \
     parallelly \
     furrr \

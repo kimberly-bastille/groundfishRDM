@@ -21,7 +21,7 @@
 ################################################################################
 ################################################################################
 
-
+print("in model_run")
 library(data.table)
 library(fst)
 library(readr)
@@ -47,8 +47,8 @@ final_process_calib_catch_cd=here::here("Data/calib_catch_draws")
 ################################################################################
 ################################################################################
 
-draws         <- 1:5
-n_simulations <- 5
+draws         <- 1:101
+n_simulations <- 101
 mode_draw     <- c("pr", "fh")
 season_draw   <- c("summer", "winter")
 draws         <- if (exists("draws")) draws else seq_len(n_simulations)
@@ -138,7 +138,7 @@ directed_trips <- directed_trips %>%
 # In an Azure Shiny app, set n_workers from an environment variable or app option,
 # e.g. Sys.getenv("RDM_N_WORKERS", unset = parallel::detectCores(logical = FALSE) - 1).
 use_parallel <- TRUE
-n_workers <- 4   # or however many Azure workers/cores you want available
+n_workers <- 34  # or however many Azure workers/cores you want available
 
 
 ## Run Model in parallel
@@ -148,6 +148,7 @@ use_parallel <- if (exists("use_parallel")) use_parallel else TRUE
 
 message("Running cod/haddock projection for policy '", policy_name,
         "' over ", length(draws), " draw(s); this may take a while ...")
+data.table::setDTthreads(1)
 system.time({
   prediction_draws <- run_cod_hadd_projection(
     season_draw  = season_draw,

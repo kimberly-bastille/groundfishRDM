@@ -27,7 +27,7 @@
 #               first to produce the inputs.
 # Pipeline:     The R simulation wrapper. Invoked as the final toggle-gated step
 #               of model_wrapper.do (run_calibration), or run standalone after
-#               the Stata stage (see DATAFLOW_GROUNDFISH.md).
+#               the Stata stage (see README.md, "Running the Pipeline").
 ################################################################################
 
 

@@ -63,7 +63,9 @@ gen len_r = round(length, 0.1)
 tostring len_r, replace format("%12.1f") force
 gen metric = season+" "+len_r
 drop season len_r
-gen units="baseline observed proportion of catch" 
+//show percentages rather than proportions
+replace observed_prob = observed_prob*100
+gen units="baseline observed percent of catch" 
 rename observed_prob value
 tempfile obs
 save `obs', replace 
@@ -84,7 +86,8 @@ gen len_r = round(length, 0.1)
 tostring len_r, replace format("%12.1f") force
 gen metric = season+" "+len_r
 drop season len_r
-gen units="baseline fitted proportion of catch" 
+replace fitted_prob = fitted_prob*100
+gen units="baseline fitted percent of catch" 
 rename fitted_prob value
 
 * Stack the fitted and observed probabilities
@@ -96,9 +99,9 @@ save `base', replace
 /*check to make sure everything looks right
 split metric, gen(season)
 
-twoway (line value length if species=="cod" & units=="baseline observed proportion of catch") (line value length if species=="cod"  & units=="baseline fitted proportion of catch"), by(season1, title("Cod catch at length")) legend( label(1 "Observed") label(2 "Fitted")) xtitle("Length (in)") ytitle("Proportion")
+twoway (line value length if species=="cod" & units=="baseline observed percent of catch") (line value length if species=="cod"  & units=="baseline fitted percent of catch"), by(season1, title("Cod catch at length")) legend( label(1 "Observed") label(2 "Fitted")) xtitle("Length (in)") ytitle("percent")
  
-twoway (line value length if species=="hadd" & units=="baseline observed proportion of catch") (line value length if species=="hadd"  & units=="baseline fitted proportion of catch"), by(season1, title("Hadd catch at length")) legend( label(1 "Observed") label(2 "Fitted")) xtitle("Length (in)") ytitle("Proportion")
+twoway (line value length if species=="hadd" & units=="baseline observed percent of catch") (line value length if species=="hadd"  & units=="baseline fitted percent of catch"), by(season1, title("Hadd catch at length")) legend( label(1 "Observed") label(2 "Fitted")) xtitle("Length (in)") ytitle("percent")
 
 drop season1-season4
 */
@@ -122,7 +125,8 @@ gen len_r = round(length, 0.1)
 tostring len_r, replace format("%12.1f") force
 gen metric = season+" "+len_r
 drop season len_r
-gen units="projected fitted proportion of catch" 
+replace fitted_prob = fitted_prob*100
+gen units="projected fitted percent of catch" 
 rename fitted_prob value
 
 //append with the baseline fitted and observed probabilities
@@ -132,9 +136,9 @@ append using `base'
 /*check to make sure everything looks right
 split metric, gen(season)
 
-twoway (line value length if species=="cod" & units=="baseline fitted proportion of catch") (line value length if species=="cod"  & units=="projected fitted proportion of catch"), by(season1, title("Cod catch at length")) legend( label(1 "Baseline") label(2 "Projected")) xtitle("Length (in)") ytitle("Proportion")
+twoway (line value length if species=="cod" & units=="baseline fitted percent of catch") (line value length if species=="cod"  & units=="projected fitted percent of catch"), by(season1, title("Cod catch at length")) legend( label(1 "Baseline") label(2 "Projected")) xtitle("Length (in)") ytitle("percent")
  
-twoway (line value length if species=="hadd" & units=="baseline fitted proportion of catch") (line value length if species=="hadd"  & units=="projected fitted proportion of catch"), by(season1, title("Hadd catch at length")) legend( label(1 "Baseline") label(2 "Projected")) xtitle("Length (in)") ytitle("Proportion")
+twoway (line value length if species=="hadd" & units=="baseline fitted percent of catch") (line value length if species=="hadd"  & units=="projected fitted percent of catch"), by(season1, title("Hadd catch at length")) legend( label(1 "Baseline") label(2 "Projected")) xtitle("Length (in)") ytitle("percent")
 
 drop season1-season4
 */
@@ -162,7 +166,7 @@ label variable value ""
 
 //technically some of the data came from 2024 but 2025 is the regulatory baseline year
 gen year=2025
-replace year=2026 if units=="projected fitted proportion of catch"
+replace year=2026 if units=="projected fitted percent of catch"
 
 
 order fishery common species_itis stock_abbrev year metric value units source

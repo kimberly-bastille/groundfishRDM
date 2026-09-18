@@ -10,7 +10,7 @@
 #               sourced RecDST/model_run.R.
 # Dependencies: Sources RecDST/model_run.R.
 # Pipeline:     Head of the separate, code-unlinked projection path
-#               (Path A in DATAFLOW_GROUNDFISH.md). Invoked as
+#               (README.md, "Stage 3: the projection run"). Invoked as
 #               `Rscript Run_Model.R Run_Name`. Not called by either wrapper
 #               or by app.R; the link to the rest of the pipeline is by shared
 #               output files on disk, not a code call.
@@ -21,7 +21,7 @@ library(data.table)
 
 
 args <- commandArgs(trailingOnly = TRUE)
-
+print(args[1])
 source(here::here("RecDST/model_run.R"))
 
 
