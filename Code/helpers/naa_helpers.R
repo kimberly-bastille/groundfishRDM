@@ -37,7 +37,6 @@ pivot_naa_long <- function(df) {
     select(-age)
 }
 
-
 #' @title Validate NAA data types and completeness
 #' @description Guards downstream steps against malformed assessment data by
 #'   asserting that the descriptive columns are non-missing character vectors,
@@ -45,15 +44,18 @@ pivot_naa_long <- function(df) {
 #'   `state` and `wave` are deliberately allowed to be NA (not every record
 #'   carries them). Stops with an error on the first violated assumption.
 #' @param df A long NAA data frame (typically the output of pivot_naa_long()).
+#' @param nage_classes The number of age classes in the assessment.
+#' @param ndraws The number of replicates in the NAA data. 1 by default.
+#' @param years The number of years of NAA data
 #' @return The input `df`, returned invisibly so the call can sit inside a
 #'   `%>%` pipe without printing.
 #' @examples
 #' \dontrun{
 #' cod_naa_long %>% validate_naa_data()
 #' }
-validate_naa_data <- function(df) {
 
-  # Ensure specified columns are character vectors and contain no NAs
+validate_naa_data <- function(df, age_classes, ndraws=1, years=1) {
+# Ensure specified columns are character vectors and contain no NAs
   stopifnot(
     is.character(df$fishery) && !any(is.na(df$fishery)),
     is.character(df$common) && !any(is.na(df$common)),
@@ -69,6 +71,11 @@ validate_naa_data <- function(df) {
 
   # Ensure data_version is a Date class
   stopifnot(inherits(df$data_version, "Date"))
+
+  # Add data whould have nage_classes*ndraws*years
+    stopifnot(nrow(df) == nage_classes * ndraws*years)
+
+
 
   # NOTE: state and wave are allowed to be NA; no type enforcement applied here
 
