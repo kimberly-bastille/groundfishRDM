@@ -479,7 +479,7 @@ server <- function(input, output, session){
       plotly::renderPlotly({
 
 
-        welfare <-  df %>% #outputs() %>%
+        welfare <-  outputs() %>%
           dplyr::filter(metric == c("CV"),
                         mode == "all modes") %>%
           dplyr::group_by(model,  draw) %>%
@@ -492,7 +492,7 @@ server <- function(input, output, session){
           dplyr::ungroup() %>%
           dplyr::mutate(CV = value)
 
-        catch<- df %>% #outputs() %>%
+        catch<- outputs() %>%
           dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
                         mode == "all modes")%>%
           dplyr::group_by(model, species,draw) %>%
@@ -514,7 +514,7 @@ server <- function(input, output, session){
           ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=0)) +
           ggplot2::xlab("CV ($M)")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
-          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers)",
+          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers",
                         subtitle = "testing")+
           ggplot2::theme(legend.position = "none")
 
@@ -611,7 +611,7 @@ server <- function(input, output, session){
           ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
           ggplot2::xlab("CV ($M)")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
-          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers)",
+          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers",
                         subtitle = "testing")+
           ggplot2::theme(legend.position = "none")
 
