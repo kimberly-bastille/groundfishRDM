@@ -897,11 +897,12 @@ server <- function(input, output, session){
       # Clean and ensure /messages endpoint
       queue_url_sas <- trimws(queue_url_sas, whitespace = "\" ")
       message(queue_url_sas)
-      post_url <- if (grepl("/messages/?$", queue_url_sas)) {
-        queue_url_sas
-      } else {
-        paste0(sub("/$", "", queue_url_sas), "/messages")
-      }
+      post_url <- queue_url_sas
+      # post_url <- if (grepl("/messages/?$", queue_url_sas)) {
+      # queue_url_sas
+      # } else {
+      #  paste0(sub("/$", "", queue_url_sas), "/messages")
+      # }
       
       message(post_url)
       
