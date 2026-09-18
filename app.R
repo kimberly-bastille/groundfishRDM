@@ -903,7 +903,7 @@ server <- function(input, output, session){
         paste0(sub("/$", "", queue_url_sas), "/messages")
       }
       
-      
+      message(post_url)
       
       payload <- list(
         runName = run_name,
