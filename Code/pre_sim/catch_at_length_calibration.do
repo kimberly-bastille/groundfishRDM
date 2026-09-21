@@ -146,7 +146,6 @@ program define prep_mrip_lengths ;
     save `mrip_sites', replace ;
     restore ;
 
-    /* PRESERVED: no nogen, so _merge stays in the data. Nothing reads it. */
     merge m:1 intsite state using `mrip_sites',  keep(1 3) ;
 
     /* Classify into WGOM or not WGOM. All of New Hampshire (st2=="33") is
@@ -187,14 +186,11 @@ program define prep_mrip_lengths ;
     keep if area_s=="WGOM" ;
     drop if common_dom=="z" ;
 
-    /* Zero-pad month so the string comparisons below work. PRESERVED: the
-       rename relies on Stata's variable-name abbreviation: month has just
-       been dropped, so "rename month month" uniquely matches month1 and
-       renames it to month. */
+    /* Zero-pad month so the string comparisons below work. */
     destring month, replace ;
     gen month1 = string(month,"%02.0f") ;
     drop month ;
-    rename month month ;
+    rename month1 month ;
     /* Season definition used throughout the groundfish model: the "summer"
        season is May-August, everything else is "winter". */
     gen season= "win" if inlist(month, "09", "10", "11", "12", "01", "02", "03", "04") ;

@@ -147,17 +147,17 @@ program define build_alk ;
     /* 2b. lowess writes its smoothed values into a separate variable per age,
        and each of those is missing outside that age's rows; the rowtotal
        below folds them back into one column. Negative smoothed counts are
-       truncated at zero. PRESERVED: s0-s<plusage> is a variable range, so it
-       assumes age 0 is present in the data and that the s<age> columns were
-       generated in age order, exactly as the original assumed. */
+       truncated at zero. */
     levelsof age, local(ages) ;
     foreach a of local ages {;
         lowess count length if age==`a' , adjust bwidth(.3) gen(s`a') nograph ;
         replace s`a'=0 if s`a'<=0 ;
     };
+	
+    local newages = "s" + subinstr("`ages'", " ", " s", .) ;
+    egen smoothed=rowtotal(`newages') ; 
 
-    egen smoothed=rowtotal(s0-s`plusage') ;
-    drop s0-s`plusage' ;
+    drop `newages' ;
 
     egen sum=sum(smoothed), by(age) ;
     gen prop_smoothed=smoothed/sum ;
@@ -318,13 +318,10 @@ keep age value year ;
 destring age, replace ;
 reshape wide value, i(year) j(age) ;
 
-/* Collapse ages 6-9 into the 6+ plus-group used by the cod ALK. PRESERVED:
-   the rename is not a no-op: value6 has just been dropped, so "value6"
-   abbreviates uniquely to value6_plus, which is renamed back to value6 so
-   the subsequent reshape produces age==6. */
+/* Collapse ages 6-9 into the 6+ plus-group used by the cod ALK. */
 egen value6_plus=rowtotal(value6-value9) ;
 drop value6 value7 value8 value9 ;
-rename value6 value6 ;
+rename value6_plus value6 ;
 reshape long value, i(year) j(new) ;
 /* Assessment NAA are reported in thousands of fish */
 replace value=value*1000 ;
@@ -394,9 +391,9 @@ egen max_length_catch=max(length) if catch!=0, by(species season draw) ;
 
 /* The egens above are defined only on the rows satisfying their if-condition;
    this loop broadcasts each one to every row of its species-season-draw group.
-   PRESERVED: the list names max_length_pop twice and the *_catch bounds are
-   never used below; both are harmless, and left as-is. */
-local vars min_length_pop max_length_pop min_length_catch max_length_pop max_length_catch ;
+   PRESERVED: the *_catch bounds are
+   never used below; harmless and left as-is. */
+local vars min_length_pop max_length_pop min_length_catch max_length_catch ;
 foreach v of local vars {;
     egen mean_`v'=mean(`v'), by(species season draw) ;
     replace `v'= mean_`v' ;
@@ -443,8 +440,8 @@ sample $ndraws, count ;
 gen draw=_n ;
 egen value6_plus=rowtotal(value6-value9) ;
 drop value6 value7 value8 value9 ;
-/* PRESERVED: abbreviation rename, as in Section 3 */
-rename value6 value6 ;
+
+rename value6_plus value6 ;
 reshape long value, i(year replicate draw) j(new) ;
 replace value=value*1000 ;
 rename value nfish ;
