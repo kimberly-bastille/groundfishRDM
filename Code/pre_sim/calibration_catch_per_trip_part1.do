@@ -463,10 +463,19 @@ decode_svy_domains, domainsfile("`domains'") ;
 keep varname mean se my_dom_id_string ;
 drop if mean==0 ;
 
+gen pse=se/mean ;
+gen missing_se=. ;
+
 tempfile base_results ;
 save `base_results', replace ;
 
-gen pse=se/mean ;
+count if se==. ; 
+if r(N) == 0 {;
+    display "No imputation necessary. Skipping se imputation ." ;
+};
+else if r(N) >= 0{ ;
+    display "Imputing missing standard errors."; 
+	
 keep if se==. ;
 
 split_domain_string, names(month mode area_s common_dom) ;
@@ -474,7 +483,17 @@ split_domain_string, names(month mode area_s common_dom) ;
 keep if area_s=="WGOM" ;
 keep if common_dom=="ATLCO" ;
 
-gen shoulder_month="10" if month=="11" ;
+/*Neighbor months move from months of low activity to months of high acitivity, from both sides of the calendar year*/
+gen neighbor_month=""; 
+replace neighbor_month="04" if month=="03"; 
+replace neighbor_month="05" if month=="04"; 
+replace neighbor_month="06" if month=="05"; 
+replace neighbor_month="07" if month=="06"; 
+
+replace neighbor_month="11" if month=="12"; 
+replace neighbor_month="10" if month=="11"; 
+replace neighbor_month="09" if month=="10"; 
+replace neighbor_month="08" if month=="09"; 
 
 gen strata_id=_n ;
 levelsof strata_id, local(stratz) ;
@@ -494,7 +513,7 @@ foreach s of local stratz {;
     levelsof month, local(month1) clean ;
     levelsof common_dom, local(common_dom1) clean ;
     levelsof area_s, local(area_s1) clean ;
-    levelsof shoulder_month, local(month2) clean ;
+    levelsof neighbor_month, local(month2) clean ;
     levelsof varname, local(outcome) clean ;
     levelsof my_dom_id_string, local(my_dom_id_string) clean ;
 
@@ -538,6 +557,7 @@ foreach s of local stratz {;
     save `impute`s'', replace ;
     global impute "$impute "`impute`s''" " ;
 };
+
 dsconcat $impute ;
 
 merge 1:1  varname my_dom_id_string using `missing_se' ;
@@ -547,6 +567,13 @@ merge 1:1 varname my_dom_id_string using `base_results' ;
 
 replace se=mean*pse_impute if se==. & _merge==3 ;
 drop month mode area_s common ;
+
+replace missing_se=1 if _merge==3 ;
+drop _merge ;
+
+display "Imputation done";
+ 
+};
 
 split_domain_string, names(month mode area_s common_dom) ;
 
@@ -561,8 +588,7 @@ if r(N) > 0 {;
     exit 1 ;
 };
 
-gen missing_se=1 if _merge==3 ;
-drop _merge ;
+
 sort my_dom_id_string var ;
 drop pse ;
 keep varname my mean se missing ;
