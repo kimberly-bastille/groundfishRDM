@@ -607,7 +607,7 @@ for (s in unique(catch_draws_all$state)) {
     out_state_draw <- out_state %>%
       dplyr::filter(sim_id == d)
 
-    out_file <- file.path(output_dir, paste0("calib_catch_draws_raw", "_", d, "_", "uc",".dta"))
+    out_file <- file.path(output_dir, paste0("calib_catch_draws_raw_uc", "_", d, ".dta"))
     haven::write_dta(out_state_draw, path = out_file)
   }
 }
