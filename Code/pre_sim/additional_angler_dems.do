@@ -84,10 +84,16 @@ scalar a5g = a5     // rename to avoid clash with a5 scalar
 
 display "Attaching angler demographics to catch-per-trip draws 1..$ndraws ..."
 
+*uses the uncertainty project "calib_catch_draws_`i'_uc.dta" if uncertain global == 1 in model_wrapper.do
+local suffix ""
+if "$uncertain" == "1" {
+    local suffix "_uc"
+}
+
 forvalues i = 1/$ndraws {
 
 	*local i=1
-	   use "$calib_catch_draws_cd\calib_catch_draws_`i'.dta", clear
+	   use "$calib_catch_draws_cd\calib_catch_draws`suffix'_`i'.dta", clear
 	   
 	   preserve 
 	   keep mode date tripid
@@ -159,7 +165,7 @@ forvalues i = 1/$ndraws {
 	   order draw mode date tripid catch_draw
 	   sort draw mode date tripid catch
 	   
-	   save  "$calib_catch_draws_cd\calib_catch_draws_`i'.dta", replace
+	   save  "$calib_catch_draws_cd\calib_catch_draws`suffix'_`i'.dta", replace
 	}
 
 display "Finished attaching angler demographics to all $ndraws draws."
