@@ -12,6 +12,8 @@ The scientific core is a discrete-choice model of angler trip-taking behavior, c
 
 This repository is the closely related to **flukeRDM** (summer flounder, black sea bass and scup in the Mid-Atlantic). The two share a common origin and a near-identical house style — same wrapper filenames, same toggle convention, same `$developer` startup sequence. groundfishRDM is the more thoroughly hardened of the two and many recent changes in groundfishRDM will be ported over to flukeRDM.
 
+We have built some [data flow diagrams](https://github.com/NEFSC/READ-SSB-RecDSTDataFlow) to help orient you. 
+
 ## Repository Structure
 
 | Path | Contents |
