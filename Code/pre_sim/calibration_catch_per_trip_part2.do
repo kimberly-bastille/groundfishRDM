@@ -135,7 +135,7 @@ save `base', replace
     *-----------------------------------------
     * 2) Loop draws
     *-----------------------------------------
-* uses the uncertainty project "calib_catch_draws_raw_`i'_uc.dta" if uncertain global == 1 in model_wrapper.do
+*uses the uncertainty project "calib_catch_draws_raw_uc_`i'.dta" if uncertain global == 1 in model_wrapper.do
 local suffix ""
 if "$uncertain" == "1" {
     local suffix "_uc"
