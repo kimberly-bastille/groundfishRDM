@@ -7,20 +7,28 @@
                steps in order via on/off execution-control toggles. Ends by
                launching the R simulation wrapper (R code wrapper.R).
  Inputs:       None read directly here; each sub-script reads its own inputs.
-               Assumes the working directory is the project root on entry (see
-               "Before running" below) and that the external data directory has
-               been located by developer_setup_stata.do.
+
  Outputs:      None written directly; orchestrates sub-scripts that write to
                $misc_data_cd, $calib_catch_draws_cd and $figure_cd. Writes a
                timestamped SMCL log to $log_dir.
- Dependencies: User-written commands: here, xsvmat, gammafit, grc1leg, rscript
-               (`ssc install` each once). Code/helpers/developer_setup_stata.do.
+ Dependencies: Global $developer must be set BEFORE running, and the working
+               directory must already be the project root so that `here'
+               resolves correctly (the header comment below describes the
+               profile.do trick for this).
+			   
+			   User-written commands: here, dsconcat, renvarlab, xsvmat, gammafit, grc1leg 
+               (`ssc install` each once). 
+			   forked rscript (improved error handling) installed with 
+			      net install rscript, from("https://raw.githubusercontent.com/mle2718/rscript/master") replace
+			   Code/helpers/developer_setup_stata.do.
                Google Drive mounted to D: (for get_assessment_from_gdrive.do).
-               MRIP source data mounted (see "Data availability" below).
+               Oracle connection required to extract MRIP data.
 			   Some R scripts that are called will copy files from Google Drive or write files to
-			   Google Drive.  If you have not already connected to google drive,
+			   Google Drive.  
+			   If you have not already connected to google drive,
 			   run "Code/helpers/googledrivesetup.R".  If you do not the
 			   the R scripts that use googledrive will fail ungracefully.
+			   
  Pipeline:     Step 0 / very top of the whole pipeline. Each toggle below runs
                one pre_sim script (execution order: README.md, "Running the
                Pipeline"); the final toggle hands off to
@@ -37,10 +45,12 @@
      baseline year (historical rec. selectivity) and projection year
      (projected catch-at-length).
    - NEFSC trawl-survey data (recent years) used to build age-length keys.
-   - MRIP source data live at
-       smb://net/mrfss/products/mrip_estim/Public_data_cal2018
-     (on Windows, mount \\net.nefsc.noaa.gov\mrfss to A:).
+   - MRIP source data come from Oracle
 
+ Forked rscript install. Monitor https://github.com/reifjulian/rscript/pull/13. When merged, you can simply do:
+	net install rscript, from("https://raw.githubusercontent.com/reifjulian/rscript/master") replace
+
+   
  THESE GLOBALS AND REGULATIONS MUST BE UPDATED EVERY YEAR (see Section A).
 *******************************************************************************/
 
