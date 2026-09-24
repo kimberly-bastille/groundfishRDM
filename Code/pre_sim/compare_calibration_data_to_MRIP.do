@@ -69,7 +69,7 @@ clear
 tempfile master
 save `master', emptyok
 
-*uses the uncertainty project "calib_catch_draws_`i'_uc.dta" if uncertain global == 1 in model_wrapper.do
+*uses the uncertainty project "calib_catch_draws_uc_`i'.dta" if uncertain global == 1 in model_wrapper.do
 local suffix ""
 if "$uncertain" == "1" {
     local suffix "_uc"
