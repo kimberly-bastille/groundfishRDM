@@ -69,9 +69,15 @@ clear
 tempfile master
 save `master', emptyok
 
+*uses the uncertainty project "calib_catch_draws_`i'_uc.dta" if uncertain global == 1 in model_wrapper.do
+local suffix ""
+if "$uncertain" == "1" {
+    local suffix "_uc"
+}
+
 forv i=1/$ndraws{
 
-use "$calib_catch_draws_cd\calib_catch_draws_`i'.dta", clear 
+use "$calib_catch_draws_cd\calib_catch_draws`suffix'_`i'.dta", clear
 
 collapse (mean) cod_keep_sim cod_cat_sim cod_rel_sim hadd_keep_sim hadd_rel_sim hadd_cat_sim , by(month mode)
 
@@ -111,7 +117,7 @@ save `master', replace
 
 use `master', clear
 
-save "$misc_data_cd\simulated_catch_totals3.dta", replace 
+save "$misc_data_cd\simulated_catch_totals3`suffix'.dta.dta", replace 
 
 
 /******************************************************************************/
@@ -120,7 +126,7 @@ save "$misc_data_cd\simulated_catch_totals3.dta", replace
 /******************************************************************************/
 /******************************************************************************/
 
-u "$misc_data_cd\simulated_catch_totals3.dta", clear
+u "$misc_data_cd\simulated_catch_totals3`suffix'.dta", clear
 rename dtrip tot_dtrip_sim
 
 ds draw mode month, not
@@ -247,7 +253,7 @@ gr drop _all
 /******************************************************************************/
 /******************************************************************************/
 
-u "$misc_data_cd\simulated_catch_totals3.dta", replace
+u "$misc_data_cd\simulated_catch_totals3`suffix'.dta", replace
 rename dtrip tot_dtrip_sim
 ds draw mode month, not
 local vars `r(varlist)'
@@ -407,7 +413,7 @@ gr drop _all
 /******************************************************************************/
 /******************************************************************************/
 
-u "$misc_data_cd\simulated_catch_totals3.dta", replace
+u "$misc_data_cd\simulated_catch_totals3`suffix'.dta", replace
 rename dtrip tot_dtrip_sim
 ds draw mode month, not
 local vars `r(varlist)'
@@ -568,7 +574,7 @@ gr drop _all
 /******************************************************************************/
 /******************************************************************************/
 
-u "$misc_data_cd\simulated_catch_totals3.dta", replace
+u "$misc_data_cd\simulated_catch_totals3`suffix'.dta", replace
 rename dtrip tot_dtrip_sim
 ds draw mode month, not
 local vars `r(varlist)'
@@ -732,7 +738,7 @@ gr drop _all
 /* Only run once the diagnostics above show the simulated totals reasonably
    approximating MRIP. Two aggregations are saved: mode x season x draw for the
    R simulation, and season x draw for catch_at_length_calibration.do. */
-u "$misc_data_cd\simulated_catch_totals3.dta", replace
+u "$misc_data_cd\simulated_catch_totals3`suffix'.dta", replace
 rename dtrip tot_dtrip_sim
 ds draw mode month, not
 local vars `r(varlist)'
@@ -749,13 +755,13 @@ collapse (sum) tot_cod_keep_sim tot_cod_cat_sim tot_cod_rel_sim ///
 						  tot_hadd_keep_sim tot_hadd_rel_sim tot_hadd_cat_sim ///
 						  tot_dtrip_sim , by( mode season draw)
 	  
-save "$misc_data_cd\simulated_catch_totals.dta", replace 
+save "$misc_data_cd\simulated_catch_totals`suffix'.dta", replace
 
 collapse (sum) tot_cod_keep_sim tot_cod_cat_sim tot_cod_rel_sim ///
 						  tot_hadd_keep_sim tot_hadd_rel_sim tot_hadd_cat_sim ///
 						  tot_dtrip_sim , by( season draw)	
 						  
-save "$misc_data_cd\simulated_catch_totals_for_catch_length.dta", replace 
+save "$misc_data_cd\simulated_catch_totals_for_catch_length`suffix'.dta", replace
 
 /* Shrink the catch-per-trip files: only the total-catch columns are needed
    downstream, so the keep/release splits are dropped and the files are saved
@@ -769,10 +775,10 @@ mata: mata clear
 clear
 
 forvalues i = 1/$ndraws {
-		use "$calib_catch_draws_cd\calib_catch_draws_`i'.dta", clear 
+		use "$calib_catch_draws_cd\calib_catch_draws`suffix'_`i'.dta", clear 
 	   drop  cod_keep_sim cod_rel_sim hadd_keep_sim hadd_rel_sim  
 	   compress
-	   save  "$calib_catch_draws_cd\calib_catch_draws_`i'.dta", replace
+	   save  "$calib_catch_draws_cd\calib_catch_draws`suffix'_`i'.dta", replace
 	}
 
 
