@@ -13,7 +13,8 @@
 #                 calibrated_model_stats.fst, baseline_catch_at_length.csv,
 #                 directed_trip_draws.fst (passed in), Discard_Mortality.fst,
 #                 calendar_adj.fst. Per (season, mode, draw) it also reads
-#                 calib_catch_draws_<dr>.fst, base_outcomes_*, n_choice_occasions_*.
+#                 calib_catch_draws_<dr>.fst, base_outcomes_*, n_choice_occasions_*,
+#                 projected_catch_at_length.csv.
 # Outputs:      None written here; run_cod_hadd_projection() returns a long
 #               data.table of projected metrics by season/mode/metric/iteration.
 # Dependencies: The length-weight parameters (cod_lw_a/b, had_lw_a/b), the
@@ -556,8 +557,8 @@ project_one_cod_hadd_both_modes <- function(s,
     # Compensating variation ($/choice occasion): the standard logsum welfare
     # measure for a binary logit. The change in expected utility between the
     # alternative and baseline policies is converted to dollars by the (negative)
-    # cost coefficient. Positive CV = the policy makes anglers better off.
-    mean_trip_data[, CV := -1 * ((log_sum_alt - log_sum_base) / beta_cost)]
+    # cost coefficient. Positive CV = the policy makes anglers worse off.
+    mean_trip_data[, CV := 1 * ((log_sum_alt - log_sum_base) / beta_cost)]
 
     outcome_cols <- intersect(c(
       "tot_keep_cod_new", "tot_rel_cod_new", "tot_cat_cod_new",

@@ -14,8 +14,8 @@
                commented exports would write to $figure_cd if re-enabled.
  Dependencies: Globals $input_data_cd, $ndraws (and $figure_cd for the
                commented-out figure exports).
- Pipeline:     Standalone / unwrapped — no confirmed caller (per
-               DATAFLOW_GROUNDFISH.md); looks like a verification/exploration script.
+ Pipeline:     Standalone / unwrapped — no confirmed caller in the repository;
+               looks like a verification/exploration script.
 *******************************************************************************/
 
 /******************************************************************************/

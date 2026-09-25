@@ -12,8 +12,7 @@
 #               commercial_FY_removals_<date>.Rds in the BLAST source_data folder.
 # Dependencies: Oracle credentials (id, novapw, tns_alias) and network access
 #               to the BLAST share (//nefscfile/...).
-# Pipeline:     Standalone / unwrapped — no confirmed caller (per
-#               DATAFLOW_GROUNDFISH.md).
+# Pipeline:     Standalone / unwrapped — no confirmed caller in the repository.
 ################################################################################
 
 ###################################################

@@ -32,7 +32,7 @@
 #
 # Pipeline: Terminal, user-facing layer. Everything it reads is produced
 #          upstream by the Stata pre_sim scripts -> R sim scripts chain
-#          described in DATAFLOW_GROUNDFISH.md.
+#          (see README.md, "Data Flow Summary").
 ################################################################################
 ################################################################################
 
@@ -56,7 +56,7 @@ ui <- fluidPage(
                intended as a jumping off point for your own model runs."),
              p("Hover over each point to view the detailed statistics for each model run. The first section contains
                a table of recreational management measures. The second section contains graphs of mortality. The third
-               section has graphs of other performance measures, including relative change in Angler Satisfaction, Trips, and Discards."),
+               section has graphs of other performance measures, including CV, Trips, and Discards."),
 
              shinyjs::useShinyjs(),
              shinyjs::extendShinyjs(text = "shinyjs.refresh_page = function() { location.reload(); }", functions = "refresh_page"),
@@ -66,12 +66,27 @@ ui <- fluidPage(
 
              DT::DTOutput(outputId = "DTout"),
 
-             shinyWidgets::awesomeCheckboxGroup(
+             shiny::checkboxGroupInput(
                inputId = "fig",
                label = "Supplemental Figures",
-               choices = c( "Angler Satisfaction","Discards", "Trips"),
-               inline = TRUE,
-               status = "danger"),
+               choiceNames = list(
+                 tagList(
+                   "CV",
+                   tags$a(
+                     icon("circle-info"),
+                     href = "https://github.com/kimberly-bastille/groundfishRDM/blob/main/docs/USER_GUIDE_GROUNDFISH.md",
+                     target = "_blank",
+                     title = "Learn more about CV (compensating variation)",
+                     style = "margin-left: 1px; color: #337ab7;"
+                   )
+                 ),
+                 "Discards",
+                 "Trips"
+               ),
+               choiceValues = list("CV", "Discards", "Trips"),
+               inline = TRUE
+             ),
+
              uiOutput("addCVCod"),
              uiOutput("addCVHad"),
              uiOutput("addReleaseCod"),
@@ -459,7 +474,7 @@ server <- function(input, output, session){
   # policy. The figures use the level, CV.
   output$addCVCod <- renderUI({
 
-    if(any("Angler Satisfaction" == input$fig)){
+    if(any("CV" == input$fig)){
 
       plotly::renderPlotly({
 
@@ -488,23 +503,66 @@ server <- function(input, output, session){
           tidyr::pivot_wider(names_from = species, values_from = Value) %>%
           dplyr::left_join(welfare) %>%
           dplyr::group_by(model) %>%
-          dplyr::summarise(`Angler Satisfaction($)` = median(CV)/1000000,
+          dplyr::summarise(`CV($M)` = median(CV)/1000000,
                            cod = median(cod),
                            hadd = median(hadd))
 
-        p1<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `Angler Satisfaction($)`, y = cod))+
+        p1<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `CV($M)`, y = cod))+
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept =cod_acl())+
           ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
           ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=0)) +
-          ggplot2::xlab("Change in Angler Satisfaction ($M)")+
+          ggplot2::xlab("CV ($M)")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
-          ggplot2::labs(title = "Cod Mortality (mt) compared to Angler Satisfaction (Compared to the past year, how much better- or worse-off are anglers, in dollars?)",
+          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers",
                         subtitle = "testing")+
           ggplot2::theme(legend.position = "none")
 
         fig1<- plotly::ggplotly(p1) %>%
           plotly::style(textposition = "top center")
+
+        fig1 <- fig1 %>%
+          plotly::layout(
+            margin = list(b = 100),  # open up space below the axis for the arrow
+            annotations = list(
+              # arrowhead on the LEFT end, tail pointing right
+              list(
+                x = 0.05, y = -0.22,          # head position (paper coords)
+                ax = 0.45, ay = -0.22,        # tail position (paper coords)
+                xref = "paper", yref = "paper",
+                axref = "paper", ayref = "paper",
+                showarrow = TRUE,
+                arrowhead = 2, arrowsize = 1, arrowwidth = 1.5,
+                text = ""
+              ),
+              # arrowhead on the RIGHT end, tail pointing left
+              list(
+                x = 0.95, y = -0.22,
+                ax = 0.55, ay = -0.22,
+                xref = "paper", yref = "paper",
+                axref = "paper", ayref = "paper",
+                showarrow = TRUE,
+                arrowhead = 2, arrowsize = 1, arrowwidth = 1.5,
+                text = ""
+              ),
+              # "Better" label, left side
+              list(
+                x = 0.05, y = -0.30,
+                xref = "paper", yref = "paper",
+                showarrow = FALSE,
+                text = "Better policy for anglers",
+                font = list(size = 12)
+              ),
+              # "Worse" label, right side
+              list(
+                x = 0.95, y = -0.30,
+                xref = "paper", yref = "paper",
+                showarrow = FALSE,
+                text = "Worse",
+                font = list(size = 12)
+              )
+            )
+          )
 
         fig1
       })
@@ -515,7 +573,7 @@ server <- function(input, output, session){
 
   output$addCVHad <- renderUI({
 
-    if(any("Angler Satisfaction" == input$fig)){
+    if(any("CV" == input$fig)){
 
       plotly::renderPlotly({
         welfare <-  outputs() %>%
@@ -543,23 +601,66 @@ server <- function(input, output, session){
           tidyr::pivot_wider(names_from = species, values_from = Value) %>%
           dplyr::left_join(welfare) %>%
           dplyr::group_by(model) %>%
-          dplyr::summarise(`Angler Satisfaction($)` = median(CV)/1000000,
+          dplyr::summarise(`CV($M)` = median(CV)/1000000,
                            cod = median(cod),
                            hadd = median(hadd))
 
-        p2<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `Angler Satisfaction($)`, y = hadd))+
+        p2<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `CV($M)`, y = hadd))+
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept =had_acl())+
           ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
-          ggplot2::xlab("Change in Angler Satisfaction ($M)")+
-          ggplot2::ylab("Total Recreational Haddock Mortality (mt)")+
-          ggplot2::geom_text(ggplot2::aes(x=0, label="Had ACL", y=had_acl())) +
-          ggplot2::labs(title = "Haddock Mortality (mt) compared to Angler Satisfaction (Compared to the past year, how much better- or worse-off are anglers, in dollars?)",
+          ggplot2::xlab("CV ($M)")+
+          ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
+          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers",
                         subtitle = "testing")+
           ggplot2::theme(legend.position = "none")
 
         fig2<- plotly::ggplotly(p2) %>%
           plotly::style(textposition = "top center")
+
+        fig2 <- fig2 %>%
+          plotly::layout(
+            margin = list(b = 100),  # open up space below the axis for the arrow
+            annotations = list(
+              # arrowhead on the LEFT end, tail pointing right
+              list(
+                x = 0.05, y = -0.22,          # head position (paper coords)
+                ax = 0.45, ay = -0.22,        # tail position (paper coords)
+                xref = "paper", yref = "paper",
+                axref = "paper", ayref = "paper",
+                showarrow = TRUE,
+                arrowhead = 2, arrowsize = 1, arrowwidth = 1.5,
+                text = ""
+              ),
+              # arrowhead on the RIGHT end, tail pointing left
+              list(
+                x = 0.95, y = -0.22,
+                ax = 0.55, ay = -0.22,
+                xref = "paper", yref = "paper",
+                axref = "paper", ayref = "paper",
+                showarrow = TRUE,
+                arrowhead = 2, arrowsize = 1, arrowwidth = 1.5,
+                text = ""
+              ),
+              # "Better" label, left side
+              list(
+                x = 0.05, y = -0.30,
+                xref = "paper", yref = "paper",
+                showarrow = FALSE,
+                text = "Better policy for anglers",
+                font = list(size = 12)
+              ),
+              # "Worse" label, right side
+              list(
+                x = 0.95, y = -0.30,
+                xref = "paper", yref = "paper",
+                showarrow = FALSE,
+                text = "Worse",
+                font = list(size = 12)
+              )
+            )
+          )
+
         fig2
       })
 
@@ -775,6 +876,11 @@ server <- function(input, output, session){
     library(openssl)
     library(uuid)
 
+    queue_url <- Sys.getenv("GROUNDFISH_AZURE_STORAGE_QUEUE_URL",unset = NA_character_)
+    message("Queue URL set: ", !is.na(queue_url) && nzchar(queue_url))
+    message("Queue URL length: ", ifelse(is.na(queue_url), 0, nchar(queue_url)))
+    # message(queue_url)
+
     #' @title Put a run request on the Azure Storage queue
     #' @description Posts a small JSON payload naming the run. Authentication
     #'   comes entirely from the shared-access-signature token embedded in the
@@ -790,12 +896,16 @@ server <- function(input, output, session){
 
       # Clean and ensure /messages endpoint
       queue_url_sas <- trimws(queue_url_sas, whitespace = "\" ")
-      post_url <- if (grepl("/messages/?$", queue_url_sas)) {
-        queue_url_sas
-      } else {
-        paste0(sub("/$", "", queue_url_sas), "/messages")
-      }
-
+      message(queue_url_sas)
+      post_url <- queue_url_sas
+      # post_url <- if (grepl("/messages/?$", queue_url_sas)) {
+      # queue_url_sas
+      # } else {
+      #  paste0(sub("/$", "", queue_url_sas), "/messages")
+      # }
+      
+      message(post_url)
+      
       payload <- list(
         runName = run_name,
         submissionId = UUIDgenerate(),
@@ -826,7 +936,7 @@ server <- function(input, output, session){
 
                                      "codFH_1_bag", "codPR_1_bag", "codFH_2_bag" , "codPR_2_bag",
 
-                                     "codFH_1_len", "codPR_1_len", "codFH_2_len", "codPR_2_len",),
+                                     "codFH_1_len", "codPR_1_len", "codFH_2_len", "codPR_2_len"),
                           value =  c(as.character(input$CodFH_seas1[1]), as.character(input$CodFH_seas1[2]),
                                      as.character(input$CodPR_seas1[1]), as.character(input$CodPR_seas1[2]),
                                      as.character(input$CodFH_seas2[1]), as.character(input$CodFH_seas2[2]),
