@@ -32,11 +32,16 @@ foreach l in $catchlist $triplist $b2list $sizelist {
 		destring `var', replace
 	}
   /*handle string to stata date format */
-  gen double m2=date(mrip_pull_date, "MDY")
-  format m2 %td
-  assert m2~=.
-	drop mrip_pull_date
-	rename m2 mrip_pull_date
+  
+  capture confirm str variable mrip_pull_date
+     if !_rc {
+	  gen double m2=date(mrip_pull_date, "MDY")
+	  format m2 %td
+	  assert m2~=.
+	  drop mrip_pull_date
+	  rename m2 mrip_pull_date
+     }
+
 
 	/* filter based on the global yr_wvs */
 	

@@ -117,7 +117,7 @@ save `master', replace
 
 use `master', clear
 
-save "$misc_data_cd\simulated_catch_totals3`suffix'.dta.dta", replace 
+save "$misc_data_cd\simulated_catch_totals3`suffix'.dta", replace 
 
 
 /******************************************************************************/

@@ -7,23 +7,31 @@
                steps in order via on/off execution-control toggles. Ends by
                launching the R simulation wrapper (R code wrapper.R).
  Inputs:       None read directly here; each sub-script reads its own inputs.
-               Assumes the working directory is the project root on entry (see
-               "Before running" below) and that the external data directory has
-               been located by developer_setup_stata.do.
+
  Outputs:      None written directly; orchestrates sub-scripts that write to
                $misc_data_cd, $calib_catch_draws_cd and $figure_cd. Writes a
                timestamped SMCL log to $log_dir.
- Dependencies: User-written commands: here, xsvmat, gammafit, grc1leg, rscript
-               (`ssc install` each once). Code/helpers/developer_setup_stata.do.
+ Dependencies: Global $developer must be set BEFORE running, and the working
+               directory must already be the project root so that `here'
+               resolves correctly (the header comment below describes the
+               profile.do trick for this).
+
+			   User-written commands: here, dsconcat, renvarlab, xsvmat, gammafit, grc1leg
+               (`ssc install` each once).
+			   forked rscript (improved error handling) installed with
+			      net install rscript, from("https://raw.githubusercontent.com/mle2718/rscript/master") replace
+			   Code/helpers/developer_setup_stata.do.
                Google Drive mounted to D: (for get_assessment_from_gdrive.do).
-               MRIP source data mounted (see "Data availability" below).
-			   Some R scripts that are called will copy files from Google Drive or write files to 
-			   Google Drive.  If you have not already connected to google drive, 
+               Oracle connection required to extract MRIP data.
+			   Some R scripts that are called will copy files from Google Drive or write files to
+			   Google Drive.
+			   If you have not already connected to google drive,
 			   run "Code/helpers/googledrivesetup.R".  If you do not the
 			   the R scripts that use googledrive will fail ungracefully.
+
  Pipeline:     Step 0 / very top of the whole pipeline. Each toggle below runs
-               one pre_sim script (execution order documented in
-               DATAFLOW_GROUNDFISH.md); the final toggle hands off to
+               one pre_sim script (execution order: README.md, "Running the
+               Pipeline"); the final toggle hands off to
                Code/sim/R code wrapper.R for the simulation.
 
  Before running: this wrapper uses `here` to locate the project root, so you
@@ -37,15 +45,13 @@
      baseline year (historical rec. selectivity) and projection year
      (projected catch-at-length).
    - NEFSC trawl-survey data (recent years) used to build age-length keys.
-   - MRIP source data live at
-       smb://net/mrfss/products/mrip_estim/Public_data_cal2018
-     (on Windows, mount \\net.nefsc.noaa.gov\mrfss to A:).
+   - MRIP source data come from Oracle
+
+ Forked rscript install. Monitor https://github.com/reifjulian/rscript/pull/13. When merged, you can simply do:
+	net install rscript, from("https://raw.githubusercontent.com/reifjulian/rscript/master") replace
+
 
  THESE GLOBALS AND REGULATIONS MUST BE UPDATED EVERY YEAR (see Section A).
-
- Note:         Suspected mislabeling (flagged, code unchanged): in Section E the
-               $b2list and $sizelist macros appear to point at swapped files
-               ($b2list -> mrip_size.dta, $sizelist -> mrip_size_b2.dta).
 *******************************************************************************/
 
 set varabbrev on
@@ -125,6 +131,9 @@ global seed 03211990
 /******************************************************************************/
 /******************************************************************************/
 
+/*set mrip type either cal_2018 or cal_2026 */
+global mrip_cal_type "cal_2018"
+
 /* years/waves of MRIP data.*/
 /* used by:
 tidyup_mrip_data_fromR.do
@@ -180,7 +189,6 @@ global uncertain 1
 // Control which modules to run (set to 0 to skip)
 loc pull_assessment = 0		 		// Pull Assessment data
 loc pull_MRIP = 0		 			// Pull MRIP data.
-
 loc processMRIP = 0	 			// deal with casing MRIP data
 loc assemblemriplists =0		 	// deal with casing MRIP data
 loc estimate_dtrips = 0				// Estimate Directed Trips
@@ -202,11 +210,11 @@ loc run_calibration=0						// Run calibration routine in R
 
 
 
-// Prototyping: set proto=1 to override $ndraws down to 3 for a fast test run.
+// Prototyping: set proto=1 to override $ndraws down to the small value below for a fast test run.
 local proto = 1
 
 if `proto' {
-	global ndraws 3
+	global ndraws 5
 }
 
 /******************************************************************************/
@@ -238,8 +246,8 @@ global sizelist  "$misc_data_cd/mrip_size.dta"
 
 
 if `pull_MRIP' {
-  	di "Pulling MRIP data from oracle"
-		rscript using "$input_code_cd\get_mrip_oracle.R", args($first_mrip_year $last_mrip_year)
+  	di "Pulling MRIP data from oracle, this takes a few minutes"
+		rscript using "$input_code_cd\get_mrip_oracle.R", args($mrip_cal_type $first_mrip_year $last_mrip_year)
     di "Oracle Data Pull Finished"
 
   	di "Tidying up MRIP data"
@@ -251,7 +259,7 @@ if `pull_MRIP' {
 
 
 
-// 1) Process MRIP data
+// 1) Process MRIP data - this block of code is intended to be retired.
 
 
 if `processMRIP' {
@@ -352,7 +360,7 @@ if `prep_cpt_for_dashboard'{
 		}
 		//run this script in R to read in the catch per trip processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `Rpush_cpt_to_gdrive'{
-    	di "Pushing rec dashboard data to gdrive using R" 
+    	di "Pushing rec dashboard data to gdrive using R"
 
 		rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R"
 	    di "Rec dashboard data pushed to gdrive "
@@ -387,9 +395,9 @@ if `Rpush_catch_at_length_to_gdrive'{
     	di "Pushing rec dashboard catch at length data to gdrive using R"
 
 		rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R"
-	    di "Rec dashboard catch at length data pushed to gdrive " 
+	    di "Rec dashboard catch at length data pushed to gdrive "
 
-}		
+}
 // 10) Generate projection-year catch-at-length, incorporating the stock assessment data
 if `catch_at_length_project'{
 		di "Generating projection year catch-at-length"

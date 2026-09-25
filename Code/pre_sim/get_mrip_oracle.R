@@ -4,28 +4,29 @@
 #               from Oracle via the mriptacklebox package for a year range,
 #               lower-cases names, stamps a pull date, forces id columns to
 #               character, and writes per-element .dta files plus a combined .Rds.
-# Inputs:       Command-line args: first_year last_year. Live Oracle connection
+# Inputs:       Command-line args: mrip_calibration_year  first_year last_year. Live Oracle connection
 #               (mriptacklebox's nefscdb_con).
 # Outputs:      <gf.data.dir>/miscellaneous/mrip_{trip,catch,size,size_b2}.dta and
 #               mrip_pull<today>.Rds.
 # Dependencies: Sources developer_setup.R (for gf.data.dir). Requires Oracle
 #               access.
 # Pipeline:     Step 2 of model_wrapper.do (gated by pull_MRIP), invoked via
-#               `rscript using ... args(first last)`, and followed immediately by
+#               `rscript using ... args(mrip_calibration_year first_yr last)`, and followed immediately by
 #               tidyup_mrip_data_fromR.do. Also runnable standalone:
-#               Rscript get_mrip_oracle.R 2023 2025.
+#               Rscript get_mrip_oracle.R cal_2018 2023 2025.
 ################################################################################
 
 
 # Define arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) {
-  stop("Error: This script requires exactly two arguments.", call. = FALSE)
+if (length(args) != 3) {
+  stop("Error: This script requires exactly three arguments.", call. = FALSE)
 }
 
 #read in arguments. Ensure they are numeric
-first_yr  <- as.numeric(args[1])
-last_yr   <-  as.numeric(args[2])
+mrip_calibration_year  <- as.numeric(sub("cal_","",args[1]))
+first_yr  <- as.numeric(args[2])
+last_yr   <-  as.numeric(args[3])
 
 # Show them, just in case.
 cat("First Year:", first_yr, "\n")
@@ -70,7 +71,8 @@ mrip_pull <- mrip_microdata(
   years = yearlist, waves = wavelist,
   typ = c('trip', 'catch', 'size', 'size_b2'),
   format = c('nefsc_db'),
-  nefsc_db_con=con_name
+  nefsc_db_con=con_name,
+  calibration_year=mrip_calibration_year
 )
 dbDisconnect(con_name)
 

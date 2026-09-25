@@ -19,7 +19,7 @@
                and the globals above set. THESE REGULATIONS MUST BE UPDATED EVERY
                YEAR.
  Pipeline:     Not called directly by model_wrapper.do; invoked via a nested `do'
-               from directed_trips_calibration.do (step 5a in DATAFLOW_GROUNDFISH.md).
+               from directed_trips_calibration.do (step 5a in README.md's execution order).
  Note:         Suspected bug (flagged, code unchanged): the year-2 kind-of-day
                block (~lines 110-111) tests variable `dow', but at that point the
                dataset has just been rebuilt and only `dow_y2' exists (created a
