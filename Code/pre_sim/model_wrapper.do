@@ -166,6 +166,9 @@ used by catch_at_length_projection.do*/
 
 global trawl_survey_start_year 2022
 
+* toggle to generate alternative catch per trip data for the uncertainty project (1 = yes, 0 = no)
+global uncertain 1
+
 
 
 /******************************************************************************/
@@ -184,17 +187,18 @@ loc estimate_dtrips = 0				// Estimate Directed Trips
 loc costs_per_trip = 0  			// Create Distributions of costs per trip (run 1x)
 loc draw_angler_preferences = 0		// Create draw of angler preference parameters (run 1x)
 loc catch_per_trip1 = 0				// Part 1 of catch per trip
-loc copula_in_R = 1					// Copula model in R
-loc catch_per_trip2 = 1				// Part 2 of catch per trip
-loc compare_calibration_MRIP = 1	// compare calibration output to MRIP
-loc prep_cpt_for_dashboard= 1		// prep data for dashboard
-loc Rpush_cpt_to_gdrive =1 			// Push to google drive in R
-loc angler_demogs	=1				// add additional angler demographics
-loc generate_baseline=1				// Generate baseline-year catch-at-length
-loc prep_catch_at_length_for_dash= 1		// Prep catch at length data for dashboard
-loc Rpush_catch_at_length_to_gdrive =1 			// Push catch at length data to  google drive in R
-loc catch_at_length_project=1			// Generate projection-year catch-at-length
-loc run_calibration=1						// Run calibration routine in R
+loc copula_in_R = 0					// Copula model in R
+loc copula_uncertain_R = 1		    // Copula model in R, no MRIP sampling uncertainty
+loc catch_per_trip2 = 0				// Part 2 of catch per trip
+loc compare_calibration_MRIP = 0	// compare calibration output to MRIP
+loc prep_cpt_for_dashboard= 0		// prep data for dashboard
+loc Rpush_cpt_to_gdrive =0 			// Push to google drive in R
+loc angler_demogs	=0				// add additional angler demographics
+loc generate_baseline=0				// Generate baseline-year catch-at-length
+loc prep_catch_at_length_for_dash= 0		// Prep catch at length data for dashboard
+loc Rpush_catch_at_length_to_gdrive =0 			// Push catch at length data to  google drive in R
+loc catch_at_length_project=0			// Generate projection-year catch-at-length
+loc run_calibration=0						// Run calibration routine in R
 
 
 
@@ -310,6 +314,15 @@ if `copula_in_R' {
 
 		rscript using "$input_code_cd\copula_modeling_calibration.R", args($ndraws)
     	di "Copula in R estimated"
+
+}
+
+if `copula_uncertain_R' {
+	 /* this takes a while and will look like it's hung. it's not */
+    	di "Estimating uncertainty copula in R. This takes a while and will look like it's hung"
+
+		rscript using "$input_code_cd\copula_both.R", args($ndraws $uncertain)
+    	di "Copula (uncertainty project) in R estimated"
 
 }
 		//c) generate estimates of simulated total harvest based on random draws of catch-per-trip and directed trips
