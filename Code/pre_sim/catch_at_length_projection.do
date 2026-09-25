@@ -298,17 +298,17 @@ build_alk , trawlfile("$misc_data_cd/NEFSC_trawl_hadd.csv") plusage(9)
    To use, run inside build_alk after prop_raw is created, with `a' the age
    and the species name in the title.
 
-levelsof age, local(ages)
-foreach a of local ages{
-twoway(scatter prop_raw length if age==`a',   connect(direct) lcol(red)   lpat(solid) msymbol(i) ) ///
-			(scatter prop_smoothed length if age==`a', connect(direct) lcol(blue) title("cod age `a' NEFSC trawl `min_svy_yr'-`max_svy_yr'", size(small)) ///
-			ytitle("proportion of fish that are age-a", size(small)) ytick(, angle(horizontal) labsize(small)) xtitle(length cms, size(small)) xlab(, labsize(small)) ///
-			ylab(, labsize(small) angle(horizontal)) xtick(, labsize(small)) lpat(solid) msymbol(i)  name(dom`a', replace))
- local graphnames `graphnames' dom`a'
+levelsof age, local(ages) ; 
+foreach a of local ages{ ;
+twoway(scatter prop_raw length if age==`a',   connect(direct) lcol(red)   lpat(solid) msymbol(i) ) 
+			(scatter prop_smoothed length if age==`a', connect(direct) lcol(blue) title("cod age `a' NEFSC trawl `min_svy_yr'-`max_svy_yr'", size(small)) 
+			ytitle("proportion of fish that are age-a", size(small)) ytick(, angle(horizontal) labsize(small)) xtitle(length cms, size(small)) xlab(, labsize(small)) 
+			ylab(, labsize(small) angle(horizontal)) xtick(, labsize(small)) lpat(solid) msymbol(i)  name(dom`a', replace)) ;
+ local graphnames `graphnames' dom`a' ;
 }
 
-grc1leg `graphnames'
-graph export "$figure_cd/cod_prop_length_at_age.png", as(png) replace
+grc1leg `graphnames' ;
+graph export "$figure_cd/cod_prop_length_at_age.png", as(png) replace ;
 */
 
 /******************************************************************************/
@@ -631,24 +631,24 @@ foreach v of local vars {;
    to one; see truncate_to_observed in catch_at_length_programs.do. */
 truncate_to_observed , obsvar(observed_prob_base) fitvar(fitted_prob_proj) ;
 
-/* Optional diagnostics, kept from the original: plots of base and projected
+/* Optional diagnostics: plots of base and projected
    catch-at-length, evaluated at the mean by length. The original carried
    seven copies of this block differing only in the two variables plotted;
    the pairs it plotted are listed after the block.
 
-collapse (mean) observed* fitted* prop* base_nal* proj_nal*, by(species season length)
-gen domain=season+"_"+species
+collapse (mean) observed* fitted* prop* base_nal* proj_nal*, by(species season length) ;
+gen domain=season+"_"+species ;
 
-levelsof domain , local(domz)
-foreach d of local domz{
-	twoway (scatter observed_prob_base length if domain=="`d'" ,   cmissing(no) connect(direct) lcol(gray) lwidth(med)  lpat(solid) msymbol(o) mcol(gray) $graphoptions) ///
-		    (scatter observed_prob_proj length if  domain=="`d'"  , cmissing(no) connect(direct) lcol(black)   lwidth(med)  lpat(solid) msymbol(i)   ///
-			xtitle("Length (cm)", yoffset(-2)) ytitle("Prob")    ylab(, angle(horizontal) labsize(vsmall)) ///
-			legend(lab(1 "observed_catch_at_length_prob_base") lab(2 "observed_catch_at_length_prob_proj") cols() yoffset(-2) region(color(none)))   title("`d'", size(small))  name(dom`d', replace))
- local graphnames `graphnames' dom`d'
-}
+levelsof domain , local(domz) ;
+foreach d of local domz{ ;
+	twoway (scatter observed_prob_base length if domain=="`d'" ,   cmissing(no) connect(direct) lcol(gray) lwidth(med)  lpat(solid) msymbol(o) mcol(gray) $graphoptions) 
+		    (scatter observed_prob_proj length if  domain=="`d'"  , cmissing(no) connect(direct) lcol(black)   lwidth(med)  lpat(solid) msymbol(i)   
+			xtitle("Length (cm)", yoffset(-2)) ytitle("Prob")    ylab(, angle(horizontal) labsize(vsmall)) 
+			legend(lab(1 "observed_catch_at_length_prob_base") lab(2 "observed_catch_at_length_prob_proj") cols() yoffset(-2) region(color(none)))   title("`d'", size(small))  name(dom`d', replace)) ;
+ local graphnames `graphnames' dom`d' ;
+} ;
 
-grc1leg `graphnames', rows(2)
+grc1leg `graphnames', rows(2) ;
 
    Pairs plotted by the original's other copies:
      fitted_prob_base     vs fitted_prob_proj
