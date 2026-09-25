@@ -208,10 +208,10 @@ save `base', replace ;
   Loop draws
 -----------------------------------------*/
 *uses the uncertainty project "calib_catch_draws_raw_uc_`i'.dta" if uncertain global == 1 in model_wrapper.do
-local suffix ""
-if "$uncertain" == "1" {
-    local suffix "_uc"
-}
+local suffix "" ;
+if "$uncertain" == "1" { ;
+    local suffix "_uc" ;
+} ;
 quietly forvalues i=1/$ndraws {;
     noisily disp "Draw `i' started" ;
     use `base', clear ;
