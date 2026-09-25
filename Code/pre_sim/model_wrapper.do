@@ -15,20 +15,20 @@
                directory must already be the project root so that `here'
                resolves correctly (the header comment below describes the
                profile.do trick for this).
-			   
-			   User-written commands: here, dsconcat, renvarlab, xsvmat, gammafit, grc1leg 
-               (`ssc install` each once). 
-			   forked rscript (improved error handling) installed with 
+
+			   User-written commands: here, dsconcat, renvarlab, xsvmat, gammafit, grc1leg
+               (`ssc install` each once).
+			   forked rscript (improved error handling) installed with
 			      net install rscript, from("https://raw.githubusercontent.com/mle2718/rscript/master") replace
 			   Code/helpers/developer_setup_stata.do.
                Google Drive mounted to D: (for get_assessment_from_gdrive.do).
                Oracle connection required to extract MRIP data.
 			   Some R scripts that are called will copy files from Google Drive or write files to
-			   Google Drive.  
+			   Google Drive.
 			   If you have not already connected to google drive,
 			   run "Code/helpers/googledrivesetup.R".  If you do not the
 			   the R scripts that use googledrive will fail ungracefully.
-			   
+
  Pipeline:     Step 0 / very top of the whole pipeline. Each toggle below runs
                one pre_sim script (execution order: README.md, "Running the
                Pipeline"); the final toggle hands off to
@@ -50,7 +50,7 @@
  Forked rscript install. Monitor https://github.com/reifjulian/rscript/pull/13. When merged, you can simply do:
 	net install rscript, from("https://raw.githubusercontent.com/reifjulian/rscript/master") replace
 
-   
+
  THESE GLOBALS AND REGULATIONS MUST BE UPDATED EVERY YEAR (see Section A).
 *******************************************************************************/
 
@@ -175,6 +175,9 @@ used by catch_at_length_projection.do*/
 
 global trawl_survey_start_year 2022
 
+* toggle to generate alternative catch per trip data for the uncertainty project (1 = yes, 0 = no)
+global uncertain 1
+
 
 
 /******************************************************************************/
@@ -184,22 +187,22 @@ global trawl_survey_start_year 2022
 /******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
-loc pull_assessment = 1		 		// Pull Assessment data
-loc pull_MRIP = 1		 			// Pull MRIP data.
-
-loc processMRIP = 0	 			// deal with casing MRIP data, this should be retired
-loc assemblemriplists =0		 	// deal with casing MRIP data, this should be retired
-loc estimate_dtrips = 1				// Estimate Directed Trips
-loc costs_per_trip = 1  			// Create Distributions of costs per trip (run 1x)
-loc draw_angler_preferences = 1		// Create draw of angler preference parameters (run 1x)
-loc catch_per_trip1 = 1				// Part 1 of catch per trip
-loc copula_in_R = 1					// Copula model in R
-loc catch_per_trip2 = 1				// Part 2 of catch per trip
-loc compare_calibration_MRIP = 1	// compare calibration output to MRIP
-loc prep_cpt_for_dashboard= 1		// prep data for dashboard
+loc pull_assessment = 0		 		// Pull Assessment data
+loc pull_MRIP = 0		 			// Pull MRIP data.
+loc processMRIP = 0	 			// deal with casing MRIP data
+loc assemblemriplists =0		 	// deal with casing MRIP data
+loc estimate_dtrips = 0				// Estimate Directed Trips
+loc costs_per_trip = 0  			// Create Distributions of costs per trip (run 1x)
+loc draw_angler_preferences = 0		// Create draw of angler preference parameters (run 1x)
+loc catch_per_trip1 = 0				// Part 1 of catch per trip
+loc copula_in_R = 0					// Copula model in R
+loc copula_uncertain_R = 1		    // Copula model in R, no MRIP sampling uncertainty
+loc catch_per_trip2 = 0				// Part 2 of catch per trip
+loc compare_calibration_MRIP = 0	// compare calibration output to MRIP
+loc prep_cpt_for_dashboard= 0		// prep data for dashboard
 loc Rpush_cpt_to_gdrive =0 			// Push to google drive in R
-loc angler_demogs	=1				// add additional angler demographics
-loc generate_baseline=1				// Generate baseline-year catch-at-length
+loc angler_demogs	=0				// add additional angler demographics
+loc generate_baseline=0				// Generate baseline-year catch-at-length
 loc prep_catch_at_length_for_dash= 0		// Prep catch at length data for dashboard
 loc Rpush_catch_at_length_to_gdrive =0 			// Push catch at length data to  google drive in R
 loc catch_at_length_project=0			// Generate projection-year catch-at-length
@@ -319,6 +322,15 @@ if `copula_in_R' {
 
 		rscript using "$input_code_cd\copula_modeling_calibration.R", args($ndraws)
     	di "Copula in R estimated"
+
+}
+
+if `copula_uncertain_R' {
+	 /* this takes a while and will look like it's hung. it's not */
+    	di "Estimating uncertainty copula in R. This takes a while and will look like it's hung"
+
+		rscript using "$input_code_cd\copula_both.R", args($ndraws $uncertain)
+    	di "Copula (uncertainty project) in R estimated"
 
 }
 		//c) generate estimates of simulated total harvest based on random draws of catch-per-trip and directed trips
