@@ -397,7 +397,7 @@ if `Rcodewrapper'{
 		di "Running calibration routine in R"
 	cd $here
 
-		rscript using "$here\Code\sim\R code wrapper.R", args($ndraws)
+		rscript using "$input_code_cd\R code wrapper.R", args($ndraws $uncertain)
     	di "Simulation model calibrated and files exported to Google Drive"
 
 		}
