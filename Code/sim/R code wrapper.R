@@ -95,13 +95,15 @@ final_process_calib_catch_cd=file.path(final_process_data_cd,"calib_catch_draws"
 # (model_wrapper.do) using the argument in Stata call
 # Define arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop("Error: This script requires exactly one argument.", call. = FALSE)
+if (length(args) != 2) {
+  stop("This script requires exactly two arguments: n_simulations and uncertain_flag.", call. = FALSE)
 }
 n_simulations  <- as.numeric(args[1]) # Number of model iterations.
+uncertain_flag <- as.numeric(args[2]) # Uncertainty run flag.
 
 # Show them, just in case.
 cat("Number of model iterations selected:", n_simulations, "\n")
+cat("Uncertainty behavior (0 = normal, 1 = uncertain_uc files):", uncertain_flag, "\n")
 
 n_draws<-50 # Number of simulated trips per day
 
@@ -136,25 +138,28 @@ parse_date_any <- function(x) {
 # in new distributions of catch-per-trip, directed fishing effort, projected catch-at-length,
 # and angler preferences.
 
+# Determine suffix based on global flag
+uc_suffix <- ifelse(uncertain_flag == 1, "_uc", "")
+
 # Transfer some files from .csv to .fst to reduce computing time
 message("Converting calibration inputs from CSV/DTA to FST (this can take a while) ...")
-dtrip0<-read.csv(file.path(final_process_misc_cd, paste0("directed_trip_draws.csv"))) %>%
+dtrip0<-read.csv(file.path(final_process_misc_cd, paste0("directed_trip_draws", uc_suffix, ".csv"))) %>%
   dplyr::mutate(date_parsed = parse_date_any(day),
                 month=data.table::month(date_parsed)) %>%
   dplyr::select(-day, -day_y2)
 
-write_fst(dtrip0, file.path(final_process_misc_cd, paste0("directed_trip_draws.fst")))
+write_fst(dtrip0, file.path(final_process_misc_cd, paste0("directed_trip_draws", uc_suffix, ".fst")))
 
 for(i in 1:n_simulations) {
 
-    catch0<-read_dta(file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i,".dta"))) %>%
-      dplyr::mutate(date_parsed = parse_date_any(date),
-                    month=data.table::month(date_parsed)) %>%
-      dplyr::select(-date)
+  catch0<-read_dta(file.path(final_process_calib_catch_cd, paste0("calib_catch_draws", uc_suffix, "_", i,".dta"))) %>%
+    dplyr::mutate(date_parsed = parse_date_any(date),
+                  month=data.table::month(date_parsed)) %>%
+    dplyr::select(-date)
 
-    write_fst(catch0, file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i,".fst")))
+  write_fst(catch0, file.path(final_process_calib_catch_cd, paste0("calib_catch_draws", uc_suffix, "_", i,".fst")))
 
-  }
+}
 
 disc_mort<- readr::read_csv(file.path(final_process_misc_cd, "Discard_Mortality.csv"), show_col_types = FALSE)
 write_fst(disc_mort, file.path(final_process_misc_cd, paste0("Discard_Mortality.fst")))
