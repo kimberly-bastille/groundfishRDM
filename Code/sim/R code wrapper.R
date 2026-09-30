@@ -143,12 +143,12 @@ uc_suffix <- ifelse(uncertain_flag == 1, "_uc", "")
 
 # Transfer some files from .csv to .fst to reduce computing time
 message("Converting calibration inputs from CSV/DTA to FST (this can take a while) ...")
-dtrip0<-read.csv(file.path(final_process_misc_cd, paste0("directed_trip_draws", uc_suffix, ".csv"))) %>%
+dtrip0<-read.csv(file.path(final_process_misc_cd, paste0("directed_trip_draws.csv"))) %>%
   dplyr::mutate(date_parsed = parse_date_any(day),
                 month=data.table::month(date_parsed)) %>%
   dplyr::select(-day, -day_y2)
 
-write_fst(dtrip0, file.path(final_process_misc_cd, paste0("directed_trip_draws", uc_suffix, ".fst")))
+write_fst(dtrip0, file.path(final_process_misc_cd, paste0("directed_trip_draws.fst")))
 
 for(i in 1:n_simulations) {
 
