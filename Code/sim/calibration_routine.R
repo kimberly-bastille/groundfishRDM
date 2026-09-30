@@ -81,10 +81,11 @@ hadd_disc_mort<- fst::read_fst(file.path(final_process_misc_cd, "Discard_Mortali
   dplyr::rename(month=Month) %>%
   dplyr::filter(spp2!="cod")
 
-MRIP_comparison <- as.data.table(
-  haven::read_dta(file.path(final_process_misc_cd, "simulated_catch_totals.dta"))
-)
+uc_suffix <- if (exists("uncertain_flag") && uncertain_flag == 1) "_uc" else ""
 
+MRIP_comparison <- as.data.table(
+  haven::read_dta(file.path(final_process_misc_cd, paste0("simulated_catch_totals", uc_suffix, ".dta")))
+)
 
 
 setnames(
