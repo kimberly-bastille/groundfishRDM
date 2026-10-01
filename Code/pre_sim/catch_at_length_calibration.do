@@ -378,7 +378,7 @@ save `props', replace ;
 /******************************************************************************/
 /******************************************************************************/
 
-use "$misc_data_cd\simulated_catch_totals_for_catch_length.dta", clear ;
+u "$misc_data_cd\simulated_catch_totals_for_catch_length`suffix'.dta", clear ;
 keep tot_cod_keep_sim tot_cod_rel_sim tot_hadd_keep_sim tot_hadd_rel_sim  draw season ;
 keep if draw<=$ndraws ;
 
