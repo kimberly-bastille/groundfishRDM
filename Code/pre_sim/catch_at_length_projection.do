@@ -267,7 +267,7 @@ if "$uncertain" == "1" { ;
 } ;
 
 
-import delimited using "$misc_data_cd/baseline_catch_at_length_observed.csv", clear ;
+import delimited using "$misc_data_cd/baseline_catch_at_length_observed`suffix'.csv", clear ;
 keep if draw<= $ndraws ;
 sort draw season species length ;
 
