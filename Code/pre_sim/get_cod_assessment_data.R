@@ -125,6 +125,21 @@ drive_download(
   overwrite = TRUE
 )
 
+
+#read in calendar year commercial landings
+
+commercial_CY_removals<- readRDS(file=
+                                    file.path(output_folder,
+                                              glue("commercial_CY_removals_{data_version}.Rds")
+                                              )
+                                  )
+
+wgom_cod_cy_removals<-commercial_CY_removals %>%
+  filter(itis_tsn==164712, area_name=="WGOM")
+
+
+
+
 # Read in using  into your environment
 mod_accepted <- read_rds(temp_path)
 
@@ -199,7 +214,7 @@ cat("Installed wham commit is", packageDescription("wham")$RemoteSha,"\n")
 # Placeholders and parameters
 periods<-12 # there are 12 months in a year
 # Which year do you want a projection for, How many projections? Set a seed.
-YearProj<-2026
+YearProj<-2027
 num_NAA_draws<-500
 set.seed(6)
 
@@ -262,17 +277,23 @@ cod_maturity= tail(asap3[[1]]$dat$maturity,1)
 
 
 # Define catch in previous years######################################################
-# I use GARFOs quota monitoring page for Rec, since the FY catch is equal to the CY catch.
-# Doesn't quite work for commercial
 
-actual_2023_commercial_catch_mt<-438
-actual_2024_commercial_catch_mt<-550
-actual_2025_commercial_catch_mt<-NA # Update this for 2027 management:
+actual_2023_commercial_catch_mt<-wgom_cod_cy_removals %>%
+  filter(year==2023) %>%
+  pull(total_removals)
+actual_2024_commercial_catch_mt<-wgom_cod_cy_removals %>%
+  filter(year==2024) %>%
+  pull(total_removals)
+actual_2025_commercial_catch_mt<-wgom_cod_cy_removals %>%
+  filter(year==2025) %>%
+  pull(total_removals)
 actual_2026_commercial_catch_mt<-NA # Update this for 2028 management:
 
+
+# I use GARFOs quota monitoring page for Rec, since the FY catch is nearly equal to the CY catch.
 actual_2023_rec_catch_mt<-192 # From GARFO quota monitoring report
 actual_2024_rec_catch_mt<-72
-actual_2025_rec_catch_mt<-NA # Update this for 2027 management:
+actual_2025_rec_catch_mt<-72 # Update this for 2027 management:
 actual_2026_rec_catch_mt<-NA # Update this for 2028 management:
 
 
@@ -301,7 +322,7 @@ set_specs <- function(mod) {
          proj_F_opt  = list(c(5, 5, 4, 4)),  # length=numyears.  stack on different things to make different projections. 5=metric tons, 4=an instantanous fishing mortality rate (F)
 
          # NOTE: Year 1 & 2 use specified MT bridging catch; Year 3 & 4 apply the 75% Fmsy rate
-         proj_Fcatch = list(c(actual_2023_catch_mt, actual_2024_catch_mt, rep(0.75 * Fmsy, 2))) #2 # length=numyears
+         proj_Fcatch = list(c(actual_2023_catch_mt, actual_2024_catch_mt, actual_2025_catch_mt, rep(0.75 * Fmsy, 1))) #2 # length=numyears
     )
 }
 
@@ -436,19 +457,19 @@ write_dta(historical_NAA_long, path=file.path(assessment_output_folder,glue("{Hi
 write_rds(historical_NAA_long, file=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")))
 
 #Put the historical NAA on google drive
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{HistoricalNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
-
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{HistoricalNAASaveFile}.dta"),
-  overwrite = TRUE
-)
+# drive_upload(
+#   media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")),
+#   path = as_id(groundfish_processed_path),
+#   name = glue("{HistoricalNAASaveFile}.Rds"),
+#   overwrite = TRUE
+# )
+#
+# drive_upload(
+#   media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")),
+#   path = as_id(groundfish_processed_path),
+#   name = glue("{HistoricalNAASaveFile}.dta"),
+#   overwrite = TRUE
+# )
 
 
 
@@ -504,16 +525,16 @@ write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAAS
 write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))
 
 #Put the historical NAA on google drive
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{ProjectedNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
-
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{ProjectedNAASaveFile}.dta"),
-  overwrite = TRUE
-)
+# drive_upload(
+#   media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")),
+#   path = as_id(groundfish_processed_path),
+#   name = glue("{ProjectedNAASaveFile}.Rds"),
+#   overwrite = TRUE
+# )
+#
+# drive_upload(
+#   media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")),
+#   path = as_id(groundfish_processed_path),
+#   name = glue("{ProjectedNAASaveFile}.dta"),
+#   overwrite = TRUE
+# )
