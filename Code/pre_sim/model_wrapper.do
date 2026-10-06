@@ -181,7 +181,8 @@ global trawl_survey_start_year 2022
 /******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
-loc process_cod_assess = 0                // Process Cod Assessment data
+loc process_commercial_landings = 1      	    // Get commercial landings from Oracle
+loc process_cod_assess = 1                		// Process Cod Assessment data
 loc process_haddock_assess = 0            // Process Haddock Assessment data
 
 loc get_assessment_from_gdrive = 1				// Pull Assessment data
@@ -198,8 +199,6 @@ loc additional_angler_dems	=1					  // add additional angler demographics
 loc catch_at_length_calibration=1			   	// Generate baseline-year catch-at-length
 loc catch_at_length_project=1					    // Generate projection-year catch-at-length
 loc Rcodewrapper=1								        // Run calibration routine in R
-loc process_commercial_landings = 1      	    // Get commercial landings from Oracle
-loc process_cod_assess = 1                		// Process Cod Assessment data
 
 
 /********************* Push to google drive toggles*************************************/
