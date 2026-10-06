@@ -258,7 +258,7 @@ if `process_haddock_assess'{
 }
 if `export_assess_to_gdrive' {
 	di "Exporting assessment results to gdrive"
-		rscript using "$input_code_cd\export_assess_to_gdrive.R"
+		rscript using "$input_code_cd\export_assess_to_gdrive.R", args(`assess_upload')
 }
 
 
