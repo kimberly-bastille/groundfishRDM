@@ -69,10 +69,10 @@ global projection_date_end td(30apr2028)
 * add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level
 
 * fed holidays in the calibration year
-global fed_holidays "inlist(day, td(11nov2024), td(28nov2024), td(25dec2024), td(01jan2025), td(20jan2025), td(17feb2025), td(26may2025), td(19jun2025), td(04jul2025), td(01sep2025), td(13oct2025))"
+global fed_holidays "inlist(day, td(11nov2025), td(27nov2025), td(25dec2025), td(01jan2026), td(19jan2026), td(16feb2026), td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026))"
 
 * fed holidays in the projection year
-global fed_holidays_y2 "inlist(day1, td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026), td(11nov2026),  td(26nov2026),  td(25dec2026), td(01jan2027), td(18jan2027), td(15feb2027))"
+global fed_holidays_y2 "inlist(day1, td(31may2027), td(18jun2027), td(05jul2027), td(06sep2027), td(11oct2027), td(11nov2027),  td(25nov2027),  td(24dec2027), td(01jan2028), td(17jan2028), td(21feb2028))"
 
 * leap-year days here
 global leap_yr_days "td(29feb2028)"
