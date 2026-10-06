@@ -12,6 +12,7 @@
 #               "NMFS NEC READ SSB", haddock_assessment/
 #                 mod_nola_dcpe_blls2.rds     (accepted WHAM model),
 #                 waa_pred_2024-08-25.xlsx    (projected SSB/Catch weight-at-age).
+#               "commercial_CY_removals_{vintage_string}.Rds"
 # Outputs:      input_data/GOM_Haddock_Projections_<date>.Rds,
 #               input_data/GOM_Haddock_historical_NAA_<date>.{Rds,dta},
 #               input_data/GOM_Haddock_projected_NAA_<date>.{Rds,dta}
@@ -55,10 +56,12 @@ library(wham,lib.loc = haddock_wham_lib)
 #Set paths, input names, and savefile names.
 
 # Assessment folders
-here::i_am("Code/pre_sim/get_haddock_assessment_data.R")
+here::i_am("Code/pre_sim/process_haddock_assessment_data.R")
+source(here("Code", "helpers", "developer_setup.R"))
 
 assessment_output_folder<-here("input_data")
 dir.create(file.path(assessment_output_folder), showWarnings = FALSE)
+miscellaneous_folder<-file.path(gf.data.dir, "miscellaneous")
 
 # data version
 data_version<-Sys.Date()
@@ -124,7 +127,7 @@ drive_download(
 #read in calendar year commercial landings
 
 commercial_CY_removals<- readRDS(file=
-                                    file.path(output_folder,
+                                    file.path(miscellaneous_folder,
                                               glue("commercial_CY_removals_{data_version}.Rds")
                                               )
                                   )

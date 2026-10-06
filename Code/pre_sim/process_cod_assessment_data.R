@@ -12,6 +12,7 @@
 #               "NMFS NEC READ SSB", cod_assessment/
 #                 mod_base_2023_noBLLS.rds       (accepted WHAM model),
 #                 WGOM_COD_ASAP_2023_SEL3_2023.DAT (ASAP input file).
+#               "commercial_CY_removals_{vintage_string}.Rds"
 # Outputs:      input_data/WGOMCod_Projections_<date>.Rds,
 #               input_data/WGOM_Cod_historical_NAA_<date>.{Rds,dta},
 #               input_data/WGOM_Cod_projected_NAA_<date>.{Rds,dta}
@@ -60,9 +61,11 @@ library(wham,lib.loc = cod_wham_lib)
 
 # Assessment folders
 
-here::i_am("Code/pre_sim/get_cod_assessment_data.R")
+here::i_am("Code/pre_sim/process_cod_assessment_data.R")
+source(here("Code", "helpers", "developer_setup.R"))
 assessment_output_folder<-here("input_data")
 dir.create(file.path(assessment_output_folder), showWarnings = FALSE)
+miscellaneous_folder<-file.path(gf.data.dir, "miscellaneous")
 
 # data version
 data_version<-Sys.Date()
@@ -129,7 +132,7 @@ drive_download(
 #read in calendar year commercial landings
 
 commercial_CY_removals<- readRDS(file=
-                                    file.path(output_folder,
+                                    file.path(miscellaneous_folder,
                                               glue("commercial_CY_removals_{data_version}.Rds")
                                               )
                                   )
