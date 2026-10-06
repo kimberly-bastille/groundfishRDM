@@ -1,5 +1,5 @@
 ################################################################################
-# Script:       get_commercial_landings.R
+# Script:       process_commercial_landings.R
 # Purpose:      Pulls annual commercial landings and assumed discards for WGOM cod
 #               and GOM haddock from Oracle (CAMS), recodes coarse stat areas into
 #               finer stock units, and aggregates to calendar-year and fishing-year
@@ -40,9 +40,9 @@ pounds_per_mt<-2204.62
 
 #Deal with folders
 
-here::i_am("Code/pre_sim/get_commercial_landings.R")
+here::i_am("Code/pre_sim/process_commercial_landings.R")
 source(here("Code", "helpers", "developer_setup.R"))
-output_folder<-file.path(gf.data.dir, "miscellaneous")
+miscellaneous_folder<-file.path(gf.data.dir, "miscellaneous")
 
 # I'm pulling 2022 to 2026 calendar data, but
 # this will have complete
@@ -105,6 +105,7 @@ stock_area_definitions<-stock_area_definitions %>%
   rename_with(tolower)
 
 # Fix the cod stock -- the data only has GOM/GB, but we want EGOM, WGOM, GB, and SNE
+# No changes to the Haddock stock area definitions
 stock_area_definitions<-stock_area_definitions %>%
   mutate(area_name= case_when(
     itis_tsn=="164712" & area %in% c("465", "467", "511","512") ~ "EGOM", #Eastern GOM
@@ -163,7 +164,7 @@ species_area_catch<-species_area_catch %>%
 # Aggregate to Calendar Year, convert to metric tons
 
 commercial_CY_removals <- species_area_catch %>%
-  group_by(itis_tsn, area_name, year) %>%
+  group_by(itis_tsn, common_name, area_name, year) %>%
   summarise(landings=round(sum(landings/pounds_per_mt),2),
             discards=round(sum(discards/pounds_per_mt),2)) %>%
   mutate(total_removals=landings+discards)
@@ -172,7 +173,7 @@ commercial_CY_removals <- species_area_catch %>%
 # Aggregate to Fishing Year, convert to metric tons, drop the partial first year.
 
 commercial_FY_removals <- species_area_catch %>%
-  group_by(itis_tsn, area_name, fishing_year) %>%
+  group_by(itis_tsn, common_name, area_name, fishing_year) %>%
   summarise(landings=round(sum(landings/pounds_per_mt),2),
             discards=round(sum(discards/pounds_per_mt),2))%>%
   mutate(total_removals=landings+discards)%>%
@@ -199,34 +200,24 @@ WGOM_cod_2025<-commercial_CY_removals %>%
   filter(itis_tsn==164712 & area_name=="WGOM" & year==2025) %>%
   pull(total_removals)
 
-GOM_haddock_2023<-commercial_CY_removals %>%
-  filter(itis_tsn==164744 & area_name=="GOM" & year==2023) %>%
-  pull(total_removals)
-
-GOM_haddock_2024<-commercial_CY_removals %>%
-  filter(itis_tsn==164744 & area_name=="GOM" & year==2024) %>%
-  pull(total_removals)
-
-GOM_haddock_2025<-commercial_CY_removals %>%
-  filter(itis_tsn==164744 & area_name=="GOM" & year==2025) %>%
-  pull(total_removals)
+cat("Western Gulf of Maine Commercial cod removals: \n")
+commercial_CY_removals %>%
+  filter(itis_tsn==164712,area_name=="WGOM")%>%
+  select(itis_tsn, common_name, area_name, year, total_removals)
 
 
-cat("Western Gulf of Maine Commercial cod removals in 2023:", WGOM_cod_2023,"mt \n")
-cat("Western Gulf of Maine Commercial cod removals in 2024:", WGOM_cod_2024,"mt \n")
-cat("Western Gulf of Maine Commercial cod removals in 2025:", WGOM_cod_2025,"mt \n")
-
-cat("Gulf of Maine Commercial haddock removals in 2023:", GOM_haddock_2023,"mt \n")
-cat("Gulf of Maine Commercial haddock removals in 2024:", GOM_haddock_2024,"mt \n")
-cat("Gulf of Maine Commercial haddock removals in 2025:", GOM_haddock_2025,"mt \n")
+cat("Gulf of Maine Commercial haddock removals: \n")
+commercial_CY_removals %>%
+  filter(itis_tsn==164744,area_name=="GOM")%>%
+  select(itis_tsn, common_name, area_name, year, total_removals)
 
 
 
 
 # save
 saveRDS(commercial_CY_removals,
-        file=file.path(output_folder,  glue("commercial_CY_removals_{vintage_string}.Rds")))
+        file=file.path(miscellaneous_folder,  glue("commercial_CY_removals_{vintage_string}.Rds")))
 
 saveRDS(commercial_FY_removals,
-        file=file.path(output_folder,  glue("commercial_FY_removals_{vintage_string}.Rds")))
+        file=file.path(miscellaneous_folder,  glue("commercial_FY_removals_{vintage_string}.Rds")))
 

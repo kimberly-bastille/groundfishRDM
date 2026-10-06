@@ -181,6 +181,10 @@ global trawl_survey_start_year 2022
 /******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
+loc process_commercial_landings = 1      	    // Get commercial landings from Oracle
+loc process_cod_assess = 1                		// Process Cod Assessment data
+loc process_haddock_assess = 0            // Process Haddock Assessment data
+
 loc get_assessment_from_gdrive = 1				// Pull Assessment data
 loc get_mrip_oracle = 1		 					      // Pull MRIP data.
 
@@ -199,6 +203,8 @@ loc Rcodewrapper=1								        // Run calibration routine in R
 
 /********************* Push to google drive toggles*************************************/
 /********************* (versions on main should be set to 0)****************************/
+loc export_assess_to_gdrive = 0          // Export assessment to google drive
+local assess_upload = "cod"				 // arguments for uploading. Can be "cod", "haddock", or "both"
 loc export_all_to_GDrive = 0             // Export calibration and all data to Google
 
 
@@ -235,6 +241,30 @@ if `proto' {
 /* Section E: Run the pipeline (each step gated by its Section D toggle) */
 /******************************************************************************/
 /******************************************************************************/
+
+/* Process cod and haddock assessment data */
+	di "Getting Commerical Landings"
+		rscript using "$input_code_cd\process_commercial_landings.R"
+
+if `process_cod_assess' {
+	di "Processing cod assessment"
+		rscript using "$input_code_cd\process_cod_assessment_data.R"
+}
+
+if `process_haddock_assess'{
+	di "Processing haddock assessment"
+		rscript using "$input_code_cd\process_hadd_assessment_data.R"
+
+}
+if `export_assess_to_gdrive' {
+	di "Exporting assessment results for `assess_upload' stocks to gdrive"
+		rscript using "$input_code_cd\export_assess_to_gdrive.R", args(`assess_upload')
+
+	di "Assessment results for `assess_upload' stocks exported to gdrive"
+		
+}
+
+
 
 // 0) Pull Assessment data from google.
 

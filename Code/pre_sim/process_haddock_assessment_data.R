@@ -1,6 +1,6 @@
 ################################################################################
 ################################################################################
-# Script:       get_haddock_assessment_data.R
+# Script:       process_haddock_assessment.R
 # Purpose:      Reads the accepted GOM haddock WHAM stock-assessment model
 #               (terminal year 2023) and its projected weight-at-age workbook
 #               from Google Drive, runs the two standard PDT projections
@@ -12,10 +12,10 @@
 #               "NMFS NEC READ SSB", haddock_assessment/
 #                 mod_nola_dcpe_blls2.rds     (accepted WHAM model),
 #                 waa_pred_2024-08-25.xlsx    (projected SSB/Catch weight-at-age).
+#               "commercial_CY_removals_{vintage_string}.Rds"
 # Outputs:      input_data/GOM_Haddock_Projections_<date>.Rds,
 #               input_data/GOM_Haddock_historical_NAA_<date>.{Rds,dta},
 #               input_data/GOM_Haddock_projected_NAA_<date>.{Rds,dta}
-#               (the NAA files are also uploaded back to Google Drive/input_data).
 # Dependencies: wham_version_installer.R must have installed the WHAM version
 #               matching the model (verified here via stopifnot on the commit).
 #               Code/helpers/naa_helpers.R (pivot_naa_long, validate_naa_data).
@@ -55,10 +55,12 @@ library(wham,lib.loc = haddock_wham_lib)
 #Set paths, input names, and savefile names.
 
 # Assessment folders
-here::i_am("Code/pre_sim/get_haddock_assessment_data.R")
+here::i_am("Code/pre_sim/process_haddock_assessment_data.R")
+source(here("Code", "helpers", "developer_setup.R"))
 
 assessment_output_folder<-here("input_data")
 dir.create(file.path(assessment_output_folder), showWarnings = FALSE)
+miscellaneous_folder<-file.path(gf.data.dir, "miscellaneous")
 
 # data version
 data_version<-Sys.Date()
@@ -120,6 +122,20 @@ drive_download(
   path = temp_path,
   overwrite = TRUE
 )
+
+#read in calendar year commercial landings
+
+commercial_CY_removals<- readRDS(file=
+                                    file.path(miscellaneous_folder,
+                                              glue("commercial_CY_removals_{data_version}.Rds")
+                                              )
+                                  )
+
+gom_haddock_cy_removals<-commercial_CY_removals %>%
+  filter(itis_tsn==164744, area_name=="GOM")
+
+
+
 
 # Read in using  into your environment
 mod_accepted <- read_rds(temp_path)
@@ -196,7 +212,7 @@ cat("Installed wham commit is", packageDescription("wham")$RemoteSha,"\n")
 # Placeholders and parameters
 periods<-12 # there are 12 months in a year
 # Which year do you want a projection for, How many projections? Set a seed.
-YearProj<-2026
+YearProj<-2027
 num_NAA_draws<-500
 set.seed(6)
 ###########End Housekeeping#####################################################
@@ -207,17 +223,27 @@ set.seed(6)
 
 # Define catch in previous years  ######################################################
 old_bridge_year_catch <- 2105 #GOM haddock 2024 MT PDT-supplied catch
+
+actual_2023_commercial_catch_mt<-gom_haddock_cy_removals %>%
+  filter(year==2023) %>%
+  pull(total_removals)
+actual_2024_commercial_catch_mt<-gom_haddock_cy_removals %>%
+  filter(year==2024) %>%
+  pull(total_removals)
+actual_2025_commercial_catch_mt<-gom_haddock_cy_removals %>%
+  filter(year==2025) %>%
+  pull(total_removals)
+actual_2026_commercial_catch_mt<-NA # Update this for 2028 management:
+
+actual_2026_commercial_catch_mt<-NA # Update for 2028
+
+
 # I use GARFOs quota monitoring page for Rec, since the FY catch is equal to the CY catch.
 # Doesn't quite work for commercial
 
-actual_2023_commercial_catch_mt<-2277
-actual_2024_commercial_catch_mt<-1405
-actual_2025_commercial_catch_mt<-NA # Update for 2027
-actual_2026_commercial_catch_mt<-NA # Update for 2028
-
 actual_2023_rec_catch_mt<-793 # From GARFO quota monitoring report
 actual_2024_rec_catch_mt<-899
-actual_2025_rec_catch_mt<-NA #Update for 2027
+actual_2025_rec_catch_mt<-899 #Update for 2027
 actual_2025_rec_catch_mt<-NA #Update for 2028
 
 
@@ -458,22 +484,6 @@ validate_naa_data(historical_NAA_long)
 write_dta(historical_NAA_long, path=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")))
 write_rds(historical_NAA_long, file=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")))
 
-#Put the historical NAA on google drive
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{HistoricalNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
-
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{HistoricalNAASaveFile}.dta"),
-  overwrite = TRUE
-)
-
-
 # Pick exactly 1 year. See the header.
 RowPick<-which(year==YearProj)
 stopifnot(length(RowPick)==1)
@@ -519,18 +529,3 @@ validate_naa_data(NAA_long)
 
 write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")))
 write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))
-
-#Put the historical NAA_long on google drive
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{ProjectedNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
-
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{ProjectedNAASaveFile}.dta"),
-  overwrite = TRUE
-)
