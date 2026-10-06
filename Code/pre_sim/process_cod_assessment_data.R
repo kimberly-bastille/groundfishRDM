@@ -16,7 +16,6 @@
 # Outputs:      input_data/WGOMCod_Projections_<date>.Rds,
 #               input_data/WGOM_Cod_historical_NAA_<date>.{Rds,dta},
 #               input_data/WGOM_Cod_projected_NAA_<date>.{Rds,dta}
-#               (the NAA files are also uploaded back to Google Drive/input_data).
 # Dependencies: wham_version_installer.R must have installed the WHAM version
 #               matching the model (verified here via stopifnot on the commit).
 #               Code/helpers/naa_helpers.R (pivot_naa_long, validate_naa_data).
@@ -459,21 +458,6 @@ validate_naa_data(historical_NAA_long)
 write_dta(historical_NAA_long, path=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")))
 write_rds(historical_NAA_long, file=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")))
 
-#Put the historical NAA on google drive
-# drive_upload(
-#   media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")),
-#   path = as_id(groundfish_processed_path),
-#   name = glue("{HistoricalNAASaveFile}.Rds"),
-#   overwrite = TRUE
-# )
-#
-# drive_upload(
-#   media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")),
-#   path = as_id(groundfish_processed_path),
-#   name = glue("{HistoricalNAASaveFile}.dta"),
-#   overwrite = TRUE
-# )
-
 
 
 # Pick exactly 1 year. See the header.
@@ -526,18 +510,3 @@ validate_naa_data(NAA_long)
 
 write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")))
 write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))
-
-#Put the historical NAA on google drive
-# drive_upload(
-#   media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")),
-#   path = as_id(groundfish_processed_path),
-#   name = glue("{ProjectedNAASaveFile}.Rds"),
-#   overwrite = TRUE
-# )
-#
-# drive_upload(
-#   media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")),
-#   path = as_id(groundfish_processed_path),
-#   name = glue("{ProjectedNAASaveFile}.dta"),
-#   overwrite = TRUE
-# )
