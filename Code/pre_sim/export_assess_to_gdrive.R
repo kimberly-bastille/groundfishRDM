@@ -28,8 +28,7 @@ if (length(args) != 1) {
 stocks  <- args[1]
 
 # Show them, just in case.
-cat("First Year:", first_yr, "\n")
-cat("Last Year:", last_yr, "\n")
+cat("Stocks to export:", stocks, "\n")
 
 
 
@@ -142,4 +141,7 @@ if (stocks %in% c("haddock","both")) {
     overwrite = TRUE
   )
 }
+
+
+cat("Export of ",stocks," assessment data complete \n")
 
