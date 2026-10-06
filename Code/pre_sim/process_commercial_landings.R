@@ -1,5 +1,5 @@
 ################################################################################
-# Script:       get_commercial_landings.R
+# Script:       process_commercial_landings.R
 # Purpose:      Pulls annual commercial landings and assumed discards for WGOM cod
 #               and GOM haddock from Oracle (CAMS), recodes coarse stat areas into
 #               finer stock units, and aggregates to calendar-year and fishing-year
@@ -40,9 +40,9 @@ pounds_per_mt<-2204.62
 
 #Deal with folders
 
-here::i_am("Code/pre_sim/get_commercial_landings.R")
+here::i_am("Code/pre_sim/process_commercial_landings.R")
 source(here("Code", "helpers", "developer_setup.R"))
-output_folder<-file.path(gf.data.dir, "miscellaneous")
+miscellaneous_folder<-file.path(gf.data.dir, "miscellaneous")
 
 # I'm pulling 2022 to 2026 calendar data, but
 # this will have complete
@@ -216,8 +216,8 @@ commercial_CY_removals %>%
 
 # save
 saveRDS(commercial_CY_removals,
-        file=file.path(output_folder,  glue("commercial_CY_removals_{vintage_string}.Rds")))
+        file=file.path(miscellaneous_folder,  glue("commercial_CY_removals_{vintage_string}.Rds")))
 
 saveRDS(commercial_FY_removals,
-        file=file.path(output_folder,  glue("commercial_FY_removals_{vintage_string}.Rds")))
+        file=file.path(miscellaneous_folder,  glue("commercial_FY_removals_{vintage_string}.Rds")))
 
