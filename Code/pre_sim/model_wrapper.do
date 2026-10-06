@@ -181,7 +181,8 @@ global trawl_survey_start_year 2022
 /******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
-loc process_assess = 0                    // Process Assessment data
+loc process_cod_assess = 0                // Process Cod Assessment data
+loc process_haddock_assess = 0            // Process Haddock Assessment data
 
 loc get_assessment_from_gdrive = 1				// Pull Assessment data
 loc get_mrip_oracle = 1		 					      // Pull MRIP data.
@@ -240,15 +241,17 @@ if `proto' {
 /******************************************************************************/
 
 /* Process cod and haddock assessment data */
-if `process_assess' {
+if `process_cod_assess' {
 	di "Getting Commerical Landings"
-		rscript using "$input_code_cd\get_commercial_landings.R"
+		rscript using "$input_code_cd\process_commercial_landings.R"
 
 	di "Processing cod assessment"
-		rscript using "$input_code_cd\get_cod_assessment_data.R"
+		rscript using "$input_code_cd\process_cod_assessment_data.R"
+}
 
+if `process_haddock_assess'{
 	di "Processing haddock assessment"
-		rscript using "$input_code_cd\get_cod_assessment_data.R"
+		rscript using "$input_code_cd\process_hadd_assessment_data.R"
 
 }
 if `export_assess_to_gdrive' {
