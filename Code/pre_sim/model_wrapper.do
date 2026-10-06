@@ -204,6 +204,7 @@ loc Rcodewrapper=1								        // Run calibration routine in R
 /********************* Push to google drive toggles*************************************/
 /********************* (versions on main should be set to 0)****************************/
 loc export_assess_to_gdrive = 0          // Export assessment to google drive
+local assess_upload = "cod"				 // arguments for uploading. Can be "cod", "haddock", or "both"
 loc export_all_to_GDrive = 0             // Export calibration and all data to Google
 
 
