@@ -181,6 +181,8 @@ global trawl_survey_start_year 2022
 /******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
+loc process_assess = 0                    // Process Assessment data
+
 loc get_assessment_from_gdrive = 1				// Pull Assessment data
 loc get_mrip_oracle = 1		 					      // Pull MRIP data.
 
@@ -199,6 +201,7 @@ loc Rcodewrapper=1								        // Run calibration routine in R
 
 /********************* Push to google drive toggles*************************************/
 /********************* (versions on main should be set to 0)****************************/
+loc export_assess_to_gdrive = 0          // Export assessment to google drive
 loc export_all_to_GDrive = 0             // Export calibration and all data to Google
 
 
@@ -235,6 +238,25 @@ if `proto' {
 /* Section E: Run the pipeline (each step gated by its Section D toggle) */
 /******************************************************************************/
 /******************************************************************************/
+
+/* Process cod and haddock assessment data */
+if `process_assess' {
+	di "Getting Commerical Landings"
+		rscript using "$input_code_cd\get_commercial_landings.R"
+
+	di "Processing cod assessment"
+		rscript using "$input_code_cd\get_cod_assessment_data.R"
+
+	di "Processing haddock assessment"
+		rscript using "$input_code_cd\get_cod_assessment_data.R"
+
+}
+if `export_assess_to_gdrive' {
+	di "Exporting assessment results to gdrive"
+		rscript using "$input_code_cd\export_assess_to_gdrive.R"
+}
+
+
 
 // 0) Pull Assessment data from google.
 
