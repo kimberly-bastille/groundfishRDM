@@ -198,6 +198,8 @@ loc additional_angler_dems	=1					  // add additional angler demographics
 loc catch_at_length_calibration=1			   	// Generate baseline-year catch-at-length
 loc catch_at_length_project=1					    // Generate projection-year catch-at-length
 loc Rcodewrapper=1								        // Run calibration routine in R
+loc process_commercial_landings = 1      	    // Get commercial landings from Oracle
+loc process_cod_assess = 1                		// Process Cod Assessment data
 
 
 /********************* Push to google drive toggles*************************************/
@@ -241,10 +243,10 @@ if `proto' {
 /******************************************************************************/
 
 /* Process cod and haddock assessment data */
-if `process_cod_assess' {
 	di "Getting Commerical Landings"
 		rscript using "$input_code_cd\process_commercial_landings.R"
 
+if `process_cod_assess' {
 	di "Processing cod assessment"
 		rscript using "$input_code_cd\process_cod_assessment_data.R"
 }
