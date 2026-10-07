@@ -22,7 +22,7 @@ library(cli)
 
 # Assessment folders
 
-here::i_am("Code/helpers/hash_check.R")
+here::i_am("Code/helpers/hash_check_calib_catch_draws.R")
 source(here("Code", "helpers", "developer_setup.R"))
 assessment_output_folder<-here("input_data")
 dir.create(file.path(assessment_output_folder), showWarnings = FALSE)
