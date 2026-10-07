@@ -12,8 +12,6 @@
 ################################################################################
 #Load libraries
 library(tidyverse)
-library(haven)
-library(glue)
 library(googledrive)
 library(here)
 library(cli)
