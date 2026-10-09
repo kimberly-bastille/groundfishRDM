@@ -59,23 +59,23 @@ set varabbrev on
 /******************************************************************************/
 
 /*Set calibration year-waves*/
-global calibration_year "(year==2025 & inlist(wave, 1, 2, 3, 4, 5)) | (year==2024 & inlist(wave, 6))"  // last six waves of data  updated
-global calibration_date_start td(01nov2024)
-global calibration_date_end td(31oct2025)
+global calibration_year "(year==2026 & inlist(wave, 1, 2, 3, 4, 5)) | (year==2025 & inlist(wave, 6))"  // last six waves of data  updated
+global calibration_date_start td(01nov2025)
+global calibration_date_end td(31oct2026)
 
-global projection_date_start td(01may2026)
-global projection_date_end td(30apr2027)
+global projection_date_start td(01may2027)
+global projection_date_end td(30apr2028)
 
 * add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level
 
 * fed holidays in the calibration year
-global fed_holidays "inlist(day, td(11nov2024), td(28nov2024), td(25dec2024), td(01jan2025), td(20jan2025), td(17feb2025), td(26may2025), td(19jun2025), td(04jul2025), td(01sep2025), td(13oct2025))"
+global fed_holidays "inlist(day, td(11nov2025), td(27nov2025), td(25dec2025), td(01jan2026), td(19jan2026), td(16feb2026), td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026))"
 
 * fed holidays in the projection year
-global fed_holidays_y2 "inlist(day1, td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026), td(11nov2026),  td(26nov2026),  td(25dec2026), td(01jan2027), td(18jan2027), td(15feb2027))"
+global fed_holidays_y2 "inlist(day1, td(31may2027), td(18jun2027), td(05jul2027), td(06sep2027), td(11oct2027), td(11nov2027),  td(25nov2027),  td(24dec2027), td(01jan2028), td(17jan2028), td(21feb2028))"
 
 * leap-year days here
-global leap_yr_days "td(29feb2024)"
+global leap_yr_days "td(29feb2028)"
 
 * set number of model iterations to create
 global ndraws 101
@@ -136,16 +136,16 @@ tidyup_mrip_data_fromR.do
 MRIP_column_cases.do (dead code)
 compare wave 5 data.do*/
 
-global yr_wvs 20231 20232 20233 20234 20235 20236  ///
-			  20241 20242 20243 20244 20245 20246  ///
-			  20251 20252 20253 20254 20255 20256
+global yr_wvs 20241 20242 20243 20244 20245 20246  ///
+			  20251 20252 20253 20254 20255 20256  ///
+			  20261 20262 20263 20264 20265 20266  
 
 /* First and last year of MRIP data.*/
 /* used by:
 tidyup_mrip_data_fromR.do*/
 
-global first_mrip_year 2023
-global last_mrip_year 2025
+global first_mrip_year 2024
+global last_mrip_year 2026
 numlist "$first_mrip_year/$last_mrip_year"
 
 /* Yearlist and wavelist.*/
@@ -158,10 +158,10 @@ global wavelist 1 2 3 4 5 6
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
 
-global cod_NAA_base_year 2025
-global hadd_NAA_base_year 2025
-global cod_NAA_proj_year 2026
-global hadd_NAA_proj_year 2026
+global cod_NAA_base_year 2026
+global hadd_NAA_base_year 2026
+global cod_NAA_proj_year 2027
+global hadd_NAA_proj_year 2027
 
 /* set the starting year for the NEFSC trawl survey data pull (in catch_at_length_projection.do)
 	 we aggregate these data across multiple years and use them to create age-length keys
@@ -169,7 +169,7 @@ global hadd_NAA_proj_year 2026
 	 but do not want to use historical data too far in the past.
 used by catch_at_length_projection.do*/
 
-global trawl_survey_start_year 2022
+global trawl_survey_start_year 2023
 
 
 
