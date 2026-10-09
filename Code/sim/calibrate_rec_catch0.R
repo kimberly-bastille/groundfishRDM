@@ -311,10 +311,9 @@ build_compare_table <- function(summed_results, MRIP_comparison_draw, md) {
 
 # ---- Inputs ----
 
-uc_suffix <- if (exists("uncertain_flag") && uncertain_flag == 1) "_uc" else ""
 
 MRIP_comparison <- as.data.table(
-  haven::read_dta(file.path(final_process_misc_cd, paste0("simulated_catch_totals", uc_suffix, ".dta")))
+  haven::read_dta(file.path(final_process_misc_cd, "simulated_catch_totals.dta"))
 )
 
 setnames(
@@ -361,7 +360,7 @@ for (i in draws) {
 
   message("calibrate_rec_catch0: simulating draw ", i, " of ", max(draws))
 
-  catch_path_fst <- file.path(final_process_calib_catch_cd, paste0("calib_catch_draws", uc_suffix, "_", i, ".fst"))
+  catch_path_fst <- file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i, ".fst"))
   catch_draw_dt <- as.data.table(read_fst(catch_path_fst))
   setnames(
     catch_draw_dt,
@@ -373,7 +372,7 @@ for (i in draws) {
 
   check_required_cols(catch_draw_dt,
                       c("mode", "date_parsed", "tripid", "catch_draw", "cod_cat", "hadd_cat"),
-                      paste0("calib_catch_draws", uc_suffix, "_", i))
+                      paste0("calib_catch_draws_", i))
 
   catch_draw_dt[, season := cod_hadd_season(date_parsed)]
 

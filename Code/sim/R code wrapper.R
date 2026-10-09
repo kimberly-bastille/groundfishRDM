@@ -138,9 +138,6 @@ parse_date_any <- function(x) {
 # in new distributions of catch-per-trip, directed fishing effort, projected catch-at-length,
 # and angler preferences.
 
-# Determine suffix based on global flag
-uc_suffix <- ifelse(uncertain_flag == 1, "_uc", "")
-
 # Transfer some files from .csv to .fst to reduce computing time
 message("Converting calibration inputs from CSV/DTA to FST (this can take a while) ...")
 dtrip0<-read.csv(file.path(final_process_misc_cd, paste0("directed_trip_draws.csv"))) %>%
@@ -152,12 +149,12 @@ write_fst(dtrip0, file.path(final_process_misc_cd, paste0("directed_trip_draws.f
 
 for(i in 1:n_simulations) {
 
-  catch0<-read_dta(file.path(final_process_calib_catch_cd, paste0("calib_catch_draws", uc_suffix, "_", i,".dta"))) %>%
+  catch0<-read_dta(file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i,".dta"))) %>%
     dplyr::mutate(date_parsed = parse_date_any(date),
                   month=data.table::month(date_parsed)) %>%
     dplyr::select(-date)
 
-  write_fst(catch0, file.path(final_process_calib_catch_cd, paste0("calib_catch_draws", uc_suffix, "_", i,".fst")))
+  write_fst(catch0, file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i,".fst")))
 
 }
 

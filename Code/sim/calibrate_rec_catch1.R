@@ -489,7 +489,6 @@ simulate_species_realloc <- function(catch_dt,
   )
 }
 
-uc_suffix <- if (exists("uncertain_flag") && uncertain_flag == 1) "_uc" else ""
 
 # Catch-at-length is common. Read once.
 size_lookup <- as.data.table(
@@ -541,7 +540,7 @@ if (nrow(dtrip_all) == 0L || sum(dtrip_all$dtrip, na.rm = TRUE) == 0) {
 
   dtrip_draw <- dtrip_all[list(i, s, md)]
 
-  catch_path_fst <- file.path(final_process_calib_catch_cd, paste0("calib_catch_draws", uc_suffix, "_", i, ".fst"))
+  catch_path_fst <- file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i, ".fst"))
   catch_data <- as.data.table(read_fst(catch_path_fst))
   setnames(
     catch_data,
