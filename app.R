@@ -100,6 +100,7 @@ ui <- fluidPage(
               #Run Button
               actionButton("runmeplease", "Run Me"),
               textInput("Run_Name", "Please name this using your initials and the number of the run (ex. AB1)."),
+              textOutput("displaymessage"),
 
               fluidRow(
                 column(6,
@@ -225,6 +226,10 @@ ui <- fluidPage(
 ################################################################################
 
 server <- function(input, output, session){
+
+  observeEvent(input$runmeplease, {
+    output$displaymessage <- renderText(paste0("Policy ", input$Run_Name, " saved - your model run has been queued. ..."))
+  })
 
   library(magrittr)
   library(ggplot2)
@@ -903,9 +908,9 @@ server <- function(input, output, session){
       # } else {
       #  paste0(sub("/$", "", queue_url_sas), "/messages")
       # }
-      
+
       message(post_url)
-      
+
       payload <- list(
         runName = run_name,
         submissionId = UUIDgenerate(),

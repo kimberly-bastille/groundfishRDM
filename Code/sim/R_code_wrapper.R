@@ -101,15 +101,13 @@ dir.create(final_process_calib_catch_cd, showWarnings=FALSE)
 # (model_wrapper.do) using the argument in Stata call
 # Define arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) {
-  stop("This script requires exactly two arguments: n_simulations and uncertain_flag.", call. = FALSE)
+if (length(args) != 1) {
+  stop("Error: This script requires exactly one argument.", call. = FALSE)
 }
 n_simulations  <- as.numeric(args[1]) # Number of model iterations.
-uncertain_flag <- as.numeric(args[2]) # Uncertainty run flag.
 
 # Show them, just in case.
 cat("Number of model iterations selected:", n_simulations, "\n")
-cat("Uncertainty behavior (0 = normal, 1 = uncertain_uc files):", uncertain_flag, "\n")
 
 n_draws<-50 # Number of simulated trips per day
 
@@ -155,14 +153,14 @@ write_fst(dtrip0, file.path(final_process_misc_cd, paste0("directed_trip_draws.f
 
 for(i in 1:n_simulations) {
 
-  catch0<-read_dta(file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i,".dta"))) %>%
-    dplyr::mutate(date_parsed = parse_date_any(date),
-                  month=data.table::month(date_parsed)) %>%
-    dplyr::select(-date)
+    catch0<-read_dta(file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i,".dta"))) %>%
+      dplyr::mutate(date_parsed = parse_date_any(date),
+                    month=data.table::month(date_parsed)) %>%
+      dplyr::select(-date)
 
-  write_fst(catch0, file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i,".fst")))
+    write_fst(catch0, file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i,".fst")))
 
-}
+  }
 
 disc_mort<- readr::read_csv(file.path(final_process_misc_cd, "Discard_Mortality.csv"), show_col_types = FALSE)
 write_fst(disc_mort, file.path(final_process_misc_cd, paste0("Discard_Mortality.fst")))
@@ -207,9 +205,6 @@ message("STEP 2 complete.")
 # Next step is to push to Google Drive
 ################################################################################
 ################################################################################
-
-
-
 
 
 

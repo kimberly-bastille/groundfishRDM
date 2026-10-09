@@ -37,16 +37,23 @@ conflicts_prefer(data.table::month)
 
 final_process_data_cd=here::here("Data")
 final_process_outcomes_cd=here::here("Data/base_outcomes")
-final_process_choice_occasions_cd=here::here("Data/n_choice_occassions")
+final_process_choice_occasions_cd=here::here("Data/n_choice_occasions")
 final_process_misc_cd=here::here("Data/miscellaneous")
 final_process_calib_catch_cd=here::here("Data/calib_catch_draws")
+
+#final_process_data_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM"
+#final_process_outcomes_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/base_outcomes"
+#final_process_choice_occasions_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/n_choice_occasions"
+#final_process_misc_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/miscellaneous"
+#final_process_calib_catch_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/calib_catch_draws"
 
 ################################################################################
 ################################################################################
 # Section A: User-facing controls and inputs
 ################################################################################
 ################################################################################
-
+#draws         <- 1:101
+#n_simulations <- 101
 draws         <- 1:101
 n_simulations <- 101
 mode_draw     <- c("pr", "fh")
@@ -139,7 +146,7 @@ directed_trips <- directed_trips %>%
 # e.g. Sys.getenv("RDM_N_WORKERS", unset = parallel::detectCores(logical = FALSE) - 1).
 use_parallel <- TRUE
 n_workers <- 34  # or however many Azure workers/cores you want available
-
+#n_workers <- 2
 
 ## Run Model in parallel
 
@@ -166,4 +173,3 @@ time_saver<-format(Sys.time(), "%Y%m%d_%H%M%S")
 
 # write csv to output folder to be called in app
 write_csv(prediction_draws, file = here::here("output", paste0("output_", policy_name, "_", time_saver, ".csv")))
-

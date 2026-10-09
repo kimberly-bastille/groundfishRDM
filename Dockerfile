@@ -31,6 +31,7 @@ RUN install2.r -e -s \
     plotly \
     rlang \
     openssl \
+    conflicted \
     uuid \
     && chown -R shiny:shiny /srv/rdmtool
 
