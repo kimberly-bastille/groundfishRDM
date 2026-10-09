@@ -216,9 +216,23 @@ loc rdb_catch_at_len_to_drive =0 	        // Push catch at length data to  googl
 /********************* (versions on main should be set to 0)****************************/
 /***************************************************************************************/
 
-* toggle to generate alternative catch per trip data for the uncertainty project (1 = yes, 0 = no)
+* toggle to generate alternative data for the uncertainty project (1 = yes, 0 = no)
 global uncertain 0
 local copula_both=0								        // Copula both model in R
+local uncertain=0
+
+/* toggle the local uncertain to 1 to save the alternative data in its own 'uncertainty' folders
+If the uncertain global is set to 1, make sure the uncertain local is set to 1 as well
+Currently, only Tess has the ability to set up the gfdatadirunc directory */
+if `uncertain' {
+	global misc_data_cd "${gfdatadirunc}/miscellaneous"
+	global calib_catch_draws_cd "${gfdatadirunc}/calib_catch_draws"
+	global figure_cd  "${gfdatadirunc}/figures"
+	
+	capture mkdir $misc_data_cd
+	capture mkdir $calib_catch_draws_cd
+	capture mkdir $figure_cd
+}
 
 
 
