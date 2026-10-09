@@ -26,6 +26,7 @@ RUN install2.r -e -s \
     plyr \
     markdown \
     future \
+    future.apply \
     furrr \
     rlang \
     httr \
