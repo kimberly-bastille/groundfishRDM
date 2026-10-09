@@ -24,6 +24,10 @@ else if inlist("$developer","TP", "ML","KB"){
 /* make this directory if it doesn't exist.*/
 capture mkdir $gfdatadir 
 
+* make directory for uncertainty project data (Tess only for now)
+if inlist("$developer","TP") {
+	global gfdatadirunc "${here}\Data\2027_mgt_cycle\uncertainty"
+} 
 
 display "Hello $developer.  Use the global gfdatadir in place of \${here}\Data\YYYY mgmt cycle)."
 display "The value of datadir is: $gfdatadir"
