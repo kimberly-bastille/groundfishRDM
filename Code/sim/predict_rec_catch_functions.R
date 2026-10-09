@@ -653,6 +653,8 @@ run_cod_hadd_projection <- function(season_draw = get("season_draw", envir = .Gl
                                     use_parallel = TRUE,
                                     common_inputs = NULL) {
 
+  data.table::setDTthreads(1)
+
   if (is.null(common_inputs)) {
     common_inputs <- read_projection_common_inputs_cod_hadd(
       final_process_misc_cd = final_process_misc_cd,
@@ -666,8 +668,10 @@ run_cod_hadd_projection <- function(season_draw = get("season_draw", envir = .Gl
   jobs <- data.table::CJ(season = season_draw, draw = draws, sorted = FALSE)
 
   run_one <- function(ii) {
+    data.table::setDTthreads(1)
     s <- jobs$season[ii]
     dr <- jobs$draw[ii]
+
     message("Projection: season=", s, ", draw=", dr, ", modes=", paste(mode_draw, collapse = ","))
     project_one_cod_hadd_both_modes(
       s = s,
