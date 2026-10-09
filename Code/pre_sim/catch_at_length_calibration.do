@@ -262,13 +262,6 @@ end ;
 
 set seed $seed ;
 
-*uses the uncertainty project "simulated_catch_totals_for_catch_length_uc.dta" if uncertain global == 1 in model_wrapper.do ;
-local suffix ""  ;
-if "$uncertain" == "1" { ;
-    local suffix "_uc" ;
-} ;
-
-
 /* D-B6: the original's message had a semicolon, which would end the command
    under the semicolon delimiter. Replaced by a comma. Display text only. */
 di "catch_at_length_calibration: building MRIP discard lengths, this may take a while ..." ;
@@ -378,7 +371,7 @@ save `props', replace ;
 /******************************************************************************/
 /******************************************************************************/
 
-u "$misc_data_cd\simulated_catch_totals_for_catch_length`suffix'.dta", clear ;
+u "$misc_data_cd\simulated_catch_totals_for_catch_length.dta", clear ;
 keep tot_cod_keep_sim tot_cod_rel_sim tot_hadd_keep_sim tot_hadd_rel_sim  draw season ;
 keep if draw<=$ndraws ;
 
@@ -528,14 +521,14 @@ twoway `plots', ///
 
 preserve ;
 keep length draw season species observed_prob n_fish ;
-export delimited using "$misc_data_cd/baseline_catch_at_length_observed`suffix'.csv", replace ;
+export delimited using "$misc_data_cd/baseline_catch_at_length_observed.csv", replace ;
 restore ;
 
 drop if fitted_prob==0 ;
 keep length fitted_prob draw season species observed_prob ;
 order draw season species length fitted_prob observed_prob ;
 
-export delimited using "$misc_data_cd/baseline_catch_at_length`suffix'.csv", replace ;
+export delimited using "$misc_data_cd/baseline_catch_at_length.csv", replace ;
 
 di "catch_at_length_calibration: done." ;
 
