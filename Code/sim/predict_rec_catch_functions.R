@@ -653,7 +653,6 @@ run_cod_hadd_projection <- function(season_draw = get("season_draw", envir = .Gl
                                     use_parallel = TRUE,
                                     common_inputs = NULL) {
 
-  data.table::setDTthreads(1)
 
   if (is.null(common_inputs)) {
     common_inputs <- read_projection_common_inputs_cod_hadd(
