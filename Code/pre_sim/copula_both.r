@@ -9,7 +9,6 @@
 #                 - 1: Omits uncertainty (uses fixed point estimates for mu/theta).
 # Inputs:       gf.data.dir/miscellaneous/baseline_mrip_catch_processed.xlsx
 # Outputs:      gf.data.dir/calib_catch_draws/calib_catch_draws_raw_<d>.dta
-#               (or _uc_<d>.dta if uncertain_flag == 1)
 # Dependencies: Code/helpers/developer_setup.R (sets gf.data.dir).
 ################################################################################
 ################################################################################
@@ -52,7 +51,7 @@ conflicts_prefer(dplyr::select)
 conflicts_prefer(dplyr::mutate)
 conflicts_prefer(dplyr::summarise)
 
-here::i_am("Code/pre_sim/copula_both.R")
+here::i_am("Code/pre_sim/copula_modeling_calibration.R")
 source(here("Code", "helpers", "developer_setup.R"))
 
 # ---- controls ----
@@ -591,12 +590,7 @@ for (s in unique(catch_draws_all$state)) {
     out_state_draw <- out_state %>%
       dplyr::filter(sim_id == d)
 
-    if (uncertain_flag == 1) {
-      out_file <- file.path(output_dir, paste0("calib_catch_draws_raw_uc_", d, ".dta"))
-    } else {
-      out_file <- file.path(output_dir, paste0("calib_catch_draws_raw_", d, ".dta"))
-    }
-
+    out_file <- file.path(output_dir, paste0("calib_catch_draws_raw", "_", d, ".dta"))
     haven::write_dta(out_state_draw, path = out_file)
   }
 }

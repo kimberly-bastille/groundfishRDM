@@ -232,7 +232,7 @@ drop _merge
 
 label variable dtrip ""
 
-export delimited using "$misc_data_cd/directed_trip_draws_uc_gf.csv", replace
+export delimited using "$misc_data_cd/directed_trip_draws_uc.csv", replace
 
 
 
@@ -246,12 +246,8 @@ export delimited using "$misc_data_cd/directed_trip_draws_uc_gf.csv", replace
 /******************************************************************************/
 
 /* 
-For catch per trip, am I grabbing medians of each calib_catch_draws_<i>.dta at the mode month level? 
 The R pipeline does use simulated_catch_totals.dta and simulated_catch_totals_for_catch_length.dta 
 gets used in the catch at length calibration but these are too aggregated?
- I think simulated_catch_totals3.dta has the means of catch per trip at mode month level so maybe use that 
- if making a mean input dataset and also create another version of simulated_catch_totals3.dta 
- that's collapsed to the median (look at compare_calibration_data_to_MRIP.do)
 */
 
 //look at the end of the additional angler demos do file
