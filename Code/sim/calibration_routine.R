@@ -85,7 +85,6 @@ MRIP_comparison <- as.data.table(
   haven::read_dta(file.path(final_process_misc_cd, "simulated_catch_totals.dta"))
 )
 
-
 setnames(
   MRIP_comparison,
   old = c("tot_dtrip_sim",
