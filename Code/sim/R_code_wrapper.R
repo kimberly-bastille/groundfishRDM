@@ -91,6 +91,12 @@ final_process_choice_occasions_cd=file.path(final_process_data_cd,"n_choice_occa
 final_process_misc_cd=file.path(final_process_data_cd,"miscellaneous")
 final_process_calib_catch_cd=file.path(final_process_data_cd,"calib_catch_draws")
 
+# create directories if necessary
+dir.create(final_process_outcomes_cd, showWarnings=FALSE)
+dir.create(final_process_choice_occasions_cd, showWarnings=FALSE)
+dir.create(final_process_misc_cd, showWarnings=FALSE)
+dir.create(final_process_calib_catch_cd, showWarnings=FALSE)
+
 # Number of model iterations. Match Stata's $ndraws
 # (model_wrapper.do) using the argument in Stata call
 # Define arguments
@@ -198,13 +204,10 @@ message("STEP 2 complete.")
 
 ################################################################################
 ################################################################################
-# Section D: Export calibration outputs to Google Drive
+# Next step is to push to Google Drive
 ################################################################################
 ################################################################################
 
-message("Exporting calibration outputs to Google Drive ...")
-source(file.path(code_cd, "export_to_GoogleDrive.R"))
-message("Export complete.")
 
 
 
