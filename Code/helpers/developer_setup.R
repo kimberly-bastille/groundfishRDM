@@ -17,11 +17,23 @@
 ################################################################################
 
 stopifnot(developer %in% c("TP", "LCH", "ML", "KB"))
-if (developer=="LCH"){
-  gf.data.dir<-"E:/Lou_projects/groundfishRDM/2027_mgt_cycle"
-} else if (developer %in% c("TP","ML", "KB")){
-  dir.create(here("Data","2027_mgt_cycle"), showWarnings = FALSE, recursive=TRUE)
-  gf.data.dir<-here("Data","2027_mgt_cycle")
+
+if (!exists("uncertain")) {
+  uncertain <- 0
+}
+
+if (developer == "LCH") {
+  gf.data.dir <- "E:/Lou_projects/groundfishRDM/2027_mgt_cycle"
+} else if (developer %in% c("TP", "ML", "KB")) {
+
+  # Check if developer is TP and the uncertainty argument from Stata model wrapper is 1
+  if (developer == "TP" && uncertain == 1) {
+    dir.create(here("Data", "2027_mgt_cycle", "uncertainty"), showWarnings = FALSE, recursive = TRUE)
+    gf.data.dir <- here("Data", "2027_mgt_cycle", "uncertainty")
+  } else {
+    dir.create(here("Data", "2027_mgt_cycle"), showWarnings = FALSE, recursive = TRUE)
+    gf.data.dir <- here("Data", "2027_mgt_cycle")
+  }
 }
 
 message("Hello ", developer, "  Use the object gf.data.dir in place of here(Data, YYYY_mgt_cycle).")
