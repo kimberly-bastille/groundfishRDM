@@ -80,9 +80,10 @@ global leap_yr_days "td(29feb2028)"
 * set number of model iterations to create
 global ndraws 101
 
-* adjust 2022 survey trip costs to account for inflation (January 2022 - January 2025)
+* adjust 2022 survey trip costs to account for inflation (January 2022 - January 2026)
+
 * source =https://www.bls.gov/data/inflation_calculator.htm
-global inflation_expansion=1.13
+global inflation_expansion=1.157
 
 /******************************************************************************/
 /******************************************************************************/
