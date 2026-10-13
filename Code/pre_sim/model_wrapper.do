@@ -66,12 +66,12 @@ global calibration_date_end td(31oct2026)
 global projection_date_start td(01may2027)
 global projection_date_end td(30apr2028)
 
-* add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level
+* add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level.   https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/
 
-* fed holidays in the calibration year
+* fed holidays in the calibration year. This is intended to be used with <command> if $fed_holidays. It operates on the column "day"
 global fed_holidays "inlist(day, td(11nov2025), td(27nov2025), td(25dec2025), td(01jan2026), td(19jan2026), td(16feb2026), td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026))"
 
-* fed holidays in the projection year
+* fed holidays in the projection year. This is intended to be used with <command> if $fed_holidays_y2.  It operates on the column "day1"
 global fed_holidays_y2 "inlist(day1, td(31may2027), td(18jun2027), td(05jul2027), td(06sep2027), td(11oct2027), td(11nov2027),  td(25nov2027),  td(24dec2027), td(01jan2028), td(17jan2028), td(21feb2028))"
 
 * leap-year days here
