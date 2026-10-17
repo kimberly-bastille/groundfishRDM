@@ -70,6 +70,21 @@ conflicts_prefer(dplyr::count)
 # Section B: Run parameters, data paths, and helper functions
 ################################################################################
 ################################################################################
+# Number of model iterations. Match Stata's $ndraws and $uncertain
+# (model_wrapper.do) using the argument in Stata call
+# Define arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 2) {
+  stop("Error: This script requires exactly two arguments.", call. = FALSE)
+}
+n_simulations  <- as.numeric(args[1]) # Number of model iterations.
+uncertain <- as.numeric(args[2]) # Uncertainty project flag.
+
+# Show them, just in case.
+cat("Number of model iterations selected:", n_simulations, "\n")
+cat("Uncertainty (0 = normal, 1 = uncertainty data):", uncertain, "\n")
+
+n_draws<-50 # Number of simulated trips per day
 
 #Set up R globals for input/output data and code scripts
 code_cd=here("Code", "sim")
@@ -97,19 +112,6 @@ dir.create(final_process_choice_occasions_cd, showWarnings=FALSE)
 dir.create(final_process_misc_cd, showWarnings=FALSE)
 dir.create(final_process_calib_catch_cd, showWarnings=FALSE)
 
-# Number of model iterations. Match Stata's $ndraws
-# (model_wrapper.do) using the argument in Stata call
-# Define arguments
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop("Error: This script requires exactly one argument.", call. = FALSE)
-}
-n_simulations  <- as.numeric(args[1]) # Number of model iterations.
-
-# Show them, just in case.
-cat("Number of model iterations selected:", n_simulations, "\n")
-
-n_draws<-50 # Number of simulated trips per day
 
 #' @title Parse dates of unknown format to IDate
 #' @description Tries several common date encodings in turn and returns a

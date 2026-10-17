@@ -3,10 +3,12 @@
 # Script:       copula_both.R
 # Purpose:      Estimates the calibration-year joint distribution of harvest
 #               ("keep") and discards ("rel") per trip for cod and haddock.
-#               Accepts a flag (uncertain_flag) from the command line:
+#               Accepts an argument (uncertain_flag) toggled in model_wrapper.do:
 #                 - 0: Includes MRIP survey sampling uncertainty (draws mu and
 #                      theta via bootstrap replicate weights).
 #                 - 1: Omits uncertainty (uses fixed point estimates for mu/theta).
+#               A manual toggle allows you to specify WHICH species has
+#               its sampling uncertainty removed when uncertain_flag == 1.
 # Inputs:       gf.data.dir/miscellaneous/baseline_mrip_catch_processed.xlsx
 # Outputs:      gf.data.dir/calib_catch_draws/calib_catch_draws_raw_<d>.dta
 # Dependencies: Code/helpers/developer_setup.R (sets gf.data.dir).
@@ -63,6 +65,13 @@ if (length(args) != 2) {
 
 n_draws        <- as.numeric(args[1])
 uncertain_flag <- as.numeric(args[2])
+
+# --- NEW MANUAL TOGGLE ---
+# When uncertain_flag == 1, specify which species should have their
+# sampling uncertainty removed. Options: "cod" for cod only, "hadd" for haddock only,
+# or c("cod", "hadd") for both
+species_no_uncertainty <- c("cod", "hadd")
+# -------------------------
 
 cat("Number of model iterations selected:", n_draws, "\n")
 cat("Uncertainty behavior (0 = simulate uncertainty, 1 = use fixed point estimates):", uncertain_flag, "\n")
@@ -531,6 +540,10 @@ run_species_copula_sim <- function(full_df,
   dplyr::bind_rows(species_results_all)
 }
 
+# Evaluate species-specific flags based on manual toggle
+cod_uc_flag <- if (uncertain_flag == 1 && "cod" %in% species_no_uncertainty) 1 else 0
+hadd_uc_flag <- if (uncertain_flag == 1 && "hadd" %in% species_no_uncertainty) 1 else 0
+
 message("copula_modeling_calibration: simulating cod catch draws (", n_draws, " draws x ", n_sim, " rows per domain); this may take a while ...")
 cod_sim <- run_species_copula_sim(
   full_df = full_df,
@@ -539,7 +552,7 @@ cod_sim <- run_species_copula_sim(
   n_sim = n_sim,
   n_draws = n_draws,
   n_reps = n_reps,
-  uncertain_flag = uncertain_flag
+  uncertain_flag = cod_uc_flag
 )
 
 message("copula_modeling_calibration: simulating haddock catch draws ...")
@@ -550,7 +563,7 @@ hadd_sim <- run_species_copula_sim(
   n_sim = n_sim,
   n_draws = n_draws,
   n_reps = n_reps,
-  uncertain_flag = uncertain_flag
+  uncertain_flag = hadd_uc_flag
 )
 
 add_draw_row <- function(df) {
@@ -591,6 +604,7 @@ for (s in unique(catch_draws_all$state)) {
       dplyr::filter(sim_id == d)
 
     out_file <- file.path(output_dir, paste0("calib_catch_draws_raw", "_", d, ".dta"))
+
     haven::write_dta(out_state_draw, path = out_file)
   }
 }
