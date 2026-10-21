@@ -10,8 +10,8 @@
 #               (num_NAA_draws) from a bias-corrected lognormal.
 # Inputs:       Two files from the Google Drive shared drive:
 #               "NMFS NEC READ SSB", haddock_assessment/
-#                 mod_nola_dcpe_blls2.rds     (accepted WHAM model),
-#                 waa_pred_2024-08-25.xlsx    (projected SSB/Catch weight-at-age).
+#                 PLACEHOLDER.rds     (accepted WHAM model),
+#                 waa_PLACEHOLDER.xlsx    (projected SSB/Catch weight-at-age).
 #               "commercial_CY_removals_{vintage_string}.Rds"
 # Outputs:      input_data/GOM_Haddock_Projections_<date>.Rds,
 #               input_data/GOM_Haddock_historical_NAA_<date>.{Rds,dta},
@@ -31,13 +31,12 @@
 #   - Some parameters go INTO the assessment, others come OUT (weights-at-age,
 #     historical NAA). Future NAA are treated as lognormal (no stochastic
 #     projection) and simulated with rlnorm().
-#   - Bridging (2024 removals) was originally the PDT's 2105 mt; it has been
-#     updated to the 2024 actual catch (see "Define catch in previous years").
-#   - The two projections differ only in the out-year F: projection 1 uses Fmsy
+#   - Bridging (2026 removals) is set to PLACEHOLDER mt;
+#   - PLACEHOLDER The two projections differ only in the out-year F: projection 1 uses Fmsy
 #     (this is the projection in the MT report, and produces the 2025 OFL);
 #     projection 2 uses 0.75*Fmsy (potential ABCs) and supplies the saved NAA.
 #
-# Author: Charles Perretti (2024-NOV); modified by Min-Yang Lee (2025-Nov and 2026- OCT
+# Author: Charles Perretti (2024-NOV); modified by Min-Yang Lee (2025-Nov and 2026-OCT)
 ################################################################################
 ################################################################################
 #Load libraries
@@ -93,8 +92,8 @@ HistoricalNAASaveFile<-glue("GOM_Haddock_historical_NAA_{data_version}")
 
 # FLAG: this needs to be changed
 # input save files
-assessment_file_in<-"mod_nola_dcpe_blls2.rds"
-waa_file_in<-"waa_pred_2024-08-25.xlsx"
+assessment_file_in<-"PLACEHOLDER.rds"
+waa_file_in<-"waa_PLACEHOLDER.xlsx"
 
 
 # Connect to Google Drive
@@ -222,9 +221,9 @@ set.seed(6)
 
 
 
-
+################This may just be commented out, since it would use the assessment catch
 # Define catch in previous years  ######################################################
-old_bridge_year_catch <- 2105 #GOM haddock 2024 MT PDT-supplied catch
+assessment_2026_bridge_year_catch <- 1994 #GOM haddock 2026 (See Table 4 in the 2026 GOM Haddock SAR)
 
 actual_2023_commercial_catch_mt<-gom_haddock_cy_removals %>%
   filter(year==2023) %>%
@@ -307,8 +306,8 @@ set_specs <- function(mod, bridge_year_catch) {
     )
 }
 
-# pass in "actual_2024_catch_mt"
-proj.opts_list2 <- map_df(mod_list, .f = set_specs, actual_2024_catch_mt)
+# pass in "assessment_2026_bridge_year_catch"
+proj.opts_list2 <- map_df(mod_list, .f = set_specs, assessment_2026_bridge_year_catch)
 
 
 # Run projections ##############################################################
