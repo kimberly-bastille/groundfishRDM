@@ -41,6 +41,8 @@ final_process_choice_occasions_cd=here::here("Data/n_choice_occasions")
 final_process_misc_cd=here::here("Data/miscellaneous")
 final_process_calib_catch_cd=here::here("Data/calib_catch_draws")
 
+#test
+
 # final_process_data_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM"
 # final_process_outcomes_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/base_outcomes"
 # final_process_choice_occasions_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/n_choice_occasions"
