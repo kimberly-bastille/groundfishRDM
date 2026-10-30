@@ -11,6 +11,8 @@
  Pipeline:     Wrapped by model_wrapper.do, gated by `prep_trips_for_dash'
                Followed by rdb_dtrips_to_drive.R, which pushes
                the output to Google Drive as an Rds.
+               
+Notes:    As of October 2026, we have 101 draws in this dataset, but this could change in the future.
 *******************************************************************************/
 /*
  General strategy:
