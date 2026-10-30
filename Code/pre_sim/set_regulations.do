@@ -32,23 +32,20 @@
 /* Section A: Calibration-period regulations (haddock and cod) */
 /******************************************************************************/
 /******************************************************************************/
-* Generate baseline regulations for the calibration period, which covers (year==2025 & inlist(wave, 1, 2, 3, 4)) | (year==2024 & inlist(wave, 5, 6)). 
-* So FY24 regs until April 30, 2025, FY25 regs starting May 1, 2025 
+* Generate baseline regulations for the calibration period, which covers (year==2026 & inlist(wave, 1, 2, 3, 4, 5)) | (year==2025 & inlist(wave, 6)). 
+* So FY25 regs until April 30, 2026, FY26 regs starting May 1, 2026 
+* Since Wave 6, 1, and 2 data are never available when we need to do management (in December), we use proxies:  
+   * Wave 6 of 2025 serves as a proxy for Wave 6 of CY2026
+   * Wave 1 of 2026 serves as a proxy for Wave 1 of CY2027
+   * Wave 2 of 2026 serves as a proxy for Wave 2 of CY2027
 
 /* These are the actual regulations, including the effective dates of implementation:
 Species	open						mode	bag 	size
-Haddock 	8/14/23-2/28/24		fh			15	18
-Haddock 	4/1/24-4/30/24		fh			15	18
-Haddock 	8/14/23-2/28/24		pr			10	17
-Haddock 	4/1/24-4/30/24		pr			10	17
-Haddock 	5/1/24-7/23/24		fh			15	18
-Haddock 	5/1/24-7/23/24		pr			10	17
-Haddock 	7/24/24-2/28/25		both		15	18
-Haddock 	4/1/25-4/30/25		both		15	18
-Haddock 	5/1/25-2/28/26		both		15	18
-Cod			9/1/23-10/31/23		both		1		22
-Cod			9/1/24-10/31/24		both		1	    23
+Haddock 	4/1/25-2/28/26		both		15	17
+Haddock 	4/1/26-2/28/27		both		15	17
 Cod			9/1/25-10/31/25		both		1		23
+Cod			9/1/26-10/31/26		both		1	    23
+https://www.fisheries.noaa.gov/new-england-mid-atlantic/recreational-fishing/recreational-fishing-regulations-species
 */
 
 /* Defaults represent a closed fishery: bag 0, and a 100 cm minimum size that no
@@ -63,58 +60,23 @@ gen hadd_min = 100
 *-------------------------------
 *        HADDOCK            
 *-------------------------------
+replace hadd_bag = 15        if inrange(day, td(01apr2025), td(28feb2026)) 
+replace hadd_min = 17*2.54 if inrange(day, td(01apr2025), td(28feb2026)) 
 
-* 8/14/2023–2/28/2024 (fh)
-replace hadd_bag = 15        if inrange(day, td(14aug2023), td(28feb2024)) & mode=="fh"
-replace hadd_min = 18*2.54 if inrange(day, td(14aug2023), td(28feb2024)) & mode=="fh"
+replace hadd_bag = 15        if inrange(day, td(01apr2026), td(28feb2027)) 
+replace hadd_min = 17*2.54 if inrange(day, td(01apr2026), td(28feb2027)) 
 
-* 8/14/2023–2/28/2024 (pr)
-replace hadd_bag = 10        if inrange(day, td(14aug2023), td(28feb2024)) & mode=="pr"
-replace hadd_min = 17*2.54 if inrange(day, td(14aug2023), td(28feb2024)) & mode=="pr"
-
-* 4/1/2024–4/30/2024 (fh)
-replace hadd_bag = 15        if inrange(day, td(01apr2024), td(30apr2024)) & mode=="fh"
-replace hadd_min = 18*2.54 if inrange(day, td(01apr2024), td(30apr2024)) & mode=="fh"
-
-* 4/1/2024–4/30/2024 (pr)
-replace hadd_bag = 10        if inrange(day, td(01apr2024), td(30apr2024)) & mode=="pr"
-replace hadd_min = 17*2.54 if inrange(day, td(01apr2024), td(30apr2024)) & mode=="pr"
-
-* 5/1/2024–7/23/2024 (fh)
-replace hadd_bag = 15        if inrange(day, td(01may2024), td(23jul2024)) & mode=="fh"
-replace hadd_min = 18*2.54 if inrange(day, td(01may2024), td(23jul2024)) & mode=="fh"
-
-* 5/1/2024–7/23/2024 (pr)
-replace hadd_bag = 10        if inrange(day, td(01may2024), td(23jul2024)) & mode=="pr"
-replace hadd_min = 17*2.54 if inrange(day, td(01may2024), td(23jul2024)) & mode=="pr"
-
-* 7/24/2024–2/28/2025 (both modes)
-replace hadd_bag = 15        if inrange(day, td(24jul2024), td(28feb2025))
-replace hadd_min = 18*2.54 if inrange(day, td(24jul2024), td(28feb2025))
-
-* 4/1/2025–4/30/2025 (both modes)
-replace hadd_bag = 15        if inrange(day, td(01apr2025), td(30apr2025))
-replace hadd_min = 18*2.54 if inrange(day, td(01apr2025), td(30apr2025))
-
-* 5/1/2025–2/28/2026 (both modes)
-replace hadd_bag = 15        if inrange(day, td(01may2025), td(28feb2026))
-replace hadd_min = 18*2.54 if inrange(day, td(01may2025), td(28feb2026))
 
 *-------------------------------
 *            COD                 
 *-------------------------------
-
-* 9/1/2023–10/31/2023 (both)
-replace cod_bag = 1           if inrange(day, td(01sep2023), td(31oct2023))
-replace cod_min = 22*2.54  if inrange(day, td(01sep2023), td(31oct2023))
-
-* 9/1/2024–10/31/2024 (both)
-replace cod_bag = 1           if inrange(day, td(01sep2024), td(31oct2024))
-replace cod_min = 23*2.54  if inrange(day, td(01sep2024), td(31oct2024))
-
-* 9/1/2025–10/31/2025 (both)
 replace cod_bag = 1           if inrange(day, td(01sep2025), td(31oct2025))
 replace cod_min = 23*2.54  if inrange(day, td(01sep2025), td(31oct2025))
+
+replace cod_bag = 1           if inrange(day, td(01sep2026), td(31oct2026))
+replace cod_min = 23*2.54  if inrange(day, td(01sep2026), td(31oct2026))
+
+
 
 
 tempfile regulations
@@ -125,6 +87,7 @@ save `regulations', replace
 /* Section B: Build the projection-year (y2) calendar and merge in calibration regs */
 /******************************************************************************/
 /******************************************************************************/
+
 clear
 set obs 2
 gen day_y2=$projection_date_start if _n==1
@@ -169,71 +132,23 @@ sort  mode day draw
 /* Section C: Year-2 status-quo regulations (projection period) */
 /******************************************************************************/
 /******************************************************************************/
-* Year 2 status-quo regs (projection period : 01may2026–30apr2027)
-* Based on actual 2025 regulations:
-*   Cod:     1 fish, 23",  9/1/25–10/31/25
-*   Haddock: 15 fish, 18", 5/1/25–2/28/26 and 4/1/26–4/30/26
-
-gen cod_bag_y2  = 0 
+gen cod_bag_y2  = 0
 gen cod_min_y2  = 100
 
 gen hadd_bag_y2 = 0
 gen hadd_min_y2 = 100
 
 *-------------------------------
-*  COD – status quo actual (_y2) 
+*        HADDOCK            
 *-------------------------------
-* 1 fish, 23", 9/1/2026–10/31/2026
- 
-replace cod_bag_y2 = 1           if inrange(day_y2, td(01sep2026), td(31oct2026))
-replace cod_min_y2 = 23*2.54  if inrange(day_y2, td(01sep2026), td(31oct2026))
-
-*-------------------------------
-*  HADDOCK – status quo actual (_y2) 
-*-------------------------------
-* 15 fish, 18", 5/1/2026–2/28/2027 and 4/1/2027–4/30/2027
-
-replace hadd_bag_y2 = 15      if inrange(day_y2, td(01may2026), td(28feb2027)) ///
-                                              | inrange(day_y2, td(01apr2027), td(30apr2027))
-replace hadd_min_y2 = 18*2.54 if inrange(day_y2, td(01may2026), td(28feb2027)) ///
-                                                | inrange(day_y2, td(01apr2027), td(30apr2027))
+replace hadd_bag_y2 = 15        if inrange(day, td(01apr2027), td(28feb2028)) 
+replace hadd_min_y2 = 17*2.54 if inrange(day, td(01apr2027), td(28feb2028)) 
 
 
-/******************************************************************************/
-/******************************************************************************/
-/* Section D: Year-2 alternative regulations (voted but not implemented) */
-/******************************************************************************/
-/******************************************************************************/
-*This section can be excluded if the regulations voted for the projection year were actually implemented. But this is not always the case, e.g., in FY 2026. 
-
-* Year 2 alternative regs (projection: 01may2026–30apr2027)
-* Based on *voted but not implemented* 2025 regs:
-*   Cod:     1 fish, 23",  5/1/25–5/31/25 and 9/1/25–10/31/25
-*   Haddock: 15 fish, 17", 5/1/25–2/28/26 and 4/1/26–4/30/26
-
-gen cod_bag_y2_alt  = 0 
-gen cod_min_y2_alt  = 100
-
-gen hadd_bag_y2_alt = 0
-gen hadd_min_y2_alt = 100
 
 *-------------------------------
-*  COD – status quo alternative (_y2_alt)  
+*            COD                 
 *-------------------------------
-* 1 fish, 23", 5/1/2026–5/31/2026 and 9/1/2026–10/31/2026
-replace cod_bag_y2_alt = 1        if inrange(day_y2, td(01may2026), td(31may2026)) ///
-												  | inrange(day_y2, td(01sep2026), td(31oct2026))
-replace cod_min_y2_alt = 23*2.54  if inrange(day_y2, td(01may2026), td(31may2026)) ///
-													| inrange(day_y2, td(01sep2026), td(31oct2026))
-
-*-------------------------------
-*  HADDOCK – status quo alternative (_y2_alt)  
-*-------------------------------
-* 15 fish, 17", 5/1/2026–2/28/2027 and 4/1/2027–4/30/2027
-replace hadd_bag_y2_alt = 15      if inrange(day_y2, td(01may2026), td(28feb2027)) ///
-													| inrange(day_y2, td(01apr2027), td(30apr2027))
-replace hadd_min_y2_alt = 17*2.54 if inrange(day_y2, td(01may2026), td(28feb2027)) ///
-													| inrange(day_y2, td(01apr2027), td(30apr2027))
-									 
-
+replace cod_bag_y2 = 1           if inrange(day, td(01sep2027), td(31oct2027))
+replace cod_min_y2 = 23*2.54  if inrange(day, td(01sep2027), td(31oct2027))
 
