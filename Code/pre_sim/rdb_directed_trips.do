@@ -85,6 +85,7 @@ save "$misc_data_cd\rdb_dtrips.dta", replace
 /*
 *The median of total monthly trips will be different from the sum of median trips by 
 *kod and mode. But the numbers are very close and indistinguishable when plotted. 
+* (All months have less than 1% difference compared to median total monthly trips)
 
 *Compare the sum of the medians at the mode-kod level...
 collapse (sum) value, by(month year)
