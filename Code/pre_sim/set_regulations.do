@@ -34,13 +34,18 @@
 /******************************************************************************/
 * Generate baseline regulations for the calibration period, which covers (year==2026 & inlist(wave, 1, 2, 3, 4, 5)) | (year==2025 & inlist(wave, 6)). 
 * So FY25 regs until April 30, 2026, FY26 regs starting May 1, 2026 
+* Since Wave 6, 1, and 2 data are never available when we need to do management (in December), we use proxies:  
+   * Wave 6 of 2025 serves as a proxy for Wave 6 of CY2026
+   * Wave 1 of 2026 serves as a proxy for Wave 1 of CY2027
+   * Wave 2 of 2026 serves as a proxy for Wave 2 of CY2027
 
 /* These are the actual regulations, including the effective dates of implementation:
 Species	open						mode	bag 	size
 Haddock 	4/1/25-2/28/26		both		15	17
 Haddock 	4/1/26-2/28/27		both		15	17
-Cod			9/1/25-10/31/23		both		1		23
+Cod			9/1/25-10/31/25		both		1		23
 Cod			9/1/26-10/31/26		both		1	    23
+https://www.fisheries.noaa.gov/new-england-mid-atlantic/recreational-fishing/recreational-fishing-regulations-species
 */
 
 /* Defaults represent a closed fishery: bag 0, and a 100 cm minimum size that no
