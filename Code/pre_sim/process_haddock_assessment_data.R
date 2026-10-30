@@ -1,17 +1,17 @@
 ################################################################################
 ################################################################################
 # Script:       process_haddock_assessment.R
-# Purpose:      Reads the accepted GOM haddock WHAM stock-assessment model
-#               (terminal year 2023) and its projected weight-at-age workbook
+# Purpose:      Reads the accepted 2026 GOM haddock management track WHAM stock-assessment model
+#               (terminal year 202X) and its projected weight-at-age workbook
 #               from Google Drive, runs the two standard PDT projections
-#               (Fmsy and 0.75*Fmsy, 2025-2027), and writes historical and
+#               (Fmsy and 0.75*Fmsy, 2027-202X), and writes historical and
 #               projected numbers-at-age (NAA). NAA are taken from the SECOND
 #               projection (0.75*Fmsy) and, for the projection year, drawn
 #               (num_NAA_draws) from a bias-corrected lognormal.
 # Inputs:       Two files from the Google Drive shared drive:
 #               "NMFS NEC READ SSB", haddock_assessment/
-#                 mod_nola_dcpe_blls2.rds     (accepted WHAM model),
-#                 waa_pred_2024-08-25.xlsx    (projected SSB/Catch weight-at-age).
+#                 PLACEHOLDER.rds     (accepted WHAM model),
+#                 waa_PLACEHOLDER.xlsx    (projected SSB/Catch weight-at-age).
 #               "commercial_CY_removals_{vintage_string}.Rds"
 # Outputs:      input_data/GOM_Haddock_Projections_<date>.Rds,
 #               input_data/GOM_Haddock_historical_NAA_<date>.{Rds,dta},
@@ -31,13 +31,12 @@
 #   - Some parameters go INTO the assessment, others come OUT (weights-at-age,
 #     historical NAA). Future NAA are treated as lognormal (no stochastic
 #     projection) and simulated with rlnorm().
-#   - Bridging (2024 removals) was originally the PDT's 2105 mt; it has been
-#     updated to the 2024 actual catch (see "Define catch in previous years").
-#   - The two projections differ only in the out-year F: projection 1 uses Fmsy
+#   - Bridging (2026 removals) is set to PLACEHOLDER mt;
+#   - PLACEHOLDER The two projections differ only in the out-year F: projection 1 uses Fmsy
 #     (this is the projection in the MT report, and produces the 2025 OFL);
 #     projection 2 uses 0.75*Fmsy (potential ABCs) and supplies the saved NAA.
 #
-# Author: Charles Perretti (2024-NOV); modified by Min-Yang Lee (2025-Nov).
+# Author: Charles Perretti (2024-NOV); modified by Min-Yang Lee (2025-Nov and 2026-OCT)
 ################################################################################
 ################################################################################
 #Load libraries
@@ -79,7 +78,7 @@ stock_stats_df<-tibble(
   wave=NA,
   metric="Numbers At Age",
   units = "Thousands",
-  source = "2024 Assessment",
+  source = "2026 Assessment",
   data_version= data_version
 )
 # Save 3 years years of historical NAA
@@ -91,9 +90,10 @@ FullProjectionsSaveFile<-"GOM_Haddock_Projections"
 ProjectedNAASaveFile<-glue("GOM_Haddock_projected_NAA_{data_version}")
 HistoricalNAASaveFile<-glue("GOM_Haddock_historical_NAA_{data_version}")
 
+# FLAG: this needs to be changed
 # input save files
-assessment_file_in<-"mod_nola_dcpe_blls2.rds"
-waa_file_in<-"waa_pred_2024-08-25.xlsx"
+assessment_file_in<-"PLACEHOLDER.rds"
+waa_file_in<-"waa_PLACEHOLDER.xlsx"
 
 
 # Connect to Google Drive
@@ -156,6 +156,7 @@ drive_download(
   overwrite = TRUE
 )
 
+# FLAG: this needs to be changed, possibly just updating years, but it could be more.
 
 # Load WAA projections (specific to GOM haddock) ###############################
 waa_proj_ssb <-
@@ -178,7 +179,7 @@ if (file.exists(temp_path)) {
 
 
 stock_name <- "GOM haddock"
-model_name <- "2024MT"
+model_name <- "2026MT"
 
 mod_accepted$model_name <- "Accepted"
 mod_list <- list(mod_accepted)
@@ -220,9 +221,9 @@ set.seed(6)
 
 
 
-
+################This may just be commented out, since it would use the assessment catch
 # Define catch in previous years  ######################################################
-old_bridge_year_catch <- 2105 #GOM haddock 2024 MT PDT-supplied catch
+assessment_2026_bridge_year_catch <- 1994 #GOM haddock 2026 (See Table 4 in the 2026 GOM Haddock SAR)
 
 actual_2023_commercial_catch_mt<-gom_haddock_cy_removals %>%
   filter(year==2023) %>%
@@ -235,7 +236,7 @@ actual_2025_commercial_catch_mt<-gom_haddock_cy_removals %>%
   pull(total_removals)
 actual_2026_commercial_catch_mt<-NA # Update this for 2028 management:
 
-actual_2026_commercial_catch_mt<-NA # Update for 2028
+actual_2027_commercial_catch_mt<-NA # Update for 2029
 
 
 # I use GARFOs quota monitoring page for Rec, since the FY catch is equal to the CY catch.
@@ -243,16 +244,17 @@ actual_2026_commercial_catch_mt<-NA # Update for 2028
 
 actual_2023_rec_catch_mt<-793 # From GARFO quota monitoring report
 actual_2024_rec_catch_mt<-899
-actual_2025_rec_catch_mt<-899 #Update for 2027
+actual_2025_rec_catch_mt<-899 #PLaceholder, needs an Update for 2027
 actual_2025_rec_catch_mt<-NA #Update for 2028
 
 
 actual_2023_catch_mt<-actual_2023_commercial_catch_mt+actual_2023_rec_catch_mt
 actual_2024_catch_mt<-actual_2024_commercial_catch_mt+actual_2024_rec_catch_mt
 
-# 2025 not used yet.
- actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
+actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
 
+# 2026 not used yet.
+actual_2026_catch_mt<-actual_2026_commercial_catch_mt+actual_2026_rec_catch_mt
 
 #Handle WAA ###############################################################################
 
@@ -304,8 +306,8 @@ set_specs <- function(mod, bridge_year_catch) {
     )
 }
 
-# pass in "actual_2024_catch_mt"
-proj.opts_list2 <- map_df(mod_list, .f = set_specs, actual_2024_catch_mt)
+# pass in "assessment_2026_bridge_year_catch"
+proj.opts_list2 <- map_df(mod_list, .f = set_specs, assessment_2026_bridge_year_catch)
 
 
 # Run projections ##############################################################
