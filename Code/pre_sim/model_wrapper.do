@@ -114,7 +114,10 @@ timer on 1           // Starts timing
 
 /* start log */
 cap log close
-log using "${log_dir}\model_wrapper_log_${S_DATE}_${S_TIME}.smcl", replace
+local time_string = subinstr(trim("${S_TIME}"), ":" , "_", .)
+
+log using "${log_dir}\model_wrapper_log_${S_DATE}_`time_string'.smcl", replace
+
 
 
 * set a global seed
