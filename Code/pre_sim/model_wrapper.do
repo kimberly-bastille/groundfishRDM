@@ -114,7 +114,10 @@ timer on 1           // Starts timing
 
 /* start log */
 cap log close
-log using "${log_dir}\model_wrapper_log_${S_DATE}_${S_TIME}.smcl", replace
+local time_string = subinstr(trim("${S_TIME}"), ":" , "_", .)
+
+log using "${log_dir}\model_wrapper_log_${S_DATE}_`time_string'.smcl", replace
+
 
 
 * set a global seed
@@ -214,8 +217,9 @@ loc export_all_to_GDrive = 0             // Export calibration and all data to G
 loc rdb_processing_catch_per_trip= 0  	  // prep data for dashboard
 loc rdb_catch_per_trip_to_drive =0 	  	  // Push to google drive in R
 loc rdb_catch_at_length= 0	              // Prep catch at length data for dashboard
-loc rdb_catch_at_len_to_drive =0 	        // Push catch at length data to  google drive in R
-
+loc rdb_catch_at_len_to_drive =0 	      // Push catch at length data to google drive in R
+loc rdb_directed_trips =0 	        	  // Prep directed trips data for dashboard
+loc rdb_dtrips_to_drive =0 	      		  // Push directed trips data to google drive in R
 
 
 /********************* Uncertainty Project Toggles *************************************/
@@ -385,6 +389,25 @@ if `directed_trip_uncertain' {
 }
 else {
 	local skipped_scripts `skipped_scripts' directed_trip_uncertain.do
+}
+
+		//Process directed trips and format it for the rec dashboard
+if `rdb_directed_trips'{
+   	di "Processing and formatting directed trips for dashboard"
+	do "$input_code_cd\rdb_directed_trips.do"
+	local executed_scripts `executed_scripts' rdb_directed_trips.do
+}
+else {
+    local skipped_scripts `skipped_scripts' rdb_directed_trips.do
+}
+		//run this script in R to read in the directed trips processed for the rec dashboard, save it as an Rds, and push it to Google Drive
+if `rdb_dtrips_to_drive'{
+    di "Pushing rec dashboard catch at length data to gdrive using R"
+	rscript using "$input_code_cd\rdb_dtrips_to_drive.R"
+	local executed_scripts `executed_scripts' rdb_dtrips_to_drive.R
+}
+else {
+   local skipped_scripts `skipped_scripts' rdb_dtrips_to_drive.R
 }
 
 // 3) Create distributions of costs per trip across strata - only needs to be run once
@@ -559,10 +582,11 @@ else {
   local skipped_scripts `skipped_scripts' export_all_to_GDrive.R
   di "Export complete."
 }
-if `projected_naa_uncertain' & $developer=="TP"{
+
+if (`projected_naa_uncertain' & "$developer"=="TP"){
 	di "Resetting Assessment data from google"
-	
 	do "$input_code_cd\get_assessment_from_gdrive.do"
+	local executed_scripts `executed_scripts' AssesmentReset
 }
 
 display "model_wrapper.do: Stata pre-simulation stage complete."
