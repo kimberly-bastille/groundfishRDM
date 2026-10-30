@@ -49,7 +49,7 @@ drop if mode=="sh"
 * Sum daily trip draws to get monthly trip draws by mode and kod
 collapse (sum) dtrip, by(mode month year kod draw)
 
-* Take the median of the 101 draws of monthly trips by mode and kod
+* Take the median of the draws of monthly trips by mode and kod
 collapse (median) dtrip, by(mode kod month year)
 
 
