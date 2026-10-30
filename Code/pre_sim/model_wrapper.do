@@ -582,10 +582,11 @@ else {
   local skipped_scripts `skipped_scripts' export_all_to_GDrive.R
   di "Export complete."
 }
-if `projected_naa_uncertain' & $developer=="TP"{
+
+if (`projected_naa_uncertain' & "$developer"=="TP"){
 	di "Resetting Assessment data from google"
-	
 	do "$input_code_cd\get_assessment_from_gdrive.do"
+	local executed_scripts `executed_scripts' AssesmentReset
 }
 
 display "model_wrapper.do: Stata pre-simulation stage complete."
