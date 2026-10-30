@@ -1,41 +1,45 @@
-# This code runs the standard projections requested by the PDT for WHAM models.
-# The terminal year of this stock assessment is 2023.
-
-# Author: Charles Perretti (2024-NOV)
-# Mod : Min-Yang Lee (2025-Nov)
-####################################################################################
-# Depends "wham_version_installer.R" will install the proper version of the WHAM
-# package that matches the WHAM model.
-####################################################################################
-# Reads files from google drive, you'll need access to those files.
-
-# This code does 2 projections, but uses the first projection
-# 1) Fmsy 2025-2027 (this is the projection in the MT report) which also produces the ofl in 2025
-# 2) 75%Fmsy 2025-2027 (potential ABCs)
-
-
-# The bioeconomic model needs a few parameters that go into the stock assessment.
-# It also needs some parameters that come out of the stock assessment.
-# Bridging (2024 removals) was orginally set at 2105mt, following the groundfish PDT
-# I've updated it to 2024 actuals
-# This is pretty standard.
-# Some inputs to ASAP are scalars, some are vectors, and some are matrices.
-# I use tail(.x, 1) to pick the last "thing" of a vector or matrix, which is usually the final year of data.
-
-
-
-############
-# Parameters that come out of the stock assessment
-# Weights at age
-# Historical NAA comes out of the WHAM stock assessment.
-
-######
-# Parameters that come out of the projections
-######
-# Numbers at age (in the future).  There isn't a stochastic projection for
-# Haddock NAA are assumed to be lognormally distributed with a mean and sd parameters.
-# I use rlnorm() to generate a distribution
-############ End description###################################################
+################################################################################
+################################################################################
+# Script:       process_haddock_assessment.R
+# Purpose:      Reads the accepted GOM haddock WHAM stock-assessment model
+#               (terminal year 2023) and its projected weight-at-age workbook
+#               from Google Drive, runs the two standard PDT projections
+#               (Fmsy and 0.75*Fmsy, 2025-2027), and writes historical and
+#               projected numbers-at-age (NAA). NAA are taken from the SECOND
+#               projection (0.75*Fmsy) and, for the projection year, drawn
+#               (num_NAA_draws) from a bias-corrected lognormal.
+# Inputs:       Two files from the Google Drive shared drive:
+#               "NMFS NEC READ SSB", haddock_assessment/
+#                 mod_nola_dcpe_blls2.rds     (accepted WHAM model),
+#                 waa_pred_2024-08-25.xlsx    (projected SSB/Catch weight-at-age).
+#               "commercial_CY_removals_{vintage_string}.Rds"
+# Outputs:      input_data/GOM_Haddock_Projections_<date>.Rds,
+#               input_data/GOM_Haddock_historical_NAA_<date>.{Rds,dta},
+#               input_data/GOM_Haddock_projected_NAA_<date>.{Rds,dta}
+# Dependencies: wham_version_installer.R must have installed the WHAM version
+#               matching the model (verified here via stopifnot on the commit).
+#               Code/helpers/naa_helpers.R (pivot_naa_long, validate_naa_data).
+#               Google Drive access with cached credentials in .secrets.
+# Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
+#               the Stata pipeline: its NAA outputs feed the catch-at-length
+#               steps (see catch_at_length_projection.do). Sibling of
+#               get_cod_assessment_data.R.
+#
+# Background (units and conventions):
+#   - Aggregate weights (SSB, catch) are in metric tons; weight-at-age vectors
+#     are in kg. tail(x, 1) picks the last (most recent) year of a vector/matrix.
+#   - Some parameters go INTO the assessment, others come OUT (weights-at-age,
+#     historical NAA). Future NAA are treated as lognormal (no stochastic
+#     projection) and simulated with rlnorm().
+#   - Bridging (2024 removals) was originally the PDT's 2105 mt; it has been
+#     updated to the 2024 actual catch (see "Define catch in previous years").
+#   - The two projections differ only in the out-year F: projection 1 uses Fmsy
+#     (this is the projection in the MT report, and produces the 2025 OFL);
+#     projection 2 uses 0.75*Fmsy (potential ABCs) and supplies the saved NAA.
+#
+# Author: Charles Perretti (2024-NOV); modified by Min-Yang Lee (2025-Nov).
+################################################################################
+################################################################################
 #Load libraries
 library(tidyverse)
 library(TMB)
@@ -51,10 +55,12 @@ library(wham,lib.loc = haddock_wham_lib)
 #Set paths, input names, and savefile names.
 
 # Assessment folders
-here::i_am("Code/pre_sim/get_haddock_assessment_data.R")
+here::i_am("Code/pre_sim/process_haddock_assessment_data.R")
+source(here("Code", "helpers", "developer_setup.R"))
 
 assessment_output_folder<-here("input_data")
 dir.create(file.path(assessment_output_folder), showWarnings = FALSE)
+miscellaneous_folder<-file.path(gf.data.dir, "miscellaneous")
 
 # data version
 data_version<-Sys.Date()
@@ -116,6 +122,20 @@ drive_download(
   path = temp_path,
   overwrite = TRUE
 )
+
+#read in calendar year commercial landings
+
+commercial_CY_removals<- readRDS(file=
+                                    file.path(miscellaneous_folder,
+                                              glue("commercial_CY_removals_{data_version}.Rds")
+                                              )
+                                  )
+
+gom_haddock_cy_removals<-commercial_CY_removals %>%
+  filter(itis_tsn==164744, area_name=="GOM")
+
+
+
 
 # Read in using  into your environment
 mod_accepted <- read_rds(temp_path)
@@ -192,7 +212,7 @@ cat("Installed wham commit is", packageDescription("wham")$RemoteSha,"\n")
 # Placeholders and parameters
 periods<-12 # there are 12 months in a year
 # Which year do you want a projection for, How many projections? Set a seed.
-YearProj<-2026
+YearProj<-2027
 num_NAA_draws<-500
 set.seed(6)
 ###########End Housekeeping#####################################################
@@ -203,23 +223,35 @@ set.seed(6)
 
 # Define catch in previous years  ######################################################
 old_bridge_year_catch <- 2105 #GOM haddock 2024 MT PDT-supplied catch
+
+actual_2023_commercial_catch_mt<-gom_haddock_cy_removals %>%
+  filter(year==2023) %>%
+  pull(total_removals)
+actual_2024_commercial_catch_mt<-gom_haddock_cy_removals %>%
+  filter(year==2024) %>%
+  pull(total_removals)
+actual_2025_commercial_catch_mt<-gom_haddock_cy_removals %>%
+  filter(year==2025) %>%
+  pull(total_removals)
+actual_2026_commercial_catch_mt<-NA # Update this for 2028 management:
+
+actual_2026_commercial_catch_mt<-NA # Update for 2028
+
+
 # I use GARFOs quota monitoring page for Rec, since the FY catch is equal to the CY catch.
 # Doesn't quite work for commercial
 
-actual_2023_commercial_catch_mt<-2277
-actual_2024_commercial_catch_mt<-1405
-actual_2025_commercial_catch_mt<-NA # Update for 2027
-
 actual_2023_rec_catch_mt<-793 # From GARFO quota monitoring report
 actual_2024_rec_catch_mt<-899
-actual_2025_rec_catch_mt<-NA #Update for 2027
+actual_2025_rec_catch_mt<-899 #Update for 2027
+actual_2025_rec_catch_mt<-NA #Update for 2028
 
 
 actual_2023_catch_mt<-actual_2023_commercial_catch_mt+actual_2023_rec_catch_mt
 actual_2024_catch_mt<-actual_2024_commercial_catch_mt+actual_2024_rec_catch_mt
 
 # 2025 not used yet.
-# actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
+ actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
 
 
 #Handle WAA ###############################################################################
@@ -452,22 +484,6 @@ validate_naa_data(historical_NAA_long)
 write_dta(historical_NAA_long, path=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")))
 write_rds(historical_NAA_long, file=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")))
 
-#Put the historical NAA on google drive
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{HistoricalNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
-
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{HistoricalNAASaveFile}.dta"),
-  overwrite = TRUE
-)
-
-
 # Pick exactly 1 year. See the header.
 RowPick<-which(year==YearProj)
 stopifnot(length(RowPick)==1)
@@ -513,18 +529,3 @@ validate_naa_data(NAA_long)
 
 write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")))
 write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))
-
-#Put the historical NAA_long on google drive
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{ProjectedNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
-
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{ProjectedNAASaveFile}.dta"),
-  overwrite = TRUE
-)

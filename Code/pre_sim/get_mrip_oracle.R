@@ -1,21 +1,32 @@
-# this R helper file pulls MRIP data from Oracle using the mriptacklebox.
-# it takes 2 arguments, first_year and last_year, in sequence.
-# because it takes 2 arguments, you'll have to run it from the command line with
-# Rscript get_mrip_oracle.R 2023 2025
-# or you can run it from the stata wrapper.
-
-#
+################################################################################
+# Script:       get_mrip_oracle.R
+# Purpose:      Pulls MRIP recreational microdata (trip, catch, size, size_b2)
+#               from Oracle via the mriptacklebox package for a year range,
+#               lower-cases names, stamps a pull date, forces id columns to
+#               character, and writes per-element .dta files plus a combined .Rds.
+# Inputs:       Command-line args: mrip_calibration_year  first_year last_year. Live Oracle connection
+#               (mriptacklebox's nefscdb_con).
+# Outputs:      <gf.data.dir>/miscellaneous/mrip_{trip,catch,size,size_b2}.dta and
+#               mrip_pull<today>.Rds.
+# Dependencies: Sources developer_setup.R (for gf.data.dir). Requires Oracle
+#               access.
+# Pipeline:     Step 2 of model_wrapper.do (gated by pull_MRIP), invoked via
+#               `rscript using ... args(mrip_calibration_year first_yr last)`, and followed immediately by
+#               tidyup_mrip_data_fromR.do. Also runnable standalone:
+#               Rscript get_mrip_oracle.R cal_2018 2023 2025.
+################################################################################
 
 
 # Define arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) {
-  stop("Error: This script requires exactly two arguments.", call. = FALSE)
+if (length(args) != 3) {
+  stop("Error: This script requires exactly three arguments.", call. = FALSE)
 }
 
 #read in arguments. Ensure they are numeric
-first_yr  <- as.numeric(args[1])
-last_yr   <-  as.numeric(args[2])
+mrip_calibration_year  <- as.numeric(sub("cal_","",args[1]))
+first_yr  <- as.numeric(args[2])
+last_yr   <-  as.numeric(args[3])
 
 # Show them, just in case.
 cat("First Year:", first_yr, "\n")
@@ -55,37 +66,21 @@ yearlist<-first_yr:last_yr
 wavelist<-1:6
 
 # pull data and then disconnect
+message("Pulling MRIP microdata from Oracle (this can take a while) ...")
 mrip_pull <- mrip_microdata(
   years = yearlist, waves = wavelist,
   typ = c('trip', 'catch', 'size', 'size_b2'),
   format = c('nefsc_db'),
-  nefsc_db_con=con_name
+  nefsc_db_con=con_name,
+  calibration_year=mrip_calibration_year
 )
 dbDisconnect(con_name)
 
 
-# A little data munging
-
-# all lower case
-mrip_pull <- map(mrip_pull, ~rename_with(.x, tolower)
-                 )
-
-#append mrip_pull_date into all elements. Force it to July 16, 2026 format
+# append a mrip_pull_date column (today's date) to every element, formatted as
+# "Month DD, YYYY" (the %B %d, %Y example renders e.g. as "July 16, 2026")
 mrip_pull <- map(mrip_pull, ~ mutate(
-  .x, mrip_pull_date =as.character(format(todaysdate,"%B %d, %Y") ) )
-  )
-
-#force certain things to character
-mrip_pull <- map(mrip_pull, ~ mutate(
-  .x, across(c(strat_id, psu_id, id_code,zip), as.character))
-  )
-
-
-# write all the elements of x to a dta file
-walk2(mrip_pull, names(mrip_pull), ~ write_dta(
-  .x,
-  path=file.path(output_folder, glue("mrip_{.y}.dta"))
-  )
+  .x, MRIP_PULL_DATE =as.character(format(todaysdate,"%B %d, %Y") ) )
 )
 
 # append the mrip_pull_date to the mrip_pull list as a tibble
@@ -101,4 +96,29 @@ message("First Year in Data: ",first_yr)
 message("Last Year in Data: ",last_yr)
 
 message("MRIP data successfully pulled on: ", format(todaysdate,"%B %d, %Y") )
+
+
+
+# A little data munging
+# Downstream stata code needs to be in all caps and we need to ensure the date formats are done properly
+# all lower case
+
+mrip_pull$mrip_pull_date<-NULL
+
+mrip_pull <- map(mrip_pull, ~rename_with(.x, tolower)
+                 )
+
+#force certain things to character
+mrip_pull <- map(mrip_pull, ~ mutate(
+  .x, across(c(strat_id, psu_id, id_code,zip), as.character))
+  )
+
+
+# write all the elements of x to a dta file
+walk2(mrip_pull, names(mrip_pull), ~ write_dta(
+  .x,
+  path=file.path(output_folder, glue("mrip_{.y}.dta"))
+  )
+)
+
 

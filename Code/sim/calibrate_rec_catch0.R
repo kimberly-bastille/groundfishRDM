@@ -1,16 +1,38 @@
-# Calibration-year trip simulation for Gulf of Maine cod and haddock
-# Rewritten for speed/efficiency and to separate accounting catch from utility catch.
+################################################################################
+################################################################################
+# Script:       calibrate_rec_catch0.R
+# Purpose:      Calibration-year trip simulation for Gulf of Maine cod and
+#               haddock, PASS 0 (no harvest/release reallocation). For each
+#               draw x season x mode it simulates fish lengths from the baseline
+#               catch-at-length distribution, applies bag and minimum-size
+#               regulations to classify each fish as kept vs released, computes
+#               trip utility via a numerically stable binary logit (take-the-trip
+#               vs opt-out), probability-weights and expands trip outcomes to
+#               population totals, and builds a model-vs-MRIP comparison table.
+#               The comparison it writes is what the reallocation passes
+#               (calibrate_rec_catch1.R) use to derive keep<->release fractions.
+# Inputs:       final_process_misc_cd/simulated_catch_totals.dta (MRIP totals),
+#               final_process_misc_cd/directed_trip_draws.fst,
+#               final_process_misc_cd/baseline_catch_at_length.csv,
+#               final_process_calib_catch_cd/calib_catch_draws_<i>.fst.
+# Outputs:      final_process_misc_cd/calibration_comparison.fst.
+# Dependencies: The final_process_* path objects and n_simulations must exist in
+#               the calling environment (set by R code wrapper.R /
+#               calibration_routine.R).
+# Pipeline:     Part of the R calibration stage (Code/sim). Sibling of
+#               calibrate_rec_catch1.R, which reuses several helpers defined here.
 #
 # Key design choices:
-#   1. Run at season x mode x draw, matching the current cod/haddock model structure.
-#   2. Read directed trips and catch-at-length once, not inside the innermost loop.
-#   3. Simulate fish lengths with a reusable species function.
-#   4. Keep separate columns for:
-#        - accounting outcomes: tot_keep_*_new, tot_rel_*_new, tot_*_catch
-#        - utility outcomes:    util_keep_*_new, util_rel_*_new, util_*_catch
-#      If a fish is reallocated from harvest to release, it remains a release in
-#      accounting totals but is still counted as harvested in utility.
-#   5. Avoid assign()/get() comparison logic by reshaping to long format.
+#   1. Runs at season x mode x draw, matching the cod/haddock model structure.
+#   2. Reads directed trips and catch-at-length once, not in the inner loop.
+#   3. Simulates fish lengths with one reusable species function.
+#   4. Keeps separate "accounting" columns (tot_keep_*_new, tot_rel_*_new,
+#      tot_*_catch) and "utility" columns (util_keep_*_new, util_rel_*_new): a
+#      fish moved from harvest to release stays a release in accounting totals
+#      but is still counted as harvested in utility.
+#   5. Avoids assign()/get() by reshaping to long format for the comparison.
+################################################################################
+################################################################################
 
 library(data.table)
 library(readr)
@@ -54,6 +76,25 @@ check_required_cols <- function(dt, cols, object_name) {
 }
 
 
+#' @title Simulate keep/release outcomes for one species
+#' @description Expands each trip's simulated catch into individual fish, draws a
+#'   length for each from the catch-at-length distribution, and applies the
+#'   bag and minimum-size rules to decide keep vs release. Returns trip-level
+#'   counts of kept and released fish in both "accounting" and "utility" terms
+#'   (identical here unless realloc_dt supplies keep<->release fractions).
+#' @param catch_dt Trip-level catch table (one row per trip x catch_draw) with
+#'   the key columns date_parsed, mode, tripid, catch_draw plus the catch, bag,
+#'   and minimum-size columns named below.
+#' @param catch_col Name of the integer catch column to expand (e.g. "cod_cat").
+#' @param bag_col Name of the bag-limit column (e.g. "cod_bag").
+#' @param min_col Name of the minimum-size column, in cm (e.g. "cod_min").
+#' @param size_dt Catch-at-length lookup with columns length and fitted_prob,
+#'   already subset to this species/draw/season.
+#' @param species_prefix Either "cod" or "hadd"; sets the output column names.
+#' @param realloc_dt Optional table of keep<->release reallocation fractions from
+#'   a prior calibration pass; NULL (the default) means no reallocation.
+#' @return A keyed data.table with one row per trip x catch_draw and the columns
+#'   tot_keep_<sp>_new, tot_rel_<sp>_new, util_keep_<sp>_new, util_rel_<sp>_new.
 simulate_species <- function(catch_dt,
                              catch_col,
                              bag_col,
@@ -182,6 +223,17 @@ simulate_species <- function(catch_dt,
   trip_out[]
 }
 
+#' @title Build a model-vs-MRIP comparison table for one mode
+#' @description Reshapes the simulated ("model") and MRIP totals to long form,
+#'   joins them by species/disposition, and computes differences and percent
+#'   differences. Also derives the keep<->release reallocation flags and
+#'   fractions (p_rel_to_keep, p_keep_to_rel) that a later pass uses to nudge the
+#'   simulated harvest toward the MRIP estimate.
+#' @param summed_results Simulated totals for this mode (keep/rel/catch by species).
+#' @param MRIP_comparison_draw MRIP totals for the same draw/season/mode.
+#' @param md Mode label ("pr" or "fh") stamped onto the output.
+#' @return A data.table (one row per mode x species) of MRIP vs model totals,
+#'   their differences, and the derived reallocation direction and fractions.
 build_compare_table <- function(summed_results, MRIP_comparison_draw, md) {
   metric_cols <- c(
     "cod_keep", "cod_rel", "cod_catch",
@@ -305,6 +357,8 @@ k <- 1L
 # ---- Main loop ----
 
 for (i in draws) {
+
+  message("calibrate_rec_catch0: simulating draw ", i, " of ", max(draws))
 
   catch_path_fst <- file.path(final_process_calib_catch_cd, paste0("calib_catch_draws_", i, ".fst"))
   catch_draw_dt <- as.data.table(read_fst(catch_path_fst))

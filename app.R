@@ -1,20 +1,125 @@
-
+################################################################################
+################################################################################
+# Script:  app.R
+#
+# Purpose: Shiny front end for the Western Gulf of Maine cod/haddock
+#          Recreational Decision Support Tool. It does two separable jobs:
+#          (1) browse results of model runs that have already finished -- a
+#              sortable regulations/mortality table plus a cod-vs-haddock
+#              mortality scatter and optional supplemental figures; and
+#          (2) let a user compose a new set of regulations (seasons, bag
+#              limits, minimum sizes by species and mode), write them to
+#              saved_regs/, and enqueue a job so the model is run elsewhere.
+#          The app itself never runs the simulation -- see Dependencies.
+#
+# Inputs:  output/*.csv       -- long-format results, one file per policy run,
+#                                with columns season, mode, metric, value,
+#                                iteration, policy_name. Species is encoded in
+#                                the metric name (e.g. tot_keep_cod_weight_lb_new)
+#          saved_regs/*.csv   -- regulation sets previously submitted through
+#                                this app (run_name, input, value)
+#          Environment variable GROUNDFISH_AZURE_STORAGE_QUEUE_URL -- a SAS
+#                                URL for the Azure Storage queue that the
+#                                model worker listens on
+#
+# Outputs: saved_regs/regs_<Run_Name>.csv -- the regulations the user composed
+#          One Azure Storage queue message naming that run
+#
+# Dependencies: A separate worker process consumes the queue and executes the
+#          projection (Run_Model.R / RecDST/model_run.R), writing results back
+#          into output/. Nothing in this file triggers that work directly, so
+#          the Results page stays unchanged until the worker finishes and the
+#          user clicks "Update" (which reloads the page).
+#
+# Pipeline: Terminal, user-facing layer. Everything it reads is produced
+#          upstream by the Stata pre_sim scripts -> R sim scripts chain
+#          (see README.md, "Data Flow Summary").
+################################################################################
+################################################################################
 
 library(shiny)
 library(shinyjs)
 
-#### Start UI ####
+################################################################################
+################################################################################
+# Section A: User interface
+################################################################################
+################################################################################
 ui <- fluidPage(
   useShinyjs(),
-  titlePanel("Western Gulf of Maine Cod and Haddock Recreational Fisheries Decision Support Tool"),
-  #### Regulation Selection ####
+
+  # ---- NOAA branding: colors, fonts, header/footer styling ---------------
+  # NOAA's official palette (per NOAA Digital Communications brand guidance):
+  #   NOAA blue  #0085CA, NOAA dark blue #003087, NOAA gray #6D6E70.
+  # These rules only restyle existing elements (tabs, buttons, header/footer);
+  # no inputs, ids, or server logic are touched.
+  tags$head(
+    tags$style(HTML("
+      body { font-family: 'Public Sans', 'Segoe UI', Arial, sans-serif; }
+
+      .noaa-header {
+        background-color: #003087;
+        color: #ffffff;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin: -15px -15px 20px -15px; /* bleed to the edge of fluidPage's default padding */
+      }
+      .noaa-header img { height: 60px; }
+      .noaa-header .noaa-title-block { line-height: 1.25; }
+      .noaa-header .noaa-title-block .agency-line {
+        font-size: 13px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #B0C8E8;
+      }
+      .noaa-header .noaa-title-block .app-title {
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      /* Tabs and buttons picked up in NOAA blue instead of Bootstrap default */
+      .nav-tabs > li.active > a, .nav-tabs > li.active > a:focus, .nav-tabs > li.active > a:hover {
+        color: #003087;
+        font-weight: 600;
+        border-top: 3px solid #0085CA;
+      }
+      .btn-default, .btn { background-color: #0085CA; color: #ffffff; border-color: #0085CA; }
+      .btn-default:hover, .btn:hover { background-color: #003087; color: #ffffff; border-color: #003087; }
+
+      .noaa-footer {
+        margin-top: 30px;
+        padding: 15px 20px;
+        background-color: #f1f1f1;
+        border-top: 4px solid #0085CA;
+        color: #333333;
+        font-size: 12px;
+        text-align: center;
+      }
+    "))
+  ),
+
+  # NOAA masthead: logo + agency name + app title, replacing the plain
+  # titlePanel() that was here before.
+  div(class = "noaa-header",
+
+      tags$img(src = "https://www.fisheries.noaa.gov/themes/custom/noaa_components/images/fisheries_header_logo_jul2019.png",
+               alt = "NOAA logo"),
+      div(class = "noaa-title-block",
+          div(class = "agency-line", "National Oceanic and Atmospheric Administration"),
+          div(class = "app-title", "Western Gulf of Maine Cod and Haddock Recreational Fisheries Decision Support Tool")
+      )
+  ),
+  # Two tabs: a read-only summary of completed runs, then the form used to
+  # compose and submit a new run.
   tabsetPanel(
     tabPanel("Cod and Haddock Model Summary",
              p("This page summarizes models results for sets of policies that have been run to date. These are
                intended as a jumping off point for your own model runs."),
              p("Hover over each point to view the detailed statistics for each model run. The first section contains
                a table of recreational management measures. The second section contains graphs of mortality. The third
-               section has graphs of other performance measures, including relative change in Angler Satisfaction, Trips, and Discards."),
+               section has graphs of other performance measures, including CV, Trips, and Discards."),
 
              shinyjs::useShinyjs(),
              shinyjs::extendShinyjs(text = "shinyjs.refresh_page = function() { location.reload(); }", functions = "refresh_page"),
@@ -24,15 +129,27 @@ ui <- fluidPage(
 
              DT::DTOutput(outputId = "DTout"),
 
-
-
-             shinyWidgets::awesomeCheckboxGroup(
+             shiny::checkboxGroupInput(
                inputId = "fig",
                label = "Supplemental Figures",
-               choices = c( "Angler Satisfaction","Discards", "Trips"),
-               inline = TRUE,
-               status = "danger"),
-             #uiOutput("summary_regs_table"),
+               choiceNames = list(
+                 tagList(
+                   "CV",
+                   tags$a(
+                     icon("circle-info"),
+                     href = "https://github.com/kimberly-bastille/groundfishRDM/blob/main/docs/USER_GUIDE_GROUNDFISH.md#Understanding-Compensating-Variation",
+                     target = "_blank",
+                     title = "Learn more about CV (compensating variation)",
+                     style = "margin-left: 1px; color: #337ab7;"
+                   )
+                 ),
+                 "Discards",
+                 "Trips"
+               ),
+               choiceValues = list("CV", "Discards", "Trips"),
+               inline = TRUE
+             ),
+
              uiOutput("addCVCod"),
              uiOutput("addCVHad"),
              uiOutput("addReleaseCod"),
@@ -41,11 +158,8 @@ ui <- fluidPage(
              uiOutput("addTripsHad")),
 
 
-
-
-
     tabPanel( "Regulation Selection",
-              strong(div("Use this page to set up the regulations that you would like to simulate.  Only click the button ONCE before clicking over to Results tab. We have pre-loaded the status quo regulations.", style = "color:blue")), # Warning for users
+              strong(div("Use this page to set up the regulations that you would like to simulate. We have pre-loaded the status quo regulations.", style = "color:blue")), # Warning for users
               #Run Button
               actionButton("runmeplease", "Run Me"),
               textInput("Run_Name", "Please name this using your initials and the number of the run (ex. AB1)."),
@@ -76,7 +190,7 @@ ui <- fluidPage(
                                             min = 15, max = 30, value = 23, step = 1))),
 
                        actionButton("CODaddSeason", "Add Season"),
-                       shinyjs::hidden(div(ID = "CodSeason2",
+                       shinyjs::hidden(div(id = "CodSeason2",
                                            dateRangeInput(inputId = "CodFH_seas2", label = "For Hire Season 2",
                                                           min = as.Date("2027-05-01"), max = as.Date("2028-04-30"),
                                                           start = as.Date("2028-01-01"), end = as.Date("2028-01-01")),
@@ -144,7 +258,7 @@ ui <- fluidPage(
                                             min = 15, max = 30, value = 17, step = 1))),
 
                        actionButton("HADaddSeason", "Add Season"),
-                       shinyjs::hidden(div(ID = "HadSeason3",
+                       shinyjs::hidden(div(id = "HadSeason3",
                                            dateRangeInput(inputId = "HadFH_seas3", label = "For Hire Season 3",
                                                           min = as.Date("2027-05-01"), max = as.Date("2028-04-30"),
                                                           start = as.Date("2028-01-01"), end = as.Date("2028-01-01")),
@@ -165,23 +279,63 @@ ui <- fluidPage(
                                              column(6,
                                                     sliderInput(inputId = "HadPR_3_len", label = "Min Length",
                                                                 min = 15, max = 30, value = 17, step = 1)))))))
-    )))
+    )),
 
-####### Start Server ###################
+  # NOAA/DOC attribution footer. NOAA's emblem-usage guidance requires the
+  # agency name and "U.S. Department of Commerce" to accompany any use of the
+  # logo, so that text lives here rather than only in the header.
+  div(class = "noaa-footer",
+      "National Oceanic and Atmospheric Administration", tags$br(),
+      "U.S. Department of Commerce"
+  )
+)
+
+################################################################################
+################################################################################
+# Section B: Server -- shared data access and constants
+################################################################################
+################################################################################
+
 server <- function(input, output, session){
+
+  # observeEvent(input$runmeplease, {
+  #   output$displaymessage <- renderText(paste0("Policy ", input$Run_Name, " saved - your model run has been queued. ..."))
+  # })
+
+  observeEvent(input$runmeplease, {
+    policy_name <- input$Run_Name   # captured once, at click time
+    output$displaymessage <- renderText(
+      paste0("Policy ", policy_name, " saved - your model run has been queued. ",
+             "Be sure to change the policy name before submitting again.")
+    )
+  })
 
   library(magrittr)
   library(ggplot2)
   #library(webshot)
 
+  # There is no incremental refresh: "Update" reloads the whole browser page,
+  # which re-evaluates outputs() and so picks up any result files the worker
+  # has written since the session started.
   observeEvent(input$updatedat,{
     print("updating")
     shinyjs::js$refresh_page();
   })
 
+  #' @title Read all completed model results
+  #' @description Stacks every CSV in output/ into one long-format table. Each
+  #'   file is one model run; the run identifier travels in the files' own
+  #'   "policy_name" column, so no filename parsing is needed. There is no
+  #'   species column: species is part of the metric name (e.g.
+  #'   "tot_keep_cod_weight_lb_new"), and results are split by season
+  #'   (summer/winter) and mode (fh/pr/"all modes").
+  #' @return A data.table with columns season, mode, metric, value, iteration,
+  #'   policy_name.
   outputs <- reactive({
     fnames <- list.files(path=here::here("output/"),pattern = "*.csv",full.names = T)
 
+    # fnames2 derives a run_name from the filename but is never used
+    # downstream; superseded by the "model" column carried inside each file.
     fnames2<- as.data.frame(fnames) %>%
       tidyr::separate(fnames, into = c("a", "b"), sep = "_") %>%
       dplyr::mutate(b = ifelse(stringr::str_detect(b, "202501"),  "NA", b),
@@ -189,11 +343,15 @@ server <- function(input, output, session){
                     run_name = dplyr::case_when(b != "NA" ~ b, TRUE ~ as.character(c))) %>%
       dplyr::select(run_name)
 
-    fnames %>%
+    df <- fnames %>%
       purrr::map_df(~data.table::fread(.,stringsAsFactors=F,check.names=T,strip.white=T))
 
+    return(df)
   })
 
+  # Reference points and unit conversion, written as zero-argument functions so
+  # they read the same way as the reactives above. cod_acl and had_acl are the
+  # recreational annual catch limits in metric tons; results arrive in pounds.
   cod_acl <- function(){
     cod_acl = 118
     return(cod_acl)
@@ -209,6 +367,12 @@ server <- function(input, output, session){
     return(lb_to_mt)
   }
 
+  #' @title Sanitize the user-supplied run name
+  #' @description Replaces underscores with hyphens, because "_" is the
+  #'   delimiter used when result and regulation file names are split apart.
+  #'   Note the saved_regs file name below is built from the raw input$Run_Name,
+  #'   not from this sanitized version.
+  #' @return The run name as a single string.
   Run_Name <- function(){
     if(stringr::str_detect(input$Run_Name, "_")){
       Run_Name <-  gsub("_", "-", input$Run_Name)
@@ -219,36 +383,52 @@ server <- function(input, output, session){
     return(Run_Name)
   }
 
+  #' @title Read every regulation set ever submitted
+  #' @description Stacks all saved_regs/*.csv into one long table. Each row is
+  #'   one regulation element (e.g. "codFH_1_bag") for one run.
+  #' @return A tibble with columns run_name, input, value.
   regs<- function(){
     flist <- list.files(path = here::here("saved_regs/"), pattern = "\\.csv$", full.names = TRUE)
 
-    print("get regs1")
     regs_data <- flist %>%
       purrr::map_dfr(readr::read_csv)
-    print("get regs2")
     return(regs_data)
   }
 
+################################################################################
+################################################################################
+# Section C: Summary table and the cod-vs-haddock mortality scatter
+################################################################################
+################################################################################
+
   output$DTout <- DT::renderDT({
+    # Total recreational mortality = landed weight + dead discards, summed
+    # across seasons within a draw, then converted from pounds to metric tons.
+    # under_acl counts the draws in which that total stayed under the ACL; the
+    # column is later labelled "%", which is only literally true when the model
+    # is run with 100 draws.
     catch_agg<- outputs() %>%
-      #dat %>%
-      dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
-                    mode == "all modes") %>%
-      dplyr::group_by(model, species,draw) %>%
-      dplyr::summarise(Value = sum(as.numeric(value))) %>%
-      dplyr::mutate(Value = Value * lb_to_mt()) %>%
-      dplyr::mutate(under_acl = dplyr::case_when(species == "cod" & Value <= cod_acl() ~ 1, TRUE ~ 0),
-                    under_acl = dplyr::case_when(species == "hadd" & Value <= had_acl() ~ 1, TRUE ~ under_acl)) %>%
-      dplyr::group_by(model, species) %>%
-      dplyr::summarise(under_acl = sum(under_acl),
-                       Value = round(median(Value),0)) %>%
-      tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl))
+        dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                    "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                      mode == "all modes") %>%
+        dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+        dplyr::group_by(policy_name, species, iteration) %>%
+        dplyr::summarise(Value = sum(as.numeric(value))) %>%
+        dplyr::mutate(Value = Value * lb_to_mt()) %>%
+        dplyr::mutate(under_acl = dplyr::case_when(species == "cod" & Value <= cod_acl() ~ 1, TRUE ~ 0),
+                      under_acl = dplyr::case_when(species == "hadd" & Value <= had_acl() ~ 1, TRUE ~ under_acl)) %>%
+        dplyr::group_by(policy_name, species) %>%
+        dplyr::summarise(under_acl = sum(under_acl),
+                         Value = round(median(Value),0)) %>%
+        tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl))
 
-    # regs<- regs %>%
-
+    # The saved regulations arrive as opaque name/value pairs, so species, mode,
+    # season number and season endpoint (op/cl) are recovered by pattern
+    # matching on the input name (e.g. "codFH_seas2_op"). The year prefix is
+    # stripped from dates so seasons display as MM-DD. Any species/mode/season
+    # group containing a 0 (an unused extra season) is dropped.
     regs1 <- regs() %>%
       dplyr::rename("model" = "run_name") %>%
-      #dplyr::left_join(catch_agg, by = c("model")) %>%
       dplyr::mutate(
         species = stringr::str_extract(input, "^[a-z]+"),
         mode    = stringr::str_extract(input, "(FH|PR)"),
@@ -268,7 +448,6 @@ server <- function(input, output, session){
       dplyr::summarise(season = paste(season_range, collapse = " ; "),.groups = "drop") %>%
       tidyr::pivot_wider(names_from = species, values_from = season, names_glue = "{species}season")
 
-
     bags <- regs1 %>%
       dplyr::filter(stringr::str_detect(input, "bag")) %>%
       dplyr::mutate(bag_type = paste0(species, "bag")) %>%
@@ -286,7 +465,7 @@ server <- function(input, output, session){
     final_table <- seasons %>%
       dplyr::left_join(bags, by = c("model", "mode")) %>%
       dplyr::left_join(minsizes, by = c("model", "mode")) %>%
-      dplyr::left_join(catch_agg, by = c("model")) %>%
+      dplyr::left_join(catch_agg, by = c("model" = "policy_name")) %>%
       dplyr::select(model, mode, codseason, codbag, codlen, hadseason, hadbag, hadlen, Value_cod, Value_hadd, under_acl_cod, under_acl_hadd) %>%
       dplyr::rename(Mode = mode,
                     `Run Identifier` = model,
@@ -298,9 +477,8 @@ server <- function(input, output, session){
                     `Haddock Season(s)` = hadseason,
                     `% under Cod ACL` = under_acl_cod,
                     `% under Haddock ACL` = under_acl_hadd,
-                    `Cod Total Catch` = Value_cod,
-                    `Haddock Total Catch` = Value_hadd)
-
+                    `Cod Total Mortality` = Value_cod,
+                    `Haddock Total Mortality` = Value_hadd)
 
     DT::datatable(final_table)
   })
@@ -308,19 +486,23 @@ server <- function(input, output, session){
   output$totCatch <- plotly::renderPlotly({
 
     catch_agg<- outputs() %>%
-      #dat %>%
-      dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
-                    mode == "all modes")%>%
-      dplyr::group_by(model, species,draw) %>%
+      dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                    "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                      mode == "all modes") %>%
+        dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+        dplyr::group_by(policy_name, species, iteration) %>%
       dplyr::summarise(Value = sum(as.numeric(value))) %>%
       dplyr::mutate(Value = Value * lb_to_mt()) %>%
       dplyr::mutate(under_acl = dplyr::case_when(species == "cod" & Value <= cod_acl() ~ 1, TRUE ~ 0),
-                    under_acl = dplyr::case_when(species == "had" & Value <= had_acl() ~ 1, TRUE ~ under_acl)) %>%
-      dplyr::group_by(model, species) %>%
-      dplyr::summarise(under_acl = sum(under_acl),
-                       Value = round(median(Value),0)) %>%
+                    under_acl = dplyr::case_when(species == "hadd" & Value <= had_acl() ~ 1, TRUE ~ under_acl)) %>%
+      dplyr::group_by(policy_name, species) %>%
+      dplyr::summarise(under_acl = (100/length(unique(iteration)))*sum(under_acl),
+                       Value = round(median(Value),0))  %>%
       tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl))
 
+    # Bin the draw counts into the discrete legend categories used by the
+    # colour scale. Written as a chain of case_when()s that each fall through
+    # to the previously assigned value rather than one multi-arm case_when.
     catch_agg2<- catch_agg %>%
       dplyr::mutate(under_acl_cod2 = dplyr::case_when(under_acl_cod < 50 ~ "Less than 50%", TRUE ~ ""),
                     under_acl_cod2 = dplyr::case_when(under_acl_cod >= 50 & under_acl_cod < 60 ~ "50-59%", TRUE ~ under_acl_cod2),
@@ -344,12 +526,14 @@ server <- function(input, output, session){
       ggplot2::scale_color_manual(values = c("50-59%" = "#A9DFBF", "60-69%" = "#7DCEA0",
                                              "70-79%" = "#52BE80","80-89%" = "#27AE60",
                                              "90-100%" = "#1B5E20", "Less than 50%" = "red3"))+
+      # Every size is mapped to 1 and the size legend is suppressed below, so
+      # the haddock ACL bin currently has no visible effect on the plot.
       ggplot2::scale_size_manual(values = c("50-59%" = 1, "60-69%" = 1,
                                             "70-79%" = 1,"80-89%" = 1,
                                             "90-100%" = 1, "Less than 50%" = 1))+
       ggplot2::labs(colour="% of simulations under cod ACL",
                     size="% of simulations under haddock ACL")+
-      ggplot2::geom_text(ggplot2::aes(label = model), check_overlap = TRUE)+
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_vline( xintercept =cod_acl(), linetype="dashed")+
       ggplot2::geom_hline( yintercept =had_acl(), color="grey45")+
       ggplot2::annotate(geom="text", x=cod_acl(), label="Cod ACL", y=1200) +
@@ -359,59 +543,120 @@ server <- function(input, output, session){
       ggplot2::ylab("Median Recreational Haddock Mortality (mt)")+
       ggplot2::xlab("Median Recreational Cod Mortality (mt)")
 
-    fig<- plotly::ggplotly(p) %>% #,
+    fig<- plotly::ggplotly(p) %>%
       plotly::style(textposition = "top center")
     fig
   })
 
+################################################################################
+################################################################################
+# Section D: Supplemental figures (shown only when the user ticks the box)
+################################################################################
+################################################################################
+
+  # The six blocks below follow one template: guard on the checkbox group, then
+  # render a scatter of a performance measure against mortality for one
+  # species. Each block recomputes the same per-model median mortality table
+  # independently, so a change to that calculation must be made in all six.
+
+
+  # CV is compensating variation: dollars per choice occasion associated
+  # in change in trip outcomes from baseline summed over
+  # the year, i.e. how much better or worse off anglers are under this
+  # policy. The figures use the level, CV.
   output$addCVCod <- renderUI({
 
-    if(any("Angler Satisfaction" == input$fig)){
+    if(any("CV" == input$fig)){
 
       plotly::renderPlotly({
+
 
         welfare <-  outputs() %>%
           dplyr::filter(metric == c("CV"),
                         mode == "all modes") %>%
-          dplyr::group_by(model,  draw) %>%
+          dplyr::group_by(policy_name, iteration) %>%
           dplyr::summarise(value = sum(as.numeric(value))) %>%
-          tidyr::pivot_wider(names_from = model, values_from = value) %>%
-          tidyr::pivot_longer(-draw, names_to = "model", values_to = "value") %>%
-          dplyr::group_by(draw) %>%
-          dplyr::mutate(SQ_value = (value[model == "SQproposed"]),
-                 pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
+          tidyr::pivot_wider(names_from = policy_name, values_from = value) %>%
+          tidyr::pivot_longer(-iteration, names_to = "policy_name", values_to = "value") %>%
+          dplyr::group_by(iteration) %>%
+          dplyr::mutate(SQ_value = (value[policy_name == "SQ"]),
+                        pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
           dplyr::ungroup() %>%
           dplyr::mutate(CV = value)
 
         catch<- outputs() %>%
-          #dat %>%
-          dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
-                        mode == "all modes")%>%
-          dplyr::group_by(model, species,draw) %>%
+          dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                    "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                      mode == "all modes") %>%
+        dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+        dplyr::group_by(policy_name, species, iteration) %>%
           dplyr::summarise(Value = sum(as.numeric(value))) %>%
           dplyr::mutate(Value = Value * lb_to_mt()) %>%
-          dplyr::group_by(model, draw, species) %>%
+          dplyr::group_by(policy_name, iteration, species) %>%
           dplyr::summarise(Value =round(median(Value),0)) %>%
           tidyr::pivot_wider(names_from = species, values_from = Value) %>%
           dplyr::left_join(welfare) %>%
-          dplyr::group_by(model) %>%
-          dplyr::summarise(`Angler Satisfaction($)` = median(CV)/1000000,
+          dplyr::group_by(policy_name) %>%
+          dplyr::summarise(`CV($M)` = median(CV)/1000000,
                            cod = median(cod),
                            hadd = median(hadd))
 
-        p1<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `Angler Satisfaction($)`, y = cod))+
+        p1<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `CV($M)`, y = cod))+
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept =cod_acl())+
-          ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
+          ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
           ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=0)) +
-          ggplot2::xlab("Change in Angler Satisfaction ($M)")+
+          ggplot2::xlab("CV ($M)")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
-          ggplot2::labs(title = "Cod Mortality (mt) compared to Angler Satisfaction (Compared to the past year, how much better- or worse-off are anglers, in dollars?)",
+          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers",
                         subtitle = "testing")+
           ggplot2::theme(legend.position = "none")
 
         fig1<- plotly::ggplotly(p1) %>%
           plotly::style(textposition = "top center")
+
+        fig1 <- fig1 %>%
+          plotly::layout(
+            margin = list(b = 100),  # open up space below the axis for the arrow
+            annotations = list(
+              # arrowhead on the LEFT end, tail pointing right
+              list(
+                x = 0.05, y = -0.22,          # head position (paper coords)
+                ax = 0.45, ay = -0.22,        # tail position (paper coords)
+                xref = "paper", yref = "paper",
+                axref = "paper", ayref = "paper",
+                showarrow = TRUE,
+                arrowhead = 2, arrowsize = 1, arrowwidth = 1.5,
+                text = ""
+              ),
+              # arrowhead on the RIGHT end, tail pointing left
+              list(
+                x = 0.95, y = -0.22,
+                ax = 0.55, ay = -0.22,
+                xref = "paper", yref = "paper",
+                axref = "paper", ayref = "paper",
+                showarrow = TRUE,
+                arrowhead = 2, arrowsize = 1, arrowwidth = 1.5,
+                text = ""
+              ),
+              # "Better" label, left side
+              list(
+                x = 0.05, y = -0.30,
+                xref = "paper", yref = "paper",
+                showarrow = FALSE,
+                text = "Better policy for anglers",
+                font = list(size = 12)
+              ),
+              # "Worse" label, right side
+              list(
+                x = 0.95, y = -0.30,
+                xref = "paper", yref = "paper",
+                showarrow = FALSE,
+                text = "Worse",
+                font = list(size = 12)
+              )
+            )
+          )
 
         fig1
       })
@@ -422,55 +667,96 @@ server <- function(input, output, session){
 
   output$addCVHad <- renderUI({
 
-    if(any("Angler Satisfaction" == input$fig)){
+    if(any("CV" == input$fig)){
 
       plotly::renderPlotly({
         welfare <-  outputs() %>%
           dplyr::filter(metric == c("CV"),
                         mode == "all modes") %>%
-          dplyr::group_by(model,  draw) %>%
+          dplyr::group_by(policy_name, iteration) %>%
           dplyr::summarise(value = sum(as.numeric(value))) %>%
-          tidyr::pivot_wider(names_from = model, values_from = value) %>%
-          tidyr::pivot_longer(-draw, names_to = "model", values_to = "value") %>%
-          dplyr::group_by(draw) %>%
-          dplyr::mutate(SQ_value = (value[model == "SQproposed"]),
-                 pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
+          tidyr::pivot_wider(names_from = policy_name, values_from = value) %>%
+          tidyr::pivot_longer(-iteration, names_to = "policy_name", values_to = "value") %>%
+          dplyr::group_by(iteration) %>%
+          dplyr::mutate(SQ_value = (value[policy_name == "SQ"]),
+                        pct_diff = 100 * (value - SQ_value) / SQ_value) %>%
           dplyr::ungroup() %>%
           dplyr::mutate(CV = value)
 
         catch<- outputs() %>%
           #dat %>%
-          dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
-                        mode == "all modes")%>%
-          dplyr::group_by(model, species,draw) %>%
+          dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                    "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                      mode == "all modes") %>%
+        dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+        dplyr::group_by(policy_name, species, iteration) %>%
           dplyr::summarise(Value = sum(as.numeric(value))) %>%
           dplyr::mutate(Value = Value * lb_to_mt()) %>%
-          dplyr::group_by(model, draw, species) %>%
+          dplyr::group_by(policy_name, iteration, species) %>%
           dplyr::summarise(Value =round(median(Value),0)) %>%
           tidyr::pivot_wider(names_from = species, values_from = Value) %>%
           dplyr::left_join(welfare) %>%
-          dplyr::group_by(model) %>%
-          dplyr::summarise(`Angler Satisfaction($)` = median(CV)/1000000,
+          dplyr::group_by(policy_name) %>%
+          dplyr::summarise(`CV($M)` = median(CV)/1000000,
                            cod = median(cod),
                            hadd = median(hadd))
 
-        p2<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `Angler Satisfaction($)`, y = hadd))+
+        p2<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `CV($M)`, y = hadd))+
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept =had_acl())+
-          ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
-          ggplot2::xlab("Change in Angler Satisfaction ($M)")+
-          ggplot2::ylab("Total Recreational Haddock Mortality (mt)")+
-          ggplot2::geom_text(ggplot2::aes(x=0, label="Had ACL", y=had_acl())) +
-          ggplot2::labs(title = "Haddock Mortality (mt) compared to Angler Satisfaction (Compared to the past year, how much better- or worse-off are anglers, in dollars?)",
+          ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
+          ggplot2::xlab("CV ($M)")+
+          ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
+          ggplot2::labs(title = "<b>Cod Mortality (mt) compared to CV ($M)</b> - negative CV values indicate economic gains for anglers",
                         subtitle = "testing")+
           ggplot2::theme(legend.position = "none")
 
         fig2<- plotly::ggplotly(p2) %>%
-          # graphics::layout(title = list(text = paste0('Haddock Mortality (mt) compared to Angler Satisfaction',
-          #                                   '<br>',
-          #                                   '<sup>',
-          #                                   'More descirptuon of CV','</sup>'))) %>%
           plotly::style(textposition = "top center")
+
+        fig2 <- fig2 %>%
+          plotly::layout(
+            margin = list(b = 100),  # open up space below the axis for the arrow
+            annotations = list(
+              # arrowhead on the LEFT end, tail pointing right
+              list(
+                x = 0.05, y = -0.22,          # head position (paper coords)
+                ax = 0.45, ay = -0.22,        # tail position (paper coords)
+                xref = "paper", yref = "paper",
+                axref = "paper", ayref = "paper",
+                showarrow = TRUE,
+                arrowhead = 2, arrowsize = 1, arrowwidth = 1.5,
+                text = ""
+              ),
+              # arrowhead on the RIGHT end, tail pointing left
+              list(
+                x = 0.95, y = -0.22,
+                ax = 0.55, ay = -0.22,
+                xref = "paper", yref = "paper",
+                axref = "paper", ayref = "paper",
+                showarrow = TRUE,
+                arrowhead = 2, arrowsize = 1, arrowwidth = 1.5,
+                text = ""
+              ),
+              # "Better" label, left side
+              list(
+                x = 0.05, y = -0.30,
+                xref = "paper", yref = "paper",
+                showarrow = FALSE,
+                text = "Better policy for anglers",
+                font = list(size = 12)
+              ),
+              # "Worse" label, right side
+              list(
+                x = 0.95, y = -0.30,
+                xref = "paper", yref = "paper",
+                showarrow = FALSE,
+                text = "Worse",
+                font = list(size = 12)
+              )
+            )
+          )
+
         fig2
       })
 
@@ -484,26 +770,27 @@ server <- function(input, output, session){
       plotly::renderPlotly({
 
         discmort <-  outputs() %>%
-          dplyr::filter(metric == c("discmort_weight"),
+          dplyr::filter(metric %in% c("tot_discmort_cod_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
                         mode == "all modes") %>%
-          dplyr::group_by(model,  draw) %>%
-          dplyr::mutate(disc_mort = value * lb_to_mt())  %>%
-          dplyr::select(!c(metric,value))
+          dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+          dplyr::group_by(policy_name, iteration, species, mode) %>%
+          dplyr::summarise(disc_mort = sum(as.numeric(value)) * lb_to_mt(), .groups = "drop")
 
         catch<- outputs() %>%
-          #dat %>%
-          dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
-                        mode == "all modes")%>%
-          dplyr::group_by(model, species,draw) %>%
+          dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                    "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                      mode == "all modes") %>%
+        dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+        dplyr::group_by(policy_name, species, iteration) %>%
           dplyr::summarise(Value = sum(as.numeric(value))) %>%
           dplyr::mutate(Value = Value * lb_to_mt()) %>%
-          dplyr::group_by(model, draw, species) %>%
+          dplyr::group_by(policy_name, iteration, species) %>%
           dplyr::summarise(tot_mort =round(median(Value),0)) %>%
 
           dplyr::left_join(discmort) %>%
-          dplyr::group_by(model, draw, mode) %>%
+          dplyr::group_by(policy_name, iteration, mode) %>%
           tidyr::pivot_wider(names_from = species, values_from = c(tot_mort, disc_mort)) %>%
-          dplyr::group_by(model) %>%
+          dplyr::group_by(policy_name) %>%
           dplyr::summarise(`Cod Total Mortality` = median(tot_mort_cod),
                            `Haddock Total Mortality` = median(tot_mort_hadd),
                            `Cod Discard Mortality` = median(disc_mort_cod),
@@ -512,7 +799,7 @@ server <- function(input, output, session){
         p3<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `Cod Discard Mortality`, y = `Cod Total Mortality`))+
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept =cod_acl())+
-          ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
+          ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
           ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=35)) +
           ggplot2::xlab("Cod Discard Mortality (mt)")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
@@ -521,7 +808,6 @@ server <- function(input, output, session){
           ggplot2::theme(legend.position = "none")
 
         fig3<- plotly::ggplotly(p3)%>%
-          # graphics::layout(title = list(text = paste0('Cod Mortality (mt) compared to Cod Releases (mt)'))) %>%
           plotly::style(textposition = "top center")
         fig3
       })
@@ -531,29 +817,29 @@ server <- function(input, output, session){
   output$addReleaseHad <- renderUI({
     if(any("Discards" == input$fig)){
 
-
       plotly::renderPlotly({
         discmort <-  outputs() %>%
-          dplyr::filter(metric == c("discmort_weight"),
+          dplyr::filter(metric %in% c("tot_discmort_cod_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
                         mode == "all modes") %>%
-          dplyr::group_by(model,  draw) %>%
-          dplyr::mutate(disc_mort = value * lb_to_mt())  %>%
-          dplyr::select(!c(metric,value))
+          dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+          dplyr::group_by(policy_name, iteration, species, mode) %>%
+          dplyr::summarise(disc_mort = sum(as.numeric(value)) * lb_to_mt(), .groups = "drop")
 
         catch<- outputs() %>%
-          #dat %>%
-          dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
-                        mode == "all modes")%>%
-          dplyr::group_by(model, species,draw) %>%
+          dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                    "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                      mode == "all modes") %>%
+        dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+        dplyr::group_by(policy_name, species, iteration) %>%
           dplyr::summarise(Value = sum(as.numeric(value))) %>%
           dplyr::mutate(Value = Value * lb_to_mt()) %>%
-          dplyr::group_by(model, draw, species) %>%
+          dplyr::group_by(policy_name, iteration, species) %>%
           dplyr::summarise(tot_mort =round(median(Value),0)) %>%
 
           dplyr::left_join(discmort) %>%
-          dplyr::group_by(model, draw, mode) %>%
+          dplyr::group_by(policy_name, iteration, mode) %>%
           tidyr::pivot_wider(names_from = species, values_from = c(tot_mort, disc_mort)) %>%
-          dplyr::group_by(model) %>%
+          dplyr::group_by(policy_name) %>%
           dplyr::summarise(`Cod Total Mortality` = median(tot_mort_cod),
                            `Haddock Total Mortality` = median(tot_mort_hadd),
                            `Cod Discard Mortality` = median(disc_mort_cod),
@@ -562,7 +848,7 @@ server <- function(input, output, session){
         p4<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `Haddock Discard Mortality`, y = `Haddock Total Mortality`))+
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept =had_acl())+
-          ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
+          ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
           ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=290)) +
           ggplot2::xlab("Haddock Discard Mortality (mt)")+
           ggplot2::ylab("Total Recreational Haddock Mortality (mt)")+
@@ -571,7 +857,6 @@ server <- function(input, output, session){
           ggplot2::theme(legend.position = "none")
 
         fig4<- plotly::ggplotly(p4)%>%
-          # graphics::layout(title = list(text = paste0('Haddock Mortality (mt) compared to Haddock Releases (mt)'))) %>%
           plotly::style(textposition = "top center")
         fig4
 
@@ -579,31 +864,31 @@ server <- function(input, output, session){
     }
   })
 
-
   output$addTripsCod <- renderUI({
     if(any("Trips" == input$fig)){
 
       plotly::renderPlotly({
 
         trips <-  outputs() %>%
-          dplyr::filter(metric == c("predicted_trips"),
+          dplyr::filter(metric == "n_trips_alt",
                         mode == "all modes") %>%
-          dplyr::group_by(model,  draw) %>%
+          dplyr::group_by(policy_name, iteration) %>%
           dplyr::summarise(value = sum(as.numeric(value))) %>%
           dplyr::ungroup()
 
         catch<- outputs() %>%
-          #dat %>%
-          dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
-                        mode == "all modes")%>%
-          dplyr::group_by(model, species,draw) %>%
+          dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                    "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                      mode == "all modes") %>%
+        dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+        dplyr::group_by(policy_name, species, iteration) %>%
           dplyr::summarise(Value = sum(as.numeric(value))) %>%
           dplyr::mutate(Value = Value * lb_to_mt()) %>%
-          dplyr::group_by(model, draw, species) %>%
+          dplyr::group_by(policy_name, iteration, species) %>%
           dplyr::summarise(Value =round(median(Value),0)) %>%
           tidyr::pivot_wider(names_from = species, values_from = Value) %>%
           dplyr::left_join(trips) %>%
-          dplyr::group_by(model) %>%
+          dplyr::group_by(policy_name) %>%
           dplyr::summarise(Trips = median(value),
                            cod = median(cod),
                            hadd = median(hadd))
@@ -611,7 +896,7 @@ server <- function(input, output, session){
         p5<- catch %>% ggplot2::ggplot(ggplot2::aes(x = Trips, y = `cod`))+
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept = cod_acl())+
-          ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
+          ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
           ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=220000), angle=90) +
           ggplot2::xlab("Number of Trips")+
           ggplot2::ylab("Total Recreational Cod Mortality (mt)")+
@@ -620,7 +905,6 @@ server <- function(input, output, session){
           ggplot2::theme(legend.position = "none")
 
         fig5<- plotly::ggplotly(p5)%>%
-          #graphics::layout(title = list(text = paste0('Cod Mortality (mt) compared to Total Number of Trips'))) %>%
           plotly::style(textposition = "top center")
         fig5
 
@@ -634,24 +918,25 @@ server <- function(input, output, session){
 
       plotly::renderPlotly({
         trips <- outputs() %>%
-          dplyr::filter(metric == c("predicted_trips"),
+          dplyr::filter(metric == "n_trips_alt",
                         mode == "all modes") %>%
-          dplyr::group_by(model,  draw) %>%
+          dplyr::group_by(policy_name, iteration) %>%
           dplyr::summarise(value = sum(as.numeric(value))) %>%
           dplyr::ungroup()
 
         catch<- outputs() %>%
-          #dat %>%
-          dplyr::filter(metric %in% c("keep_weight", "discmort_weight"),
-                        mode == "all modes") %>%
-          dplyr::group_by(model, species,draw) %>%
+          dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                    "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                      mode == "all modes") %>%
+        dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+        dplyr::group_by(policy_name, species, iteration) %>%
           dplyr::summarise(Value = sum(as.numeric(value))) %>%
           dplyr::mutate(Value = Value * lb_to_mt()) %>%
-          dplyr::group_by(model, draw, species) %>%
+          dplyr::group_by(policy_name, iteration, species) %>%
           dplyr::summarise(Value =round(median(Value),0)) %>%
           tidyr::pivot_wider(names_from = species, values_from = Value) %>%
           dplyr::left_join(trips) %>%
-          dplyr::group_by(model) %>%
+          dplyr::group_by(policy_name) %>%
           dplyr::summarise(Trips = median(value),
                            cod = median(cod),
                            hadd = median(hadd))
@@ -660,7 +945,7 @@ server <- function(input, output, session){
         p6<- catch %>% ggplot2::ggplot(ggplot2::aes(x =Trips , y = hadd))+
           ggplot2::geom_point() +
           ggplot2::geom_hline( yintercept = had_acl())+
-          ggplot2::geom_text(ggplot2::aes(label=model), check_overlap = TRUE)+
+          ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
           ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=220000)) +
           ggplot2::xlab("Number of Trips")+
           ggplot2::ylab("Total Recreational Haddock Mortality (mt)")+
@@ -669,38 +954,61 @@ server <- function(input, output, session){
           ggplot2::theme(legend.position = "none")
 
         fig6<- plotly::ggplotly(p6)%>%
-          #layout(title = list(text = paste0('Haddock Mortality (mt) compared to Total Number of Trips'))) %>%
           plotly::style(textposition = "top center")
         fig6
       })
     }
   })
 
-  #### Toggle extra seasons on UI ####
-  # Allows for extra seasons to show and hide based on click
+################################################################################
+################################################################################
+# Section E: Regulation submission
+################################################################################
+################################################################################
+
   shinyjs::onclick("CODaddSeason",
                    shinyjs::toggle(id = "CodSeason2", anim = TRUE))
   shinyjs::onclick("HADaddSeason",
                    shinyjs::toggle(id = "HadSeason3", anim = TRUE))
 
-  #### Regulations ####
+  # Fires once per click of "Run Me": flattens the form into a long
+  # name/value table, writes it to saved_regs/, and puts a message on the
+  # queue that the model worker polls.
   regulations <- observeEvent(input$runmeplease,{
     library(httr)
     library(jsonlite)
     library(openssl)
     library(uuid)
 
-    print("before function is made")
+    queue_url <- Sys.getenv("GROUNDFISH_AZURE_STORAGE_QUEUE_URL",unset = NA_character_)
+    message("Queue URL set: ", !is.na(queue_url) && nzchar(queue_url))
+    message("Queue URL length: ", ifelse(is.na(queue_url), 0, nchar(queue_url)))
+    # message(queue_url)
+
+    #' @title Put a run request on the Azure Storage queue
+    #' @description Posts a small JSON payload naming the run. Authentication
+    #'   comes entirely from the shared-access-signature token embedded in the
+    #'   URL, so no credentials are handled here. Azure requires the message to
+    #'   be base64-encoded inside a <QueueMessage> XML envelope.
+    #' @param run_name The run identifier the worker should look for in
+    #'   saved_regs/.
+    #' @param queue_url_sas Full SAS URL of the queue; read from the
+    #'   GROUNDFISH_AZURE_STORAGE_QUEUE_URL environment variable by default.
+    #' @return TRUE invisibly; raises an error on a non-success HTTP status.
     enqueue_simple_sas <- function(run_name, queue_url_sas = Sys.getenv("GROUNDFISH_AZURE_STORAGE_QUEUE_URL")) {
       stopifnot(nzchar(run_name), nzchar(queue_url_sas))
 
       # Clean and ensure /messages endpoint
       queue_url_sas <- trimws(queue_url_sas, whitespace = "\" ")
-      post_url <- if (grepl("/messages/?$", queue_url_sas)) {
-        queue_url_sas
-      } else {
-        paste0(sub("/$", "", queue_url_sas), "/messages")
-      }
+      message(queue_url_sas)
+      post_url <- queue_url_sas
+      # post_url <- if (grepl("/messages/?$", queue_url_sas)) {
+      # queue_url_sas
+      # } else {
+      #  paste0(sub("/$", "", queue_url_sas), "/messages")
+      # }
+
+      message(post_url)
 
       payload <- list(
         runName = run_name,
@@ -719,34 +1027,30 @@ server <- function(input, output, session){
       invisible(TRUE)
     }
 
-    print("after function is made")
     print(Sys.getenv("GROUNDFISH_AZURE_STORAGE_QUEUE_URL"))
 
-    print("before regs")
     regulations <- NULL
-    #if(any( )) will run all selected check boxes on UI-regulations selection tab
+    # The naming convention in `input` is what downstream code parses:
+    # <species><mode>_seas<n>_<op|cl> for season endpoints, and
+    # <species><mode>_<n>_<bag|len> for bag limits and minimum sizes.
+
     codregs <- data.frame(run_name = c(Run_Name()),
                           input =  c("codFH_seas1_op", "codFH_seas1_cl", "codPR_seas1_op", "codPR_seas1_cl",
                                      "codFH_seas2_op", "codFH_seas2_cl", "codPR_seas2_op", "codPR_seas2_cl",
-                                     "codFH_seas3_op", "codFH_seas3_cl", "codPR_seas3_op", "codPR_seas3_cl",
 
-                                     "codFH_1_bag", "codPR_1_bag", "codFH_2_bag" , "codPR_2_bag",  "codFH_3_bag", "codPR_3_bag",
+                                     "codFH_1_bag", "codPR_1_bag", "codFH_2_bag" , "codPR_2_bag",
 
-                                     "codFH_1_len", "codPR_1_len", "codFH_2_len", "codPR_2_len","codFH_3_len", "codPR_3_len"),
+                                     "codFH_1_len", "codPR_1_len", "codFH_2_len", "codPR_2_len"),
                           value =  c(as.character(input$CodFH_seas1[1]), as.character(input$CodFH_seas1[2]),
                                      as.character(input$CodPR_seas1[1]), as.character(input$CodPR_seas1[2]),
                                      as.character(input$CodFH_seas2[1]), as.character(input$CodFH_seas2[2]),
                                      as.character(input$CodPR_seas2[1]), as.character(input$CodPR_seas2[2]),
-                                     as.character(input$CodFH_seas3[1]), as.character(input$CodFH_seas3[2]),
-                                     as.character(input$CodPR_seas3[1]), as.character(input$CodPR_seas3[2]),
 
                                      as.character(input$CodFH_1_bag), as.character(input$CodPR_1_bag),
                                      as.character(input$CodFH_2_bag), as.character(input$CodPR_2_bag),
-                                     as.character(input$CodFH_3_bag), as.character(input$CodPR_3_bag),
 
                                      as.character(input$CodFH_1_len), as.character(input$CodPR_1_len),
-                                     as.character(input$CodFH_2_len), as.character(input$CodPR_2_len),
-                                     as.character(input$CodFH_3_len), as.character(input$CodPR_3_len)))
+                                     as.character(input$CodFH_2_len), as.character(input$CodPR_2_len)))
 
 
     hadregs <- data.frame(run_name = c(Run_Name()),
@@ -778,8 +1082,9 @@ server <- function(input, output, session){
     regulations <- regulations %>% rbind(codregs, hadregs)
 
     print("before regs write")
+    # File name uses the raw input, while the run_name column inside the file
+    # uses the underscore-sanitized Run_Name(); the two can therefore differ.
     readr::write_csv(regulations, file = here::here(paste0("saved_regs/regs_", input$Run_Name, ".csv")))
-
 
     print("enqueue triggered")
     enqueue_simple_sas(input$Run_Name)
@@ -789,77 +1094,6 @@ server <- function(input, output, session){
 
   })
 
-  observeEvent(input$runmeplease, {
-    output$message <- renderText("Regulations saved - your model run has been queued. Results will appear in the output folder once processing completes. Be sure to change the run name before submitting another job.")
-  })
-
-
-  ###Output Tables
-  output$regtableout <- renderTable({
-    regs()
-  })
-
-  #### Catch tables
-  observeEvent(input$bymode, {
-    which_catch_out(!which_catch_out())
-  })
-
-  which_catch<- reactive({
-    if(which_catch_out()){
-      catch_agg()
-    } else{
-      catch_by_mode()
-    }
-  })
-
-  output$catch_tableout <- renderTable({
-    which_catch()
-  })
-
-  ### Keep Release
-  observeEvent(input$bymode, {
-    which_keep_out(!which_keep_out())
-  })
-
-  which_keep<- reactive({
-    if(which_keep_out()){
-      keep_agg()
-    } else{
-      keep_by_mode()
-    }
-  })
-
-  output$keep_tableout <- renderTable({
-    which_keep()
-  })
-
-
-  #### Welfare
-  observeEvent(input$bymode, {
-    which_welfare_out(!which_welfare_out())
-  })
-
-  which_welfare<- reactive({
-    if(which_welfare_out()){
-      welfare_agg()
-    } else{
-      welfare_by_mode()
-    }
-  })
-
-  output$welfare_tableout <- renderTable({
-    which_welfare()
-  })
-
-
-  # output$downloadData <- downloadHandler(
-  #   filename = function(){"RecDSToutput.xlsx"},
-  #   content = function(filename) {
-  #     df_list <- list(Regulations=regs_agg(), Catch_Mortality_aggregated = catch_agg(), Catch_Mortality_by_mode = catch_by_mode(),
-  #                     Keep_Release_aggregated = keep_agg(), Keep_Release_by_mode = keep_by_mode(),
-  #                     Satisfaction_trips_aggregated = welfare_agg(), Satisfaction_trips_by_mode = welfare_by_mode())
-  #     openxlsx::write.xlsx(append = TRUE, x = df_list , file = filename, row.names = FALSE)
-  #   })
 
 }
-shiny::shinyApp(ui = ui, server = server)
+  shiny::shinyApp(ui = ui, server = server)

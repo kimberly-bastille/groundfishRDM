@@ -1,56 +1,49 @@
-###################################################
-### Code to read in WGOM Cod Stock assessment data provided by Charles Peretti.
-# The terminal year of this stock assessment is 2023.
-# The bioeconomic model needs a few parameters that go into the stock assessment.
-# It also needs some parameters that come out of the stock assessment.
-# This code does just 1 projection.
-# 2) 75%Fmsy 2025-2027 (potential ABCs)
-# Bridging was originally done by picking the last row of "agg_catch" from the projection
-# for 2023 and 2024
-# I've modified it to pass in numbers for 2023 and 2024 based on recent data updates
-
-
-# Depends "wham_version_installer.R" will install the proper version of the WHAM
-# package that matches the WHAM model.
-
-# Some inputs to ASAP are scalars, some are vectors, and some are matrices.
-# I use tail(.x, 1) to pick the last "thing" of a vector or matrix, which is usually the final year of data.
-
-# Aggregate Weights (SSB and catch) are in metric tons.
-# Individual weights (Weights at age vectors) are in kg
-
-
-############
-# Parameters that go into the stock assessment
-# Fraction of year that elapses before SSB Calculation (Jan1=0.0)
-# Natural Mortality -- note that in the original blast model, this is a scalar.
-# In ASAP, this is specified as a vector of M at age, which is stacked into a T by A matrix (T is number of years and A is number of Age classes)
-
-############
-# Parameters that come out of the stock assessment
-# Weights at age
-############
-# The WGOM cod stock assessment has 2 fleets, Commercial and recreational.  There is also a 'blended' fleet.
-
-#BLAST 1.0 uses these 1xA row vectors.
-# cod_jan1_weights
-# cod_midyear_weights
-# cod_catch_weights
-# cod_ssb_weights
-# cod_discard_weights
-# cod_discard_fraction not in the model for commercial
-# cod_maturity
-
-# Historical NAA comes out of the WHAM stock assessment.
-
-######
-# Parameters that come out of the projections
-######
-# Numbers at age (in the future).  There isn't a stochastic projection for WGOM
-# cod.  WGOM Cod NAA are assumed to be lognormally distributed with a mean and sd parameters.
-# I use rlnorm() to generate a distribution
-
-############ End description###################################################
+################################################################################
+################################################################################
+# Script:       process_cod_assessment.R
+# Purpose:      Reads the accepted WGOM Atlantic cod WHAM stock-assessment model
+#               (terminal year 2023) and its ASAP input file from Google Drive,
+#               extracts the biological parameters the bioeconomic model needs,
+#               runs a single 0.75*Fmsy (2025-2027) projection, and writes both
+#               historical and projected numbers-at-age (NAA). Projected NAA are
+#               drawn (num_NAA_draws) from a bias-corrected lognormal built from
+#               the projection's log-NAA mean and sd.
+# Inputs:       Two files from the Google Drive shared drive:
+#               "NMFS NEC READ SSB", cod_assessment/
+#                 mod_base_2023_noBLLS.rds       (accepted WHAM model),
+#                 WGOM_COD_ASAP_2023_SEL3_2023.DAT (ASAP input file).
+#               "commercial_CY_removals_{vintage_string}.Rds"
+# Outputs:      input_data/WGOMCod_Projections_<date>.Rds,
+#               input_data/WGOM_Cod_historical_NAA_<date>.{Rds,dta},
+#               input_data/WGOM_Cod_projected_NAA_<date>.{Rds,dta}
+# Dependencies: wham_version_installer.R must have installed the WHAM version
+#               matching the model (verified here via stopifnot on the commit).
+#               Code/helpers/naa_helpers.R (pivot_naa_long, validate_naa_data).
+#               Google Drive access with cached credentials in .secrets.
+# Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
+#               the Stata pipeline: its NAA outputs feed the catch-at-length
+#               steps (see catch_at_length_projection.do).
+#
+# Background (units and conventions):
+#   - Aggregate weights (SSB, catch) are in metric tons; weight-at-age vectors
+#     are in kg.
+#   - tail(x, 1) is used to pick the last (most recent) year of a vector/matrix.
+#   - The assessment has commercial and recreational fleets (plus a 'blended'
+#     fleet). Some parameters go INTO the assessment (natural mortality M,
+#     fraction-of-year before spawning); others come OUT (weights-at-age,
+#     maturity, historical NAA). BLAST 1.0 consumes the 1xA weight-at-age row
+#     vectors built below (cod_jan1_weights, cod_midyear_weights,
+#     cod_catch_weights, cod_ssb_weights, cod_discard_weights, cod_maturity;
+#     cod_discard_fraction is not modeled for the commercial fleet).  However
+#     the current versions of the groundfishRDM does not use these.
+#   - There is no stochastic projection for WGOM cod, so future NAA are treated
+#     as lognormal and simulated with rlnorm().
+#   - Bridging: 2023 and 2024 catch are passed in as actuals (see the "Pull
+#     models to make projections" section) rather than read from agg_catch.
+#
+# Author: Charles Perretti (2024); modified by Min-Yang Lee (2025).
+################################################################################
+################################################################################
 #Load libraries
 library(tidyverse)
 library(TMB)
@@ -67,9 +60,11 @@ library(wham,lib.loc = cod_wham_lib)
 
 # Assessment folders
 
-here::i_am("Code/pre_sim/get_cod_assessment_data.R")
+here::i_am("Code/pre_sim/process_cod_assessment_data.R")
+source(here("Code", "helpers", "developer_setup.R"))
 assessment_output_folder<-here("input_data")
 dir.create(file.path(assessment_output_folder), showWarnings = FALSE)
+miscellaneous_folder<-file.path(gf.data.dir, "miscellaneous")
 
 # data version
 data_version<-Sys.Date()
@@ -131,6 +126,21 @@ drive_download(
   path = temp_path,
   overwrite = TRUE
 )
+
+
+#read in calendar year commercial landings
+
+commercial_CY_removals<- readRDS(file=
+                                    file.path(miscellaneous_folder,
+                                              glue("commercial_CY_removals_{data_version}.Rds")
+                                              )
+                                  )
+
+wgom_cod_cy_removals<-commercial_CY_removals %>%
+  filter(itis_tsn==164712, area_name=="WGOM")
+
+
+
 
 # Read in using  into your environment
 mod_accepted <- read_rds(temp_path)
@@ -206,7 +216,7 @@ cat("Installed wham commit is", packageDescription("wham")$RemoteSha,"\n")
 # Placeholders and parameters
 periods<-12 # there are 12 months in a year
 # Which year do you want a projection for, How many projections? Set a seed.
-YearProj<-2026
+YearProj<-2027
 num_NAA_draws<-500
 set.seed(6)
 
@@ -269,22 +279,32 @@ cod_maturity= tail(asap3[[1]]$dat$maturity,1)
 
 
 # Define catch in previous years######################################################
-# I use GARFOs quota monitoring page for Rec, since the FY catch is equal to the CY catch.
-# Doesn't quite work for commercial
 
-actual_2023_commercial_catch_mt<-438
-actual_2024_commercial_catch_mt<-550
-actual_2025_commercial_catch_mt<-NA # Update this for 2027 management:
+actual_2023_commercial_catch_mt<-wgom_cod_cy_removals %>%
+  filter(year==2023) %>%
+  pull(total_removals)
+actual_2024_commercial_catch_mt<-wgom_cod_cy_removals %>%
+  filter(year==2024) %>%
+  pull(total_removals)
+actual_2025_commercial_catch_mt<-wgom_cod_cy_removals %>%
+  filter(year==2025) %>%
+  pull(total_removals)
+actual_2026_commercial_catch_mt<-NA # Update this for 2028 management:
 
+
+# I use GARFOs quota monitoring page for Rec, since the FY catch is nearly equal to the CY catch.
 actual_2023_rec_catch_mt<-192 # From GARFO quota monitoring report
 actual_2024_rec_catch_mt<-72
-actual_2025_rec_catch_mt<-NA # Update this for 2027 management:
+actual_2025_rec_catch_mt<-72 # Update this for 2027 management:
+actual_2026_rec_catch_mt<-NA # Update this for 2028 management:
 
 
 actual_2023_catch_mt<-actual_2023_commercial_catch_mt+actual_2023_rec_catch_mt
 actual_2024_catch_mt<-actual_2024_commercial_catch_mt+actual_2024_rec_catch_mt
 # 2025 not used (yet)
-# actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
+ actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
+# 2026 not used (yet)
+# actual_2026_catch_mt<-actual_2026_commercial_catch_mt+actual_2026_rec_catch_mt
 
 
 
@@ -304,7 +324,7 @@ set_specs <- function(mod) {
          proj_F_opt  = list(c(5, 5, 4, 4)),  # length=numyears.  stack on different things to make different projections. 5=metric tons, 4=an instantanous fishing mortality rate (F)
 
          # NOTE: Year 1 & 2 use specified MT bridging catch; Year 3 & 4 apply the 75% Fmsy rate
-         proj_Fcatch = list(c(actual_2023_catch_mt, actual_2024_catch_mt, rep(0.75 * Fmsy, 2))) #2 # length=numyears
+         proj_Fcatch = list(c(actual_2023_catch_mt, actual_2024_catch_mt, actual_2025_catch_mt, rep(0.75 * Fmsy, 1))) #2 # length=numyears
     )
 }
 
@@ -317,6 +337,7 @@ proj.opts_list2 <- map_df(mod_list, .f = set_specs)
 ################################################################################
 proj_list <- list()
 mod_names <- map_df(mod_list, .f = function(x) data.frame(model_name = x$model_name))
+message("Running WGOM cod WHAM projection(s); this may take a while ...")
 for(i in 1:length(proj.opts_list2$n.yrs)) {
 
   mod_index <- which(mod_names$model_name == proj.opts_list2$Model[i])
@@ -437,21 +458,6 @@ validate_naa_data(historical_NAA_long)
 write_dta(historical_NAA_long, path=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")))
 write_rds(historical_NAA_long, file=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")))
 
-#Put the historical NAA on google drive
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{HistoricalNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
-
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{HistoricalNAASaveFile}.dta"),
-  overwrite = TRUE
-)
-
 
 
 # Pick exactly 1 year. See the header.
@@ -504,18 +510,3 @@ validate_naa_data(NAA_long)
 
 write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")))
 write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))
-
-#Put the historical NAA on google drive
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{ProjectedNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
-
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{ProjectedNAASaveFile}.dta"),
-  overwrite = TRUE
-)

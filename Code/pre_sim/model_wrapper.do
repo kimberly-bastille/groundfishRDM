@@ -1,50 +1,64 @@
-/**** Groundfish RDM input code wrapper ****/
+ /*******************************************************************************
+ Script:       model_wrapper.do
+ Purpose:      Master Stata wrapper for the GroundfishRDM pre-simulation
+               pipeline. Sets the year-specific global parameters (calibration
+               and projection windows, federal holidays, number of draws, seed),
+               configures project directories, then runs the pre-simulation
+               steps in order via on/off execution-control toggles. Ends by
+               launching the R simulation wrapper (R code wrapper.R).
+ Inputs:       None read directly here; each sub-script reads its own inputs.
+
+ Outputs:      None written directly; orchestrates sub-scripts that write to
+               $misc_data_cd, $calib_catch_draws_cd and $figure_cd. Writes a
+               timestamped SMCL log to $log_dir.
+ Dependencies: Global $developer must be set BEFORE running, and the working
+               directory must already be the project root so that `here'
+               resolves correctly (the header comment below describes the
+               profile.do trick for this).
+
+			   User-written commands: here, dsconcat, renvarlab, xsvmat, gammafit,
+			   grc1leg, and rscript (at least version 1.2.1, 27Sept2026 )
+               (`ssc install` each once).
+			   Code/helpers/developer_setup_stata.do.
+               Google Drive mounted to D: (for get_assessment_from_gdrive.do).
+               Oracle connection required to extract MRIP data.
+			   Some R scripts that are called will copy files from Google Drive or write files to
+			   Google Drive.
+			   If you have not already connected to google drive,
+			   run "Code/helpers/googledrivesetup.R".  If you do not the
+			   the R scripts that use googledrive will fail ungracefully.
+
+ Pipeline:     Step 0 / very top of the whole pipeline. Each toggle below runs
+               one pre_sim script (execution order: README.md, "Running the
+               Pipeline"); the final toggle hands off to
+               Code/sim/R code wrapper.R for the simulation.
+
+ Before running: this wrapper uses `here` to locate the project root, so you
+   MUST change into the project directory first. A convenient pattern is to add
+       global groundfishRDMdir "path to this project"
+   to your profile do-file and run `cd "$groundfishRDMdir"` before this script.
+
+ Data availability (projections are made for the next fishing year in Dec/Jan):
+   - MRIP catch, effort and length data: most recent 6 waves.
+   - Stock-assessment projection data: Jan 1 numbers-at-age (NAA) for the
+     baseline year (historical rec. selectivity) and projection year
+     (projected catch-at-length).
+   - NEFSC trawl-survey data (recent years) used to build age-length keys.
+   - MRIP source data come from Oracle
 
 
-/* This uses the user written command here to set directories*/
-/* It is not as good as R's version. Before running this code, you must change directories into project directory
-One easy way to do this is to add a line to your profile do that store that directory in the
-global groundfishRDMdir "path to this project"
-and then cd "$groundfishRDMdir" right before running this code
-
-*/
-
-**Data availability**
-
-* We make projections for the next fishing year in Dec/Jan.
-
-* MRIP catch, effort, and length data: most recent 6 waves of MRIP data.
-
-*Stock assessment projections data:
-		*Jan 1 2024 NAA to compute historical rec. selectivity ***CHECK
-		*Jan 1 2026 NAA to compute projected catch-at-length ***CHECK
-
-*NEFSC trawl survey data from 2024, 2023, 2022 years used to create age-length keys
-		*CHECK
-
-*MRIP data is stored in
-	*"smb://net/mrfss/products/mrip_estim/Public_data_cal2018"
-	*Windows, just mount \\net.nefsc.noaa.gov\mrfss to A:\
-
-* Dependencies
-* ssc install xsvmat
-* ssc install gammafit
-* ssc install grc1leg
-* ssc install rscript
+ THESE GLOBALS AND REGULATIONS MUST BE UPDATED EVERY YEAR (see Section A).
+*******************************************************************************/
 
 set varabbrev on
-/*********************************************************/
-/************Set globals *********************************/
-* these need to be changed every year
-/*********************************************************/
-/*********************************************************/
 
-/*Original data years*/
-*global calibration_year "(year==2025 & inlist(wave, 1, 2, 3, 4)) | (year==2024 & inlist(wave, 5, 6))"  // last six waves of data
-*global calibration_date_start td(01sep2024)
-*global calibration_date_end td(31aug2025)
+/******************************************************************************/
+/******************************************************************************/
+/* Section A: Year-specific global parameters (UPDATE EVERY YEAR) */
+/******************************************************************************/
+/******************************************************************************/
 
-/*Updated data years*/
+/*Set calibration year-waves*/
 global calibration_year "(year==2025 & inlist(wave, 1, 2, 3, 4, 5)) | (year==2024 & inlist(wave, 6))"  // last six waves of data  updated
 global calibration_date_start td(01nov2024)
 global calibration_date_end td(31oct2025)
@@ -70,14 +84,13 @@ global ndraws 101
 * source =https://www.bls.gov/data/inflation_calculator.htm
 global inflation_expansion=1.13
 
-/*********************************************************/
-/*********************************************************/
-/**************** handle directories *********************/
-/*********************************************************/
-/*********************************************************/
-/* find the root of the project
-prior to running the wrapper, you must change to $groundfishRDMdir so here picks up the project
-*/
+/******************************************************************************/
+/******************************************************************************/
+/* Section B: Directories, log, and seed */
+/******************************************************************************/
+/******************************************************************************/
+/* `here' finds the project root. This only works if you have already cd'd into
+   the project directory (see the "Before running" note in the header). */
 here, nogit
 
 do "${here}/Code/helpers/developer_setup_stata.do"
@@ -101,24 +114,27 @@ timer on 1           // Starts timing
 
 /* start log */
 cap log close
-log using "${log_dir}\model_wrapper_log_$S_DATE.smcl", replace
+log using "${log_dir}\model_wrapper_log_${S_DATE}_${S_TIME}.smcl", replace
 
 
 * set a global seed
 global seed 03211990
-/*********************************************************/
-/*********************************************************/
-/****************GLOBAL for years of MRIP Data************/
-/*********************************************************/
-/*********************************************************/
 
+
+/******************************************************************************/
+/******************************************************************************/
+/* Section C: MRIP year/wave globals and assessment-year globals */
+/******************************************************************************/
+/******************************************************************************/
+
+/*set mrip type either cal_2018 or cal_2026 */
+global mrip_cal_type "cal_2018"
 
 /* years/waves of MRIP data.*/
 /* used by:
 tidyup_mrip_data_fromR.do
 MRIP_column_cases.do (dead code)
-compare wave 5 data.do
-*/
+compare wave 5 data.do*/
 
 global yr_wvs 20231 20232 20233 20234 20235 20236  ///
 			  20241 20242 20243 20244 20245 20246  ///
@@ -126,8 +142,7 @@ global yr_wvs 20231 20232 20233 20234 20235 20236  ///
 
 /* First and last year of MRIP data.*/
 /* used by:
-tidyup_mrip_data_fromR.do
-*/
+tidyup_mrip_data_fromR.do*/
 
 global first_mrip_year 2023
 global last_mrip_year 2025
@@ -135,15 +150,14 @@ numlist "$first_mrip_year/$last_mrip_year"
 
 /* Yearlist and wavelist.*/
 /* used by:
-MRIP_lists.do (dead code)
-*/
+MRIP_lists.do (dead code) */
 
 global yearlist  `r(numlist)'
 global wavelist 1 2 3 4 5 6
 
 /* set the baseline year and projection year numbers-at-age globals
-used by catch_at_length_projection.do
-*/
+used by catch_at_length_projection.do*/
+
 global cod_NAA_base_year 2025
 global hadd_NAA_base_year 2025
 global cod_NAA_proj_year 2026
@@ -153,57 +167,171 @@ global hadd_NAA_proj_year 2026
 	 we aggregate these data across multiple years and use them to create age-length keys
 	 I usually check how many observations are available across different choices of the starting year; we want sufficient data
 	 but do not want to use historical data too far in the past.
-used by catch_at_length_projection.do
-*/
+used by catch_at_length_projection.do*/
 
 global trawl_survey_start_year 2022
 
 
 
-**********************************************************************
-************************ EXECUTION CONTROL ***************************
-**********************************************************************
+
+/******************************************************************************/
+/******************************************************************************/
+/* Section D: Execution control (toggle each pipeline step on/off) */
+/******************************************************************************/
+/******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
-loc pull_assessment = 1		 		// Pull Assessment data
-loc pull_MRIP = 1		 			// Pull MRIP data.
+loc process_commercial_landings = 1      	    // Get commercial landings from Oracle
+loc process_cod_assess = 1                		// Process Cod Assessment data
+loc process_haddock_assess = 0            // Process Haddock Assessment data
 
-loc processMRIP = 0		 			// deal with casing MRIP data
-loc assemblemriplists =0		 	// deal with casing MRIP data
-loc estimate_dtrips = 1				// Estimate Directed Trips
-loc costs_per_trip = 1  			// Create Distributions of costs per trip (run 1x)
-loc draw_angler_preferences = 1		// Create draw of angler preference parameters (run 1x)
-loc catch_per_trip1 = 1				// Part 1 of catch per trip
-loc copula_in_R = 1					// Copula model in R
-loc catch_per_trip2 = 1				// Part 2 of catch per trip
-loc compare_calibration_MRIP = 1	// compare calibration output to MRIP
-loc prep_cpt_for_dashboard= 1		// prep data for dashboard
-loc Rpush_cpt_to_gdrive =1 			// Push to google drive in R
-loc angler_demogs	=1				// add additonal angler demographics
-loc generate_baseline=1				// Generate baseline-year catch-at-length
-loc prep_catch_at_length_for_dash= 1		// Prep catch at length data for dashboard
-loc Rpush_catch_at_length_to_gdrive =1 			// Push catch at length data to  google drive in R
-loc catch_at_length_project=1			// Generate projection-year catch-at-length
-loc run_calibration=1						// Run calibration routine in R
+loc get_assessment_from_gdrive = 1				// Pull Assessment data
+loc get_mrip_oracle = 1		 					      // Pull MRIP data.
+
+loc directed_trips_calibration = 1				// Estimate Directed Trips
+loc survey_trip_costs = 1  						    // Create Distributions of costs per trip (run 1x)
+loc estimate_angler_preferences = 1				// Create draw of angler preference parameters (run 1x)
+loc calib_catch_per_trip_part1 = 1				// Part 1 of catch per trip
+loc copula_modeling_calibration = 1				// Copula model in R
+loc calib_catch_per_trip_part2 = 1				// Part 2 of catch per trip
+loc compare_calib_data_to_MRIP = 1				// compare calibration output to MRIP
+loc additional_angler_dems	=1					  // add additional angler demographics
+loc catch_at_length_calibration=1			   	// Generate baseline-year catch-at-length
+loc catch_at_length_project=1					    // Generate projection-year catch-at-length
+loc Rcodewrapper=1								        // Run calibration routine in R
 
 
+/********************* Push to google drive toggles*************************************/
+/********************* (versions on main should be set to 0)****************************/
+loc export_assess_to_gdrive = 0          // Export assessment to google drive
+local assess_upload = "cod"				 // arguments for uploading. Can be "cod", "haddock", or "both"
+loc export_all_to_GDrive = 0             // Export calibration and all data to Google
 
-// Prototyping
-local proto = 0
 
-if `proto' {
-	global ndraws 3
+/********************* Dashboard Toggles  *************************************/
+/********************* (versions on main should be set to 0)****************************/
+
+loc rdb_processing_catch_per_trip= 0  	  // prep data for dashboard
+loc rdb_catch_per_trip_to_drive =0 	  	  // Push to google drive in R
+loc rdb_catch_at_length= 0	              // Prep catch at length data for dashboard
+loc rdb_catch_at_len_to_drive =0 	        // Push catch at length data to  google drive in R
+
+
+
+/********************* Uncertainty Project Toggles *************************************/
+/********************* (versions on main should be set to 0)****************************/
+/***************************************************************************************/
+
+**** Toggles to generate alternative data for the uncertainty project (1 = yes, 0 = no)
+/* Be mindful that files are being overwritten with each test and some data needs resetting 
+prior to generating data for the next test. Eg, after testing mean directed trips, must rerun 
+directed_trips_calibration to replace directed_trip_draws.csv with original version before testing
+median trips or another source of uncertainty. When not testing catch per trip uncertainty, must either
+run copula_modeling_calibration or run copula_both but set manual species toggle to "none" in copula_both.R. */
+global uncertain 0				/* Uncertainty project argument for passing into R code  */
+local copula_both=0			    /* Copula model with ability to remove sampling uncertainty for testing catch per 
+								trip uncertainty (use manual toggle 'species_no_uncertainty' in the R script to select 
+								one or both species, or neither when testing the other uncertainty sources). Turn off 
+								copula_modeling_calibration local above to save time when copula_both=1 */
+local projected_naa_uncertain=0   /* Removes uncertainty in numbers at age to examine catch at length uncertainty  
+									(Manually change species in code below to cod, haddock, or both in this line: 
+									do "$input_code_cd\projected_naa_uncertain.do" above step 10) */
+local directed_trip_uncertain=0   /* Removes uncertainty in simulated directed trips (there's a manual 
+								    toggle in the do file to take median trips or mean trips).  */
+local uncertain_loc=0			  /* save the alternative data in its own 'uncertainty' folders */
+
+*Only TP can do the uncertainty project, this block of code sets all the uncertainty toggles to 0 if you are not TP:
+if (inlist("$developer","TP")==0) {
+	global uncertain=0
+	local copula_both=0			   
+	local projected_naa_uncertain=0  
+	local directed_trip_uncertain=0   
+	local uncertain_loc=0
+}
+/********************* End of Uncertainty Project Toggles *************************************/
+
+/* toggle the local uncertain_loc to 1 to save the alternative data in its own 'uncertainty' folders
+If the uncertain global is set to 1, make sure the local is set to 1 as well
+Currently, only TP has the ability to set up the gfdatadirunc directory */
+if `uncertain_loc' {
+	global misc_data_cd "${gfdatadirunc}/miscellaneous"
+	global calib_catch_draws_cd "${gfdatadirunc}/calib_catch_draws"
+	global figure_cd  "${gfdatadirunc}/figures"
+	
+	capture mkdir $misc_data_cd
+	capture mkdir $calib_catch_draws_cd
+	capture mkdir $figure_cd
 }
 
-**************************************************Model calibration **************************************************
+
+
+
+// Prototyping: set proto=1 to override $ndraws down to the small value below for a fast test run.
+local proto = 1
+
+if `proto' {
+	global ndraws 5
+}
+
+local executed_scripts ""
+local skipped_scripts  ""
+
+/******************************************************************************/
+/******************************************************************************/
+/* Section E: Run the pipeline (each step gated by its Section D toggle) */
+/******************************************************************************/
+/******************************************************************************/
+
+/* Process cod and haddock assessment data */
+if `process_commercial_landings' {
+    di "Getting Commercial Landings"
+	rscript using "$input_code_cd\process_commercial_landings.R"
+	local executed_scripts `executed_scripts' process_commercial_landings.R
+}
+else {
+	local skipped_scripts `skipped_scripts' process_commercial_landings.R
+}
+if `process_cod_assess' {
+	di "Processing cod assessment"
+	rscript using "$input_code_cd\process_cod_assessment_data.R"
+	local executed_scripts `executed_scripts' process_cod_assessment_data.R
+}
+else {
+	local skipped_scripts `skipped_scripts' process_cod_assessment_data.R
+}
+
+if `process_haddock_assess'{
+	di "Processing haddock assessment"
+	rscript using "$input_code_cd\process_hadd_assessment_data.R"
+	local executed_scripts `executed_scripts' process_hadd_assessment_data.R
+}
+else {
+	local skipped_scripts `skipped_scripts' process_hadd_assessment_data.R
+}
+
+
+if `export_assess_to_gdrive' {
+	di "Exporting assessment results for `assess_upload' stocks to gdrive"
+	rscript using "$input_code_cd\export_assess_to_gdrive.R", args(`assess_upload')
+	local executed_scripts `executed_scripts' export_assess_to_gdrive.R
+}
+else {
+	local skipped_scripts `skipped_scripts' export_assess_to_gdrive.R
+}
+
+
+
 
 // 0) Pull Assessment data from google.
 
 /* This code requires you to mount your google drive to D on your computer */
-if `pull_assessment' {
+if `get_assessment_from_gdrive' {
 	di "Pulling Assessment data from google"
-
 	do "$input_code_cd\get_assessment_from_gdrive.do"
+	local executed_scripts `executed_scripts' get_assessment_from_gdrive.R
+}
+else {
+	local skipped_scripts `skipped_scripts' get_assessment_from_gdrive.R
 }
 
 // 0) Pull MRIP data from Oracle (takes a while).
@@ -211,179 +339,260 @@ if `pull_assessment' {
 
 
 
+/* Paths to the tidied MRIP extracts (written by tidyup_mrip_data_fromR.do). */
 global catchlist "$misc_data_cd/mrip_catch.dta"
 global triplist  "$misc_data_cd/mrip_trip.dta"
-global b2list  "$misc_data_cd/mrip_size.dta"
-global sizelist  "$misc_data_cd/mrip_size_b2.dta"
+global b2list  "$misc_data_cd/mrip_size_b2.dta"
+global sizelist  "$misc_data_cd/mrip_size.dta"
 
 
 
-if `pull_MRIP' {
-  	di "Pulling MRIP data from oracle"
-		rscript using "$input_code_cd\get_mrip_oracle.R", args($first_mrip_year $last_mrip_year)
-    di "Oracle Data Pull Finished"
-
+if `get_mrip_oracle' {
+  	di "Pulling MRIP data from oracle, this takes a few minutes"
+	rscript using "$input_code_cd\get_mrip_oracle.R", args($mrip_cal_type $first_mrip_year $last_mrip_year)
   	di "Tidying up MRIP data"
   	do "$input_code_cd\tidyup_mrip_data_fromR.do"
-  	di "Tidyup finished"
-
+	local executed_scripts `executed_scripts' tidyup_mrip_data_fromR.do get_mrip_oracle.R
+}
+else {
+	local skipped_scripts `skipped_scripts' tidyup_mrip_data_fromR.do get_mrip_oracle.R
 }
 
 
 
-
-// 1) Process MRIP data
-
-
-if `processMRIP' {
-	di "Processing MRIP data"
-
-	do "$input_code_cd\MRIP_column_cases.do"
-	di "MRIP data processed"
-}
-
-if `assemblemriplists' {
-	di "Assembling Lists of MRIP files"
-
-	do "$input_code_cd\MRIP_lists.do"
-	di "Lists of MRIP files assembled"
-
-}
 
 
 // 2) Estimate directed trips at the month, mode, kind-of day level
 
-if `estimate_dtrips' {
+if `directed_trips_calibration' {
 	di "Estimating Directed trips"
 	*This file calls "set_regulations.do". In it you must enter the SQ regulations in the calibration and projection year.
 	*THIS NEEDS TO BE ADJUSTED EVERY YEAR.
-
 	do "$input_code_cd\directed_trips_calibration.do"
-	di "Directed trips Estimated"
-
+	local executed_scripts `executed_scripts' directed_trips_calibration.R
+}
+else {
+	local skipped_scripts `skipped_scripts' directed_trips_calibration.R
 }
 
+
+// 2b) Remove uncertainty in simulated trips for the uncertainty project
+if `directed_trip_uncertain' {
+	di "Collapsing Directed trips"
+	do "$input_code_cd\directed_trip_uncertain.do"
+	di "Directed trips prepped for uncertainty project"
+ 	local executed_scripts `executed_scripts' directed_trip_uncertain.do
+}
+else {
+	local skipped_scripts `skipped_scripts' directed_trip_uncertain.do
+}
 
 // 3) Create distributions of costs per trip across strata - only needs to be run once
-if `costs_per_trip' {
+if `survey_trip_costs' {
 	di "Creating distributions of cost per trip"
-
 	do "$input_code_cd\survey_trip_costs.do"
-	di "distributions of cost per trip Done"
-
+	local executed_scripts `executed_scripts' survey_trip_costs.do
 }
+else {
+	local skipped_scripts `skipped_scripts' survey_trip_costs.do
+}
+
 // 4) Create draw of angler preference parameters - only needs to be run once
-if `draw_angler_preferences' {
+if `estimate_angler_preferences' {
 	di "Creating draws of angler preference parameters"
 	do "$input_code_cd\estimate_angler_preferences.do"
-	di "Draws of angler preference parameters Done"
-
+	local executed_scripts `executed_scripts' estimate_angler_preferences.do
 }
+else {
+	local skipped_scripts `skipped_scripts' estimate_angler_preferences.do
+}
+
 // 5) Estimate catch-per-trip at the month and mode level
-		//a) compute mean catch-per-trip and standard error, imputing standard errors from historcial data when they are missing.
-if `catch_per_trip1' {
+		//a) compute mean catch-per-trip and standard error, imputing standard errors from historical data when they are missing.
+if `calib_catch_per_trip_part1' {
 	di "Estimate catch-per-trip at the month and mode level"
-
 	do "$input_code_cd\calibration_catch_per_trip_part1.do"
-	di "catch-per-trip at the month and mode level Done"
-
+	local executed_scripts `executed_scripts' calibration_catch_per_trip_part1.do
 }
-		//b) use copula model (in R) to simulate harvest and discards per-trip
-if `copula_in_R' {
-	 /* this takes a while and will look like it's hung. it's not */
-    	di "Estimating copula in R. This takes a while and will look like it's hung"
+else {
+	local skipped_scripts `skipped_scripts' calibration_catch_per_trip_part1.do
+}
+//b) use copula model (in R) to simulate harvest and discards per-trip
+if `copula_modeling_calibration' {
+	/* this takes a while and will look like it's hung. it's not */
+   	di "Estimating copula in R. This takes a while and will look like it's hung"
+	rscript using "$input_code_cd\copula_modeling_calibration.R", args($ndraws)
+	local executed_scripts `executed_scripts' copula_modeling_calibration.R
+}
+else {
+	local skipped_scripts `skipped_scripts' copula_modeling_calibration.R
+}
 
-		rscript using "$input_code_cd\copula_modeling_calibration.R"
-    	di "Copula in R estimated"
-
+if `copula_both' {
+    /* this takes a while and will look like it's hung. it's not */
+    di "Estimating uncertainty copula in R. This takes a while and will look like it's hung"
+	rscript using "$input_code_cd\copula_both.R", args($ndraws $uncertain)
+	local executed_scripts `executed_scripts' copula_both.R
+}
+else {
+	local skipped_scripts `skipped_scripts' copula_both.R
 }
 		//c) generate estimates of simulated total harvest based on random draws of catch-per-trip and directed trips
-if `catch_per_trip2' {
-    	di "Generating estimates of simulated total harvest based on random draws"
-
-		do "$input_code_cd\calibration_catch_per_trip_part2.do"
-    	di "Estimates of simulated total harvest Done"
-
-	}
-// 6) compare calibration output to MRIP, and retain total simulated harvest and discards to apply to the baseline catch-at-length distribution
-if `compare_calibration_MRIP' {
-    	di "Comparing calibration output to MRIP"
-		cd $here
-
-		do "$input_code_cd\compare_calibration_data_to_MRIP.do"
-    	di "Comparison of calibration output to MRIP done"
-
-	}
-// 7) Process catch-per-trip and format it for the rec dashboard
-if `prep_cpt_for_dashboard'{
-    	di "Processing and formatting catch-per-trip for dashboard"
-
-		do "$input_code_cd\rdb_processing_catch_per_trip.do"
-    	di "Processing and formatting catch-per-trip for dashboard done"
-
-		}
-		//run this script in R to read in the catch per trip processed for the rec dashboard, save it as an Rds, and push it to Google Drive
-if `Rpush_cpt_to_gdrive'{
-    	di "Pushing rec dashboard data to gdrive using R" 
-
-		rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R"
-	    di "Rec dashboard data pushed to gdrive "
-
+if `calib_catch_per_trip_part2' {
+   	di "Generating estimates of simulated total harvest based on random draws"
+	do "$input_code_cd\calibration_catch_per_trip_part2.do"
+	local executed_scripts `executed_scripts' calibration_catch_per_trip_part2.do
 }
-// 8) add additonal angler demographics based on results of utilty model
-if `angler_demogs'{
-    	di "Adding additional angler demographics"
+else {
+	local skipped_scripts `skipped_scripts' calibration_catch_per_trip_part2.do
+}
 
-		do "$input_code_cd\additional_angler_dems.do"
-    	di "Additional angler demographics done"
+// 6) compare calibration output to MRIP, and retain total simulated harvest and discards to apply to the baseline catch-at-length distribution
+if `compare_calib_data_to_MRIP' {
+   	di "Comparing calibration output to MRIP"
+	cd $here
+	do "$input_code_cd\compare_calibration_data_to_MRIP.do"
+	local executed_scripts `executed_scripts' compare_calibration_data_to_MRIP.do
+}
+else {
+	local skipped_scripts `skipped_scripts' compare_calibration_data_to_MRIP.do
+}
 
-		}
+// 7) Process catch-per-trip and format it for the rec dashboard
+if `rdb_processing_catch_per_trip'{
+    di "Processing and formatting catch-per-trip for dashboard"
+	do "$input_code_cd\rdb_processing_catch_per_trip.do"
+	local executed_scripts `executed_scripts' rdb_processing_catch_per_trip.do
+}
+else {
+	local skipped_scripts `skipped_scripts' rdb_processing_catch_per_trip.do
+}
+
+		//run this script in R to read in the catch per trip processed for the rec dashboard, save it as an Rds, and push it to Google Drive
+if `rdb_catch_per_trip_to_drive'{
+   	di "Pushing rec dashboard data to gdrive using R"
+	rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R"
+	local executed_scripts `executed_scripts' rdb_catch_per_trip_to_drive.R
+}
+else {
+	local skipped_scripts `skipped_scripts' rdb_catch_per_trip_to_drive.R
+}
+
+// 8) add additional angler demographics based on results of utility model
+if `additional_angler_dems'{
+   	di "Adding additional angler demographics"
+	do "$input_code_cd\additional_angler_dems.do"
+	local executed_scripts `executed_scripts' additional_angler_dems.do
+}
+else {
+	local skipped_scripts `skipped_scripts' additional_angler_dems.do
+}
+
 // 9) Generate baseline-year catch-at-length, using the simulated harvest/discard totals from step 5
-if `generate_baseline'{
-    	di "Generating baseline catch-at-length"
-
-		do "$input_code_cd\catch_at_length_calibration.do"
-    	di "Baseline catch-at-length generated "
-
-		}
+if `catch_at_length_calibration'{
+    di "Generating baseline catch-at-length"
+	do "$input_code_cd\catch_at_length_calibration.do"
+	local executed_scripts `executed_scripts' catch_at_length_calibration.do
+}
+else {
+	local skipped_scripts `skipped_scripts' catch_at_length_calibration.do
+}
 		//Process catch at length and format it for the rec dashboard
-if `prep_catch_at_length_for_dash'{
-    	di "Processing and formatting catch-at-length for dashboard"
+if `rdb_catch_at_length'{
+   	di "Processing and formatting catch-at-length for dashboard"
+	do "$input_code_cd\rdb_catch_at_length.do"
+	local executed_scripts `executed_scripts' rdb_catch_at_length.do
+}
+else {
+    local skipped_scripts `skipped_scripts' rdb_catch_at_length.do
+}
 
-		do "$input_code_cd\rdb_catch_at_length.do"
-    	di "Processing and formatting catch-at-length for dashboard done"
-
-		}
 		//run this script in R to read in the catch at length processed for the rec dashboard, save it as an Rds, and push it to Google Drive
-if `Rpush_catch_at_length_to_gdrive'{
-    	di "Pushing rec dashboard catch at length data to gdrive using R"
+if `rdb_catch_at_len_to_drive'{
+    di "Pushing rec dashboard catch at length data to gdrive using R"
+	rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R"
+	local executed_scripts `executed_scripts' rdb_catch_at_len_to_drive.R
+}
+else {
+   local skipped_scripts `skipped_scripts' rdb_catch_at_len_to_drive.R
+}
+// Re-write projected NAA files for uncertainty project
+if `projected_naa_uncertain' {
+  di "Estimating uncertainty project NAA "
+  do "$input_code_cd\projected_naa_uncertain.do" cod 	//here put in cod, haddock or both for which species to set deterministic in projected catch at length
+ 	di "NAA overwritten to examine projected catch at length uncertainty"
+ 	local executed_scripts `executed_scripts' rdb_catch_at_len_to_drive.R
+}
+else {
+   local skipped_scripts `skipped_scripts' projected_naa_uncertain.do
+}
 
-		rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R"
-	    di "Rec dashboard catch at length data pushed to gdrive " 
 
-}		
+
 // 10) Generate projection-year catch-at-length, incorporating the stock assessment data
 if `catch_at_length_project'{
-		di "Generating projection year catch-at-length"
-
-		do "$input_code_cd\catch_at_length_projection.do"
-    	di "Projection year catch-at-length generated "
-
-		}
+	di "Generating projection year catch-at-length"
+	do "$input_code_cd\catch_at_length_projection.do"
+	local executed_scripts `executed_scripts' catch_at_length_projection.do
+	}
+else {
+   local skipped_scripts `skipped_scripts' catch_at_length_projection.do
+}
 di "The calibration and projection routines can now be run in R "
 // 11) Run the calibration routine in R, export files to Google Drive
-if `run_calibration'{
-		di "Running calibration routine in R"
+if `Rcodewrapper'{
+	di "Running calibration routine in R"
 	cd $here
+		  rscript using "$here\Code\sim\R_code_wrapper.R", args($ndraws $uncertain)
+	local executed_scripts `executed_scripts' R_code_wrapper.R
+	}
+else {
+   local skipped_scripts `skipped_scripts' R_code_wrapper.R
+}
 
-		rscript using "$here\Code\sim\R code wrapper.R"
-    	di "Simulation model calibrated and files exported to Google Drive"
+if `export_all_to_GDrive'{
+di "Exporting calibration outputs to Google Drive ..."
+  rscript using "$here\Code\sim\export_all_to_GDrive.R", args($ndraws $uncertain)
+	local executed_scripts `executed_scripts' export_all_to_GDrive.R
+	}
+else {
+  local skipped_scripts `skipped_scripts' export_all_to_GDrive.R
+  di "Export complete."
+}
+if `projected_naa_uncertain' & $developer=="TP"{
+	di "Resetting Assessment data from google"
+	
+	do "$input_code_cd\get_assessment_from_gdrive.do"
+}
 
-		}
+display "model_wrapper.do: Stata pre-simulation stage complete."
 
 
-log close
+if (`proto'==1) {
+	display "Prototyping option set on. ndraws global set to $ndraws"
+}
+
+/*******************************************************
+wrap up
+*******************************************************/
+
+/* Print the scripts that were run */
+
+di "These scripts were run:"
+foreach l of local executed_scripts{
+	di "`l': RUN"
+}
+/* Print the scripts that were not run */
+
+di "These scripts were not run:"
+foreach l of local skipped_scripts{
+	di "`l': NOT RUN"
+}
 
 
 timer off 1          // Stops timing
 timer list 1         // Displays elapsed time in seconds
+
+
+log close
+

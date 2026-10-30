@@ -1,5 +1,10 @@
 
 
+################################################################################
+# Dev paths note (no full script header yet - out of scope for this pass):
+# 7 hardcoded absolute paths to a developer's local machine (C:\ or E:\),
+# at lines 40, 41, 43, 44, 45 and 46; plus 1 more in a commented-out line (39).
+################################################################################
 
 #Local loop for prediction
 

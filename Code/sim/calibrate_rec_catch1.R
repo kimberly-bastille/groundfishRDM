@@ -1,9 +1,42 @@
-# calibration-year trip simulation WITH optional trip-level harvest/release reallocation
-# optimized for speed/efficiency while retaining fish-level expansion
-# utility adjustment: for cod and haddock, fish reallocated from kept->released
-# still count as kept in utility calculations, but remain released in harvest/release totals.
+################################################################################
+################################################################################
+# Script:       calibrate_rec_catch1.R
+# Purpose:      Calibration-year trip simulation WITH optional trip-level
+#               harvest/release reallocation (the pass that actually calibrates
+#               to MRIP). Same fish-level expansion as calibrate_rec_catch0.R,
+#               but additionally: assigns each fish a weight (length-weight
+#               relationship) and a month-specific discard mortality, and moves
+#               fish between keep and release using the p_keep_to_rel /
+#               p_rel_to_keep fractions derived from the previous pass. Writes
+#               baseline outcomes and choice-occasion files and returns the
+#               model-vs-MRIP comparison for this run.
+# Scope:        Runs ONE season x mode x draw. It expects s (season), i (draw),
+#               md (mode), the reallocation parameters (rel_to_keep_<sp>,
+#               keep_to_rel_<sp>, p_*_<sp>, all_keep_to_rel_<sp>), the
+#               MRIP_comparison table, and the discard-mortality tables
+#               (cod_disc_mort, hadd_disc_mort) to already exist in the calling
+#               environment. calibration_routine.R sets these and sources this
+#               file inside its loop.
+# Inputs:       final_process_misc_cd/baseline_catch_at_length.csv,
+#               final_process_misc_cd/directed_trip_draws.fst,
+#               final_process_calib_catch_cd/calib_catch_draws_<i>.fst.
+# Outputs:      final_process_outcomes_cd/base_outcomes_<s>_<md>_<i>.fst,
+#               final_process_choice_occasions_cd/n_choice_occasions_<s>_<md>_<i>.fst,
+#               and calib_comparison1 (returned in the environment).
+# Dependencies: Reuses cod_hadd_season() and check_required_cols() defined in
+#               calibrate_rec_catch0.R, so the routine must source that file
+#               first.
+# Pipeline:     Core of the R calibration loop (Code/sim), driven by
+#               calibration_routine.R.
+#
+# Utility adjustment: for both species, a fish reallocated from kept -> released
+# still counts as kept in the utility calculation, but is released in the
+# harvest/release accounting totals.
+################################################################################
+################################################################################
 
-#l_w_conversion parameters =
+# Length-weight conversion parameters (weight in kg = a * length_cm^b; converted
+# to lb below). Values from the calibration/assessment length-weight fits.
 cod_lw_a = 0.000005132
 cod_lw_b = 3.1625
 had_lw_a = 0.000009298
@@ -32,6 +65,20 @@ calc_prob_trip <- function(v_trip, v_optout) {
   out
 }
 
+#' @title Build a model-vs-MRIP comparison table (numbers and weights)
+#' @description Reshapes simulated ("model") and MRIP totals to long form, joins
+#'   by species/disposition, and computes differences and percent differences
+#'   for both number and weight (lb) metrics. Derives the next pass's
+#'   reallocation flags and fractions; p_rel_to_keep is scaled by the count of
+#'   release-eligible sublegal fish (original_rel_eligible) rather than by total
+#'   releases. Extends the pass-0 version by also carrying harvest/discard weights.
+#' @param summed_results Simulated totals for this mode (counts and lb weights).
+#' @param MRIP_comparison_draw MRIP number totals for the same draw/season/mode.
+#' @param md Mode label ("pr"/"fh") stamped onto the output.
+#' @param eligible_dt Optional per-species count of release-eligible fish used to
+#'   scale p_rel_to_keep; NULL sets original_rel_eligible to 0.
+#' @return A data.table (one row per mode x species) of MRIP vs model totals,
+#'   differences, weight columns, and the derived reallocation fractions.
 build_compare_table <- function(summed_results, MRIP_comparison_draw, md, eligible_dt = NULL) {
 
   number_metric_cols <- c(
@@ -205,6 +252,26 @@ n_legal_rel_hadd <- 0L
 prop_legal_rel_hadd <- 0
 original_rel_eligible_hadd <- 0
 
+#' @title Simulate keep/release outcomes with reallocation and weights
+#' @description Like simulate_species() but adds fish weight (length-weight),
+#'   discard mortality, and reallocation between keep and release. Fish are
+#'   expanded from trip catch, given a length and weight, and classified by the
+#'   bag/size rules; then a fraction can be moved release->keep (undersized fish
+#'   within floor_sublegal of the minimum size) or keep->release, to pull the
+#'   simulated harvest toward the MRIP estimate.
+#' @param catch_dt,catch_col,bag_col,min_col,size_dt,species_prefix As in
+#'   simulate_species(): the trip catch table, the catch/bag/min column names,
+#'   the catch-at-length lookup, and the species ("cod"/"hadd").
+#' @param floor_sublegal Length floor (cm) below the minimum size within which a
+#'   released fish is eligible to be reallocated to harvest.
+#' @param rel_to_keep,keep_to_rel Flags (0/1) enabling each reallocation direction.
+#' @param p_rel_to_keep,p_keep_to_rel Fractions of eligible fish to move.
+#' @param all_keep_to_rel If 1, move ALL kept fish to release (full closure case).
+#' @param utility_adjust If TRUE, apply the utility rule (kept-then-released fish
+#'   still count as kept for utility).
+#' @return A list with `trip` (trip-level keep/release counts and weights,
+#'   including discard-mortality weight) plus diagnostic counts of reallocated
+#'   fish (n_sub_kept, n_legal_rel, proportions, original_rel_eligible).
 simulate_species_realloc <- function(catch_dt,
                                      catch_col,
                                      bag_col,
@@ -435,7 +502,7 @@ size_lookup <- size_lookup[!is.na(fitted_prob), .(species, draw, season, fitted_
 setkey(size_lookup, species, draw, season)
 
 
-# one state-draw-mode run; expects s, i, md in the parent environment
+# one season-draw-mode run; expects s, i, md in the parent environment
 dtrip_all <- as.data.table(read_fst(file.path(final_process_misc_cd, "directed_trip_draws.fst")))
 dtrip_all[, season := cod_hadd_season(date_parsed)]
 dtrip_all <- dtrip_all[, .(draw, mode, date_parsed, season, dtrip,
@@ -466,7 +533,7 @@ if (nrow(dtrip_all) == 0L || sum(dtrip_all$dtrip, na.rm = TRUE) == 0) {
     p_rel_to_keep_new = NA_real_,
     p_keep_to_rel_new = NA_real_,
     draw = i,
-    state = s
+    season = s
   )
 
 } else {
@@ -521,6 +588,9 @@ if (nrow(dtrip_all) == 0L || sum(dtrip_all$dtrip, na.rm = TRUE) == 0) {
     all_keep_to_rel = all_keep_to_rel_cod,
     utility_adjust = TRUE
   )
+  # Debugging scaffold (not executed): the argument values for the cod call
+  # above, kept so a developer can step through simulate_species_realloc() line
+  # by line by assigning these in the console.
   # catch_dt = catch_data
   # catch_col = "cod_cat"
   # bag_col = "cod_bag"
