@@ -15,7 +15,7 @@
 /*
  General strategy:
   1. Read in data
-  2. Collapse daily trip data to get 101 draws of monthly directed trips by mode and kind-of-day.
+  2. Collapse daily trip data to get N-draws of monthly directed trips by mode and kind-of-day.
   3. Take the median of the 101 draws of directed trips at the month, mode, and kind-of-day level. 
   4. Add descriptive columns for the dashboard. 
   5. Run rdb_dtrips_to_drive.R to push the processed data to Google Drive as an Rds.
