@@ -2,7 +2,7 @@
 /*******************************************************************************
  Script:       rdb_directed_trips.do
  Purpose:      Cleans the simulated directed trips data and formats it for the recDST 
-               dashboard: takes medians across 101 draws of the simulated directed trips 
+               dashboard: takes medians across all draws of the simulated directed trips 
 			   targetting WGOM cod and/or GOM haddock for the regulatory baseline year at 
                the month-mode-kind of day level, and adds descriptive columns.  
  Inputs:       $misc_data_cd/directed_trip_draws.csv (written by directed_trips_calibration.do).
