@@ -39,6 +39,7 @@ gen dow = dow(date)  //0=Sunday,...,6=Saturday
 gen kod="we" if inlist(dow, 5, 6, 0)
 replace kod="wd" if inlist(dow, 1, 2, 3, 4)
 * Include federal holidays as weekend days
+rename date day
 replace kod="we" if $fed_holidays
 
 * Drop shore-based mode
