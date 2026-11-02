@@ -225,7 +225,6 @@ set.seed(6)
 
 ################This may just be commented out, since it would use the assessment catch
 # Define catch in previous years  ######################################################
-assessment_2026_bridge_year_catch <- 1994 #GOM haddock 2026 (See Table 4 in the 2026 GOM Haddock SAR)
 
 actual_2023_commercial_catch_mt<-gom_haddock_cy_removals %>%
   filter(year==2023) %>%
