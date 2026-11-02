@@ -366,7 +366,7 @@ else {
 
 
 
-if `get_mrip_oracle' {
+if `get_mrip_site_list' {
   	di "Pulling MRIP site list from oracle"
 	rscript using "$input_code_cd\get_mrip_site_list.R"
 	local executed_scripts `executed_scripts' get_mrip_site_list.R
