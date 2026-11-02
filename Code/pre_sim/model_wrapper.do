@@ -83,7 +83,7 @@ global ndraws 101
 * adjust 2022 survey trip costs to account for inflation (January 2022 - January 2026)
 
 * source =https://www.bls.gov/data/inflation_calculator.htm
-global inflation_expansion=1.157
+global inflation_expansion=1.16
 
 /******************************************************************************/
 /******************************************************************************/
