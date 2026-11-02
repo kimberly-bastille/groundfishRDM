@@ -217,7 +217,7 @@ periods<-12 # there are 12 months in a year
 # Which year do you want a projection for, How many projections? Set a seed.
 YearProj<-2027
 num_NAA_draws<-500
-set.seed(6)
+set.seed(65487)
 ###########End Housekeeping#####################################################
 
 
@@ -431,6 +431,9 @@ ggplot(proj2plot %>% filter(variable %in% c("Catch (Total)", "SSB")),
 ################################################################################
 #This pulls objects out of the sdreport. Models are stacked into the proj_list object
 # this is pulling out the 2nd model (75% FMSY)
+
+#############FLAG: need to adjust the element in the proj_list[[]] to get the proper projection
+
 std1 <- list(TMB:::as.list.sdreport(proj_list[[2]]$sdrep, what = "Est", report = TRUE),
              TMB:::as.list.sdreport(proj_list[[2]]$sdrep, what = "Std", report = TRUE))
 year<-proj_list[[2]]$years_full
