@@ -12,15 +12,17 @@
 ################################################################################
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop("Error: This script requires exactly one arguments.", call. = FALSE)
+if (length(args) != 2) {
+  stop("Error: This script requires exactly two arguments.", call. = FALSE)
 }
 
 #read in arguments. Ensure they are numeric
 n_simulations  <- as.numeric(args[1]) # Number of model iterations.
+uncertain <- as.numeric(args[2]) # Uncertainty project flag.
 
 # Show them, just in case.
 cat("Number of Simulations :", n_simulations, "\n")
+cat("Uncertainty (0 = normal, 1 = uncertainty data):", uncertain, "\n")
 
 library(here)
 library(tidyverse)
@@ -57,11 +59,24 @@ drive_auth(cache = here(".secrets"), email = TRUE)
 ################################################################################
 ################################################################################
 
-# Output folders on google drive
-base_outcomes_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","base_outcomes")
-n_choice_occasions_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","n_choice_occasions")
-calib_catch_draws_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","calib_catch_draws")
-miscellaneous_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","miscellaneous")
+# Fallback in case 'uncertain' isn't defined in the environment
+if (!exists("uncertain")) {
+  uncertain <- 0
+}
+
+# 1. Define the common root folder path
+gdrive_base <- file.path("socialsci", "RecreationalDST", "2027_management_cycle_data", "groundfishRDM")
+
+# 2. Add the "uncertain" folder layer if the argument is 1
+if (uncertain == 1) {
+  gdrive_base <- file.path(gdrive_base, "uncertain")
+}
+
+# 3. Build the final output folders on google drive
+base_outcomes_path <- file.path(gdrive_base, "base_outcomes")
+n_choice_occasions_path <- file.path(gdrive_base, "n_choice_occasions")
+calib_catch_draws_path <- file.path(gdrive_base, "calib_catch_draws")
+miscellaneous_path <- file.path(gdrive_base, "miscellaneous")
 
 folder_info <- drive_get(
   path = base_outcomes_path,
