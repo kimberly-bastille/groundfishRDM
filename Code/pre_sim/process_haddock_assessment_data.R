@@ -92,8 +92,8 @@ HistoricalNAASaveFile<-glue("GOM_Haddock_historical_NAA_{data_version}")
 
 # FLAG: this needs to be changed
 # input save files
-assessment_file_in<-"PLACEHOLDER.rds"
-waa_file_in<-"waa_PLACEHOLDER.xlsx"
+assessment_file_in<-"mod_2026MT.rds"
+waa_file_in<-"waa_pred_2026-07-07.xlsx"
 
 
 # Connect to Google Drive
