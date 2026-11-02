@@ -9,7 +9,8 @@
 #               gf.data.dir/miscellaneous/NEFSC_cruises.csv,
 # Dependencies: Sources developer_setup.R (for gf.data.dir). Requires Oracle
 #               access.
-# Pipeline:     Part of initial data setup. Gated by get_svdbs_data
+# Pipeline:     Part of initial data setup. Gated by get_svdbs_data.  csv files
+#               are used by catch_at_length_projections.do
 ################################################################################
 
 library("here")
