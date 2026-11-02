@@ -192,6 +192,8 @@ loc get_assessment_from_gdrive = 1				// Pull Assessment data
 loc get_mrip_oracle = 1		 					      // Pull MRIP data.
 loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
 
+loc get_svdbs_data = 1		 					  // Pull MRIP site list.
+
 loc directed_trips_calibration = 1				// Estimate Directed Trips
 loc survey_trip_costs = 1  						    // Create Distributions of costs per trip (run 1x)
 loc estimate_angler_preferences = 1				// Create draw of angler preference parameters (run 1x)
@@ -374,6 +376,18 @@ if `get_mrip_site_list' {
 else {
 	local skipped_scripts `skipped_scripts' get_mrip_site_list.R
 }
+
+
+
+if `get_svdbs_data' {
+  	di "Pulling SVDBS data from  oracle"
+	rscript using "$input_code_cd\get_svdbs_data.R"
+	local executed_scripts `executed_scripts' get_svdbs_data.R
+}
+else {
+	local skipped_scripts `skipped_scripts' get_svdbs_data.R
+}
+
 
 
 
