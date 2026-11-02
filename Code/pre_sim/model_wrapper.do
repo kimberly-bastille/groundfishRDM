@@ -309,11 +309,11 @@ else {
 
 if `process_haddock_assess'{
 	di "Processing haddock assessment"
-	rscript using "$input_code_cd\process_hadd_assessment_data.R"
-	local executed_scripts `executed_scripts' process_hadd_assessment_data.R
+	rscript using "$input_code_cd\process_haddock_assessment_data.R"
+	local executed_scripts `executed_scripts' process_haddock_assessment_data.R
 }
 else {
-	local skipped_scripts `skipped_scripts' process_hadd_assessment_data.R
+	local skipped_scripts `skipped_scripts' process_haddock_assessment_data.R
 }
 
 
