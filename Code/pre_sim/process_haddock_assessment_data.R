@@ -10,9 +10,10 @@
 #               (num_NAA_draws) from a bias-corrected lognormal.
 # Inputs:       Two files from the Google Drive shared drive:
 #               "NMFS NEC READ SSB", haddock_assessment/
-#                 PLACEHOLDER.rds     (accepted WHAM model),
-#                 waa_PLACEHOLDER.xlsx    (projected SSB/Catch weight-at-age).
-#               "commercial_CY_removals_{vintage_string}.Rds"
+#               "mod_2026MT.rds"   (accepted WHAM model),
+#               waa_pred_2026    (projected SSB/Catch weight-at-age).
+#               "commercial_CY_removals_{vintage_string}.Rds" are not needed for the 2027 cycle but will be
+#               useful for 2028.
 # Outputs:      input_data/GOM_Haddock_Projections_<date>.Rds,
 #               input_data/GOM_Haddock_historical_NAA_<date>.{Rds,dta},
 #               input_data/GOM_Haddock_projected_NAA_<date>.{Rds,dta}
@@ -90,7 +91,6 @@ FullProjectionsSaveFile<-"GOM_Haddock_Projections"
 ProjectedNAASaveFile<-glue("GOM_Haddock_projected_NAA_{data_version}")
 HistoricalNAASaveFile<-glue("GOM_Haddock_historical_NAA_{data_version}")
 
-# FLAG: this needs to be changed
 # input save files
 assessment_file_in<-"mod_2026MT.rds"
 waa_file_in<-"waa_pred_2026-07-07.xlsx"
@@ -282,34 +282,50 @@ mod_list <- list(mod)
 # If I want to pass in a different catch for 2025, I can just modify this to have 2 args bridge_year_catch1, bridge_year_catch2 or something
 # Also would need to set the proj_F_opt option accordingly.
 
+# Set specs ####################################################################
 set_specs <- function(mod, bridge_year_catch) {
 
   Fmsy <- exp(mod$rep$log_FXSPR_static)
 
+
   proj.opts_list <-
-    list(Model = rep(mod$model_name, times = 2),
+    list(Model = rep(mod$model_name, times = 8),
          scenario    = c("(1) Fmsy (2027-2031)",                  #1
-                         "(2) 0.75Fmsy (2027-2031)"              #2
+                         "(2) 0.75Fmsy (2027-2031)",              #2
+                         "(3) 0.75Fmsy (2027), Fmsy (2028 - 2031)", #3
+                         "(4) 0.75Fmsy (2027-2028), Fmsy (2029 - 2031)", #4
+                         "(5) 0.75Fmsy (2027-2029), Fmsy (2030 - 2031)", #5
+                         "(6) 0.75Fmsy (2027-2030), Fmsy (2031)", #6
+                         "(7) 0.75Fmsy (2027-2029), Constant at 2029 level (2030-2031)", #7
+                         "(8) 0.75Fmsy (2027-2029), Constant at 2029 level (2030), Fmsy (2031)" #8
          ),
-         n.yrs       = rep(list(6), times = 2),
-         proj_R_opt  = rep(list(2), times = 2),
-
-         # NOTE: proj_F_opt specifies fixed catch (5) in year 1, and fixed instantaneous F (4) in years 2-4
+         n.yrs       = rep(list(6), times = 8),
+         proj_R_opt  = rep(list(2), times = 8),
          proj_F_opt  = list(c(5, 4, 4, 4, 4, 4),  #1
-                            c(5, 4, 4, 4, 4, 4)  #2
+
+					  c(5, 4, 4, 4, 4, 4),  #2
+                            c(5, 4, 4, 4, 4, 4),  #3
+                            c(5, 4, 4, 4, 4, 4),  #4
+                            c(5, 4, 4, 4, 4, 4),  #5
+                            c(5, 4, 4, 4, 4, 4),  #6
+                            c(5, 4, 4, 4, 5, 5),  #7
+                            c(5, 4, 4, 4, 5, 4)   #8
          ),
-
-         # NOTE: Year 1 uses bridge catch; Years 2-4 apply Fmsy scalar corresponding to the scenario
          proj_Fcatch = list(c(bridge_year_catch, rep(Fmsy, 5)),                #1
-                            c(bridge_year_catch, rep(0.75 * Fmsy, 5))         #2
-                           ),
-         proj_waa = rep(list(waa_input), 2)
-
+                            c(bridge_year_catch, rep(0.75 * Fmsy, 5)),         #2
+                            c(bridge_year_catch, rep(0.75 * Fmsy, 1), rep(Fmsy, 4)), #3
+                            c(bridge_year_catch, rep(0.75 * Fmsy, 2), rep(Fmsy, 3)),
+                            c(bridge_year_catch, rep(0.75 * Fmsy, 3), rep(Fmsy, 2)),
+                            c(bridge_year_catch, rep(0.75 * Fmsy, 4), rep(Fmsy, 1)),
+                            c(bridge_year_catch, rep(0.75 * Fmsy, 3), rep(1267.8, 2)),   #7
+                            c(bridge_year_catch, rep(0.75 * Fmsy, 3), 1267.8, Fmsy) #8
+         ),
+         proj_waa = rep(list(waa_input), 8)
     )
 }
 
-# pass in "bridge_year_catch"
 proj.opts_list2 <- map_df(mod_list, .f = set_specs, bridge_year_catch)
+
 
 
 # Run projections ##############################################################
@@ -360,7 +376,7 @@ proj_out <-
       tibble(Model = x$Model,
              scenario = x$scenario,
              Year = x$years_full,
-             `F`  = round(apply(exp(x$rep$log_FAA_tot), 1, max),2),
+             `F`  = round(apply(exp(x$rep$log_FAA_tot), 1, max),3),
              SSB  = round(ssb, 1),
              `SSB CI (90% low)`  = round(ssb_90lo,1),
              `SSB CI (90% high)` = round(ssb_90hi,1),
@@ -430,16 +446,16 @@ ggplot(proj2plot %>% filter(variable %in% c("Catch (Total)", "SSB")),
 ################################################################################
 ################################################################################
 #This pulls objects out of the sdreport. Models are stacked into the proj_list object
-# this is pulling out the 2nd model (75% FMSY)
+# this is pulling out the 7th model
+# "(7) 0.75Fmsy (2027-2029), Constant at 2029 level (2030-2031)", #7
 
-#############FLAG: need to adjust the element in the proj_list[[]] to get the proper projection
 
-std1 <- list(TMB:::as.list.sdreport(proj_list[[2]]$sdrep, what = "Est", report = TRUE),
-             TMB:::as.list.sdreport(proj_list[[2]]$sdrep, what = "Std", report = TRUE))
-year<-proj_list[[2]]$years_full
+std1 <- list(TMB:::as.list.sdreport(proj_list[[7]]$sdrep, what = "Est", report = TRUE),
+             TMB:::as.list.sdreport(proj_list[[7]]$sdrep, what = "Std", report = TRUE))
+year<-proj_list[[7]]$years_full
 
 #get age classes from the wham model.
-ages<-proj_list[[2]]$input$ages.lab
+ages<-proj_list[[7]]$input$ages.lab
 
 #remove the +
 # NOTE: Regex \\D matches non-digits. Strips characters like '+' from terminal age groupings (e.g., "1+" -> "1")
@@ -488,8 +504,8 @@ validate_naa_data(historical_NAA_long)
 
 
 
-# write_dta(historical_NAA_long, path=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")))
-# write_rds(historical_NAA_long, file=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")))
+ write_dta(historical_NAA_long, path=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")))
+ write_rds(historical_NAA_long, file=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")))
 
 # Pick exactly 1 year. See the header.
 RowPick<-which(year==YearProj)
@@ -534,5 +550,5 @@ NAA_long<-pivot_naa_long(NAA)
 #validate
 validate_naa_data(NAA_long)
 
-# write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")))
-# write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))
+ write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")))
+ write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))
