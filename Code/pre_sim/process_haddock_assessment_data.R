@@ -138,7 +138,7 @@ gom_haddock_cy_removals<-commercial_CY_removals %>%
 
 
 # Read in using  into your environment
-mod_accepted <- read_rds(temp_path)
+mod <- read_rds(temp_path)
 # cleanup
 if (file.exists(temp_path)) {
   file.remove(temp_path)
@@ -155,20 +155,25 @@ drive_download(
   path = temp_path,
   overwrite = TRUE
 )
+# Set some specifications ######################################################
+bridge_year_catch <- 1527+417.5 #PDT provided value
+stock_name <- "GOM haddock"
+model_name <- "2026 MT"
+################################################################################
 
-# FLAG: this needs to be changed, possibly just updating years, but it could be more.
+
 
 # Load WAA projections (specific to GOM haddock) ###############################
 waa_proj_ssb <-
   readxl::read_excel(path=temp_path,
                      sheet = "SSB WAA") %>%
-  filter(YEAR %in% 2024:2027) %>%
+  filter(YEAR %in% 2026:2031) %>%
   select(-YEAR)
 
 waa_proj_catch <-
   readxl::read_excel(path=temp_path,
                      sheet = "Catch WAA") %>%
-  filter(YEAR %in% 2024:2027) %>%
+  filter(YEAR %in% 2026:2031) %>%
   select(-YEAR)
 
 
@@ -178,11 +183,9 @@ if (file.exists(temp_path)) {
 }
 
 
-stock_name <- "GOM haddock"
-model_name <- "2026MT"
 
-mod_accepted$model_name <- "Accepted"
-mod_list <- list(mod_accepted)
+mod$model_name <- "Accepted"
+mod_list <- list(mod)
 
 
 ###################################################################################
@@ -194,15 +197,14 @@ mod_list <- list(mod_accepted)
 
 # take a look at the version of WHAM used to generate the model.
 # NOTE: Splits the commit string at '@' to isolate the hash, then strips trailing ')'
-model_wham_commit<-strsplit(mod_accepted$wham_commit,split="@")[[1]][2]
+model_wham_commit<-strsplit(mod$wham_commit,split="@")[[1]][2]
 model_wham_commit<-gsub(")", "", model_wham_commit)
-
-stopifnot(model_wham_commit==packageDescription("wham")$RemoteSha)
-# keep getting a warning message about magrittr, but things seem to work.
-
 
 cat("Model Wham version is", model_wham_commit, "\n")
 cat("Installed wham commit is", packageDescription("wham")$RemoteSha,"\n")
+
+stopifnot(model_wham_commit==packageDescription("wham")$RemoteSha)
+
 
 ###################################################################################
 ###################################################################################
@@ -254,26 +256,28 @@ actual_2024_catch_mt<-actual_2024_commercial_catch_mt+actual_2024_rec_catch_mt
 actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
 
 # 2026 not used yet.
-actual_2026_catch_mt<-actual_2026_commercial_catch_mt+actual_2026_rec_catch_mt
+#actual_2026_catch_mt<-actual_2026_commercial_catch_mt+actual_2026_rec_catch_mt
 
 #Handle WAA ###############################################################################
 
 # NOTE: The 6 rows map to fleets/indices defined in input$data$waa_pointers. Verify this alignment if model fleet structure changes.
 # NOTE2: Array structure is [fleet/index source, projection year (1:4), age (1:9)]
-waa_input_blls <- array(dim = c(6,4,9)) #new wham wants the waa doubled for some reason
+waa_input <- array(dim = c(6,6,9)) #new wham wants the waa doubled for some reason
 for(i in 1:9){ # the order of the sources matches input$data$waa_pointers
-  waa_input_blls[,,i] <- rbind(t(waa_proj_catch[,i]), t(waa_proj_ssb[,i]), t(waa_proj_ssb[,i]),
-                               t(waa_proj_catch[,i]), t(waa_proj_ssb[,i]), t(waa_proj_ssb[,i]))
+  waa_input[,,i] <- rbind(t(waa_proj_catch[,i]), t(waa_proj_ssb[,i]), t(waa_proj_ssb[,i]),
+                          t(waa_proj_catch[,i]), t(waa_proj_ssb[,i]), t(waa_proj_ssb[,i]))
 }
+
+
 
 # In theory, you shouldn't have to touch anything below here:
 
 # Pull models to make projections ##############################################
 
 # Assign some short names to the models (can do more than one if desired)
-mod_accepted$model_name <- model_name
+mod$model_name <- model_name
 
-mod_list <- list(mod_accepted)
+mod_list <- list(mod)
 
 # Set specs ####################################################################
 # If I want to pass in a different catch for 2025, I can just modify this to have 2 args bridge_year_catch1, bridge_year_catch2 or something
@@ -285,29 +289,28 @@ set_specs <- function(mod, bridge_year_catch) {
 
   proj.opts_list <-
     list(Model = rep(mod$model_name, times = 2),
-         scenario    = c("(1) Fmsy (2025-2027)",                  #1
-                         "(2) 0.75Fmsy (2025-2027)"               #2
+         scenario    = c("(1) Fmsy (2027-2031)",                  #1
+                         "(2) 0.75Fmsy (2027-2031)"              #2
          ),
-         n.yrs       = rep(list(4), times = 2),
+         n.yrs       = rep(list(6), times = 2),
          proj_R_opt  = rep(list(2), times = 2),
 
          # NOTE: proj_F_opt specifies fixed catch (5) in year 1, and fixed instantaneous F (4) in years 2-4
-         proj_F_opt  = list(c(5, 4, 4, 4),  #1
-                            c(5, 4, 4, 4)  #2
+         proj_F_opt  = list(c(5, 4, 4, 4, 4, 4),  #1
+                            c(5, 4, 4, 4, 4, 4)  #2
          ),
 
          # NOTE: Year 1 uses bridge catch; Years 2-4 apply Fmsy scalar corresponding to the scenario
-         proj_Fcatch = list(c(bridge_year_catch, rep(Fmsy, 3)),                #1
-                            c(bridge_year_catch, rep(0.75 * Fmsy, 3))         #2
-         ),
-         proj_waa = list(waa_input_blls,
-                         waa_input_blls)
+         proj_Fcatch = list(c(bridge_year_catch, rep(Fmsy, 5)),                #1
+                            c(bridge_year_catch, rep(0.75 * Fmsy, 5))         #2
+                           ),
+         proj_waa = rep(list(waa_input), 2)
 
     )
 }
 
-# pass in "assessment_2026_bridge_year_catch"
-proj.opts_list2 <- map_df(mod_list, .f = set_specs, assessment_2026_bridge_year_catch)
+# pass in "bridge_year_catch"
+proj.opts_list2 <- map_df(mod_list, .f = set_specs, bridge_year_catch)
 
 
 # Run projections ##############################################################
@@ -451,7 +454,7 @@ NAA_logsd<-std1[[2]]$log_NAA_rep[1,1,,]
 #column names
 names<-glue("age{ages}")
 
-TerminalAssess<-tail(mod_accepted$years_full,1)
+TerminalAssess<-tail(mod$years_full,1)
 
 
 # Construct a dataframe of historical Numbers at Age
@@ -483,8 +486,8 @@ validate_naa_data(historical_NAA_long)
 
 
 
-write_dta(historical_NAA_long, path=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")))
-write_rds(historical_NAA_long, file=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")))
+# write_dta(historical_NAA_long, path=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.dta")))
+# write_rds(historical_NAA_long, file=file.path(assessment_output_folder,glue("{HistoricalNAASaveFile}.Rds")))
 
 # Pick exactly 1 year. See the header.
 RowPick<-which(year==YearProj)
@@ -529,5 +532,5 @@ NAA_long<-pivot_naa_long(NAA)
 #validate
 validate_naa_data(NAA_long)
 
-write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")))
-write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))
+# write_dta(NAA_long, path=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.dta")))
+# write_rds(NAA_long, file=file.path(assessment_output_folder,glue("{ProjectedNAASaveFile}.Rds")))
