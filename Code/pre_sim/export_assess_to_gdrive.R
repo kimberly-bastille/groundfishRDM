@@ -13,7 +13,8 @@
 # Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
 #               the Stata pipeline: its NAA outputs feed the catch-at-length
 #               steps (see catch_at_length_projection.do).
-#
+# Notes:        Hard-coded path (2027_management_cycle_data) that will need to be updated at the
+#				next management cycle.
 ################################################################################
 ################################################################################
 #Load libraries
