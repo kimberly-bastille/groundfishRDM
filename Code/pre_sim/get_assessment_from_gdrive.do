@@ -33,7 +33,9 @@ foreach s of local filestubs {
     di "`myfile'"
 	local myfile : subinstr local myfile `"""' "", all /* remove embedded quotes */
     local fullpath `"`google_folder'/`myfile'"' // build full path
-    di as text "Loading: `fullpath'" 
+    di as text "Copying: `fullpath' to " 
+    di as text `"to "$misc_data_cd/`s'.dta" "' 
+
 	copy "`fullpath'" `"$misc_data_cd/`s'.dta"' , replace /*copy files from google drive to misc_data_cd*/
 }
 
