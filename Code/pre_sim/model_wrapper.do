@@ -300,7 +300,7 @@ else {
 }
 if `process_cod_assess' {
 	di "Processing cod assessment"
-	rscript using "$input_code_cd\process_cod_assessment_data.R"
+	rscript using "$input_code_cd\process_cod_assessment_data.R", args($cod_NAA_proj_year)
 	local executed_scripts `executed_scripts' process_cod_assessment_data.R
 }
 else {
@@ -309,7 +309,7 @@ else {
 
 if `process_haddock_assess'{
 	di "Processing haddock assessment"
-	rscript using "$input_code_cd\process_haddock_assessment_data.R"
+	rscript using "$input_code_cd\process_haddock_assessment_data.R", args($hadd_NAA_proj_year)
 	local executed_scripts `executed_scripts' process_haddock_assessment_data.R
 }
 else {

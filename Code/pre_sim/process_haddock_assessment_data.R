@@ -14,6 +14,7 @@
 #               waa_pred_2026    (projected SSB/Catch weight-at-age).
 #               "commercial_CY_removals_{vintage_string}.Rds" are not needed for the 2027 cycle but will be
 #               useful for 2028.
+#               Designed to have an argument (YearProj) passed in.
 # Outputs:      input_data/GOM_Haddock_Projections_<date>.Rds,
 #               input_data/GOM_Haddock_historical_NAA_<date>.{Rds,dta},
 #               input_data/GOM_Haddock_projected_NAA_<date>.{Rds,dta}
@@ -50,6 +51,15 @@ library(here)
 #load the haddock specific version of WHAM.
 haddock_wham_lib <- file.path(Sys.getenv("R_LIBS_USER"), "haddock_wham_install")
 library(wham,lib.loc = haddock_wham_lib)
+
+# Define arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 1) {
+  stop("Error: This script requires exactly 1 argument.", call. = FALSE)
+}
+
+#read in arguments. force to numeric
+YearProj  <- as.numeric(args[1])
 
 ###########Begin Housekeeping##################################################
 #Set paths, input names, and savefile names.
@@ -214,8 +224,7 @@ stopifnot(model_wham_commit==packageDescription("wham")$RemoteSha)
 
 # Placeholders and parameters
 periods<-12 # there are 12 months in a year
-# Which year do you want a projection for, How many projections? Set a seed.
-YearProj<-2027
+# How many projections? Set a seed.
 num_NAA_draws<-500
 set.seed(65487)
 ###########End Housekeeping#####################################################
