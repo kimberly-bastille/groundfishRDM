@@ -114,9 +114,13 @@ timer on 1           // Starts timing
 
 /* start log */
 cap log close
+local date_string = subinstr(trim("${S_DATE}"), ":" , "_", .)
+local date_string = subinstr("`date_string'", " " , "_", .)
+
+
 local time_string = subinstr(trim("${S_TIME}"), ":" , "_", .)
 
-log using "${log_dir}\model_wrapper_log_${S_DATE}_`time_string'.smcl", replace
+log using "${log_dir}\model_wrapper_log_`date_string'_`time_string'.smcl", replace
 
 
 
