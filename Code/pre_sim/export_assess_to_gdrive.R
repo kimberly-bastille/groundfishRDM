@@ -8,6 +8,7 @@
 #				glue("WGOM_Cod_historical_NAA_{data_version}")
 #				glue("GOM_Haddock_projected_NAA_{data_version}")
 #				glue("GOM_Haddock_historical_NAA_{data_version}")
+#				takes "cod", "haddock", "both"
 # Outputs:      Same files, but on the shared google drive. These files ARE versioned
 # Dependencies: Google Drive access with cached credentials in .secrets.
 # Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
@@ -30,8 +31,13 @@ if (length(args) != 1) {
   stop("Error: This script requires exactly one argument.", call. = FALSE)
 }
 
+
 #read in arguments. Ensure they are numeric
 stocks  <- args[1]
+
+if (!stocks %in% c("cod","haddock","both")) {
+  stop(glue("First argument is {stocks}. It must take on value of \"cod\", \"haddock\" or \"both\"."), call. = FALSE)
+}
 
 # Show them, just in case.
 cat("Stocks to export:", stocks, "\n")
@@ -75,7 +81,7 @@ folder_info <- drive_get(
 )
 groundfish_processed_path<-folder_info$id
 
-#################################put cod on gdrive ############################
+#################################put cod on gdrive depending on the value of stocks ############################
 
 if (stocks %in% c("cod","both")) {
 
@@ -112,7 +118,7 @@ drive_upload(
 }
 
 
-#################################put haddock on gdrive ############################
+#################################put haddock on gdrive depending on the value of stocks ############################
 
 if (stocks %in% c("haddock","both")) {
 
