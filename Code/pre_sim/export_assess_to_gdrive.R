@@ -78,7 +78,7 @@ groundfish_processed_path<-folder_info$id
 
 if (stocks %in% c("cod","both")) {
 
-#Put the historical NAA on google drive
+#Put the historical NAA on google drive (dta and Rds)
 drive_upload(
   media = file.path(assessment_output_folder,glue("{CodHistoricalNAASaveFile}.Rds")),
   path = as_id(groundfish_processed_path),
@@ -94,7 +94,7 @@ drive_upload(
 )
 
 
-#Put the historical NAA on google drive
+#Put the Projected NAA on google drive (dta and Rds)
 drive_upload(
   media = file.path(assessment_output_folder,glue("{CodProjectedNAASaveFile}.Rds")),
   path = as_id(groundfish_processed_path),
@@ -115,7 +115,7 @@ drive_upload(
 
 if (stocks %in% c("haddock","both")) {
 
-  #Put the historical NAA on google drive
+  #Put the historical NAA on google drive (dta and Rds)
   drive_upload(
     media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.Rds")),
     path = as_id(groundfish_processed_path),
@@ -131,18 +131,18 @@ if (stocks %in% c("haddock","both")) {
   )
 
 
-  #Put the historical NAA on google drive
+  #Put the projected NAA on google drive (dta and Rds)
   drive_upload(
-    media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.Rds")),
+    media = file.path(assessment_output_folder,glue("{HaddockProjectedNAASaveFile}.Rds")),
     path = as_id(groundfish_processed_path),
-    name = glue("{HaddockHistoricalNAASaveFile}.Rds"),
+    name = glue("{HaddockProjectedNAASaveFile}.Rds"),
     overwrite = TRUE
   )
 
   drive_upload(
-    media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.dta")),
+    media = file.path(assessment_output_folder,glue("{HaddockProjectedNAASaveFile}.dta")),
     path = as_id(groundfish_processed_path),
-    name = glue("{HaddockHistoricalNAASaveFile}.dta"),
+    name = glue("{HaddockProjectedNAASaveFile}.dta"),
     overwrite = TRUE
   )
 }
