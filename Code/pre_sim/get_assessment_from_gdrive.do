@@ -13,7 +13,7 @@
                WGOM_Cod_projected_NAA, WGOM_Cod_historical_NAA}.dta. These do not have a date suffix.
  Dependencies: Global $misc_data_cd (set in model_wrapper.do). Google Drive
                mounted to D:.
- Pipeline:     Step 1 of model_wrapper.do, gated by `pull_assessment' (default ON).
+ Pipeline:     Step 1 of model_wrapper.do, gated by `get_assessment_from_gdrive' (default ON).
                The NAA files it stages are produced upstream by
                get_cod_assessment_data.R / get_haddock_assessment_data.R.
 *******************************************************************************/
