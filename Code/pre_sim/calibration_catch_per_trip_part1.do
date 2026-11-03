@@ -505,7 +505,7 @@ save `missing_se', replace ;
    refactor: one svy: mean per missing-SE stratum, posting the
    stratum's domain string rather than the r(table) column name. */
 global impute ;
-foreach s of local stratz {;
+quietly foreach s of local stratz {;
     u `missing_se', clear ;
     keep if strata_id==`s' ;
 
@@ -556,6 +556,7 @@ foreach s of local stratz {;
     tempfile impute`s' ;
     save `impute`s'', replace ;
     global impute "$impute "`impute`s''" " ;
+	noisily display "finished imputing `s'" ;
 };
 
 dsconcat $impute ;
