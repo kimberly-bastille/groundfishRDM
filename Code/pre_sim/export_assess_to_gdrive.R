@@ -1,9 +1,14 @@
 ################################################################################
 ################################################################################
 # Script:       export_assess_to_gdrive.R
-# Purpose:      Explorts historical and projected NAA files to google drive
-# Inputs:       Historical and projected numbers at age:
-# Outputs:      none.
+# Purpose:      Exports historical and projected NAA files to google drive
+# Inputs:       Historical and projected numbers at age
+#   			glue("WGOMCod_Projections_{data_version}.Rds")
+#				glue("WGOM_Cod_projected_NAA_{data_version}")
+#				glue("WGOM_Cod_historical_NAA_{data_version}")
+#				glue("GOM_Haddock_projected_NAA_{data_version}")
+#				glue("GOM_Haddock_historical_NAA_{data_version}")
+# Outputs:      Same files, but on the shared google drive. These files ARE versioned
 # Dependencies: Google Drive access with cached credentials in .secrets.
 # Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
 #               the Stata pipeline: its NAA outputs feed the catch-at-length
