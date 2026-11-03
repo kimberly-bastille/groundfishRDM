@@ -13,8 +13,7 @@
 # Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
 #               the Stata pipeline: its NAA outputs feed the catch-at-length
 #               steps (see catch_at_length_projection.do).
-# Notes:        Hard-coded path (2027_management_cycle_data) that will need to be updated at the
-#				next management cycle.
+#
 ################################################################################
 ################################################################################
 #Load libraries
@@ -87,7 +86,15 @@ drive_upload(
   overwrite = TRUE
 )
 
-#Put the Projected NAA on google drive
+drive_upload(
+  media = file.path(assessment_output_folder,glue("{CodHistoricalNAASaveFile}.dta")),
+  path = as_id(groundfish_processed_path),
+  name = glue("{CodHistoricalNAASaveFile}.dta"),
+  overwrite = TRUE
+)
+
+
+#Put the historical NAA on google drive
 drive_upload(
   media = file.path(assessment_output_folder,glue("{CodProjectedNAASaveFile}.Rds")),
   path = as_id(groundfish_processed_path),
@@ -95,6 +102,12 @@ drive_upload(
   overwrite = TRUE
 )
 
+drive_upload(
+  media = file.path(assessment_output_folder,glue("{CodProjectedNAASaveFile}.dta")),
+  path = as_id(groundfish_processed_path),
+  name = glue("{CodProjectedNAASaveFile}.dta"),
+  overwrite = TRUE
+)
 }
 
 
@@ -110,14 +123,28 @@ if (stocks %in% c("haddock","both")) {
     overwrite = TRUE
   )
 
-  #Put the projected NAA on google drive
   drive_upload(
-    media = file.path(assessment_output_folder,glue("{HaddockProjectedNAASaveFile}.Rds")),
+    media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.dta")),
     path = as_id(groundfish_processed_path),
-    name = glue("{HaddockProjectedNAASaveFile}.Rds"),
+    name = glue("{HaddockHistoricalNAASaveFile}.dta"),
     overwrite = TRUE
   )
 
+
+  #Put the historical NAA on google drive
+  drive_upload(
+    media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.Rds")),
+    path = as_id(groundfish_processed_path),
+    name = glue("{HaddockHistoricalNAASaveFile}.Rds"),
+    overwrite = TRUE
+  )
+
+  drive_upload(
+    media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.dta")),
+    path = as_id(groundfish_processed_path),
+    name = glue("{HaddockHistoricalNAASaveFile}.dta"),
+    overwrite = TRUE
+  )
 }
 
 
