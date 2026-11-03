@@ -98,7 +98,7 @@ end ;
 
 global dems ;
 local wvs 1 2 3 4 5 6 ;
-foreach w of local wvs {;
+quietly foreach w of local wvs {;
 
     u  "$misc_data_cd\fes_person_final_2023`w'.dta", clear ;
 					 
