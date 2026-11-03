@@ -428,7 +428,7 @@ di "catch_at_length_projection: converting projected NAA to numbers-at-length ..
 /* cod */
 use "$misc_data_cd/WGOM_Cod_projected_NAA.dta", clear ;
 keep if year==$cod_NAA_proj_year ;
-
+assert _N>0; /*very basic check that we have data */
 split metric, parse(" ") ;
 rename metric5 age ;
 keep age value year replicate ;
@@ -464,6 +464,8 @@ save `proj_naa_cod', replace ;
 use "$misc_data_cd/GOM_Haddock_projected_NAA.dta", clear ;
 
 keep if year==$hadd_NAA_proj_year ;
+assert _N>0; /*very basic check that we have data */
+
 split metric, parse(" ") ;
 rename metric5 age ;
 keep age value replicate ;
