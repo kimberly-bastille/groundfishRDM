@@ -8,7 +8,7 @@
 #				glue("WGOM_Cod_historical_NAA_{data_version}")
 #				glue("GOM_Haddock_projected_NAA_{data_version}")
 #				glue("GOM_Haddock_historical_NAA_{data_version}")
-#				takes "cod", "haddock", "both"
+#				takes "cod", "haddock", "both" as args.
 # Outputs:      Same files, but on the shared google drive. These files ARE versioned
 # Dependencies: Google Drive access with cached credentials in .secrets.
 # Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
