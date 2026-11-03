@@ -161,10 +161,10 @@ global wavelist 1 2 3 4 5 6
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
 
-global cod_NAA_base_year 2025
-global hadd_NAA_base_year 2025
-global cod_NAA_proj_year 2026
-global hadd_NAA_proj_year 2026
+global cod_NAA_base_year 2026
+global hadd_NAA_base_year 2026
+global cod_NAA_proj_year 2027
+global hadd_NAA_proj_year 2027
 
 /* set the starting year for the NEFSC trawl survey data pull (in catch_at_length_projection.do)
 	 we aggregate these data across multiple years and use them to create age-length keys
