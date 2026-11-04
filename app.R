@@ -421,6 +421,7 @@ server <- function(input, output, session){
   ################################################################################
   ################################################################################
 
+
   output$DTout <- DT::renderDT({
     # Total recreational mortality = landed weight + dead discards, summed
     # across seasons within a draw, then converted from pounds to metric tons.
@@ -560,7 +561,7 @@ server <- function(input, output, session){
       ggplot2::annotate(geom="text", y=had_acl(), label="Had ACL", x=100) +
       ggplot2::guides(size = "none")+
       ggplot2::ggtitle("Cod and haddock mortality")+
-      ggplot2::ylab("Recreational maddock mortality (mt)")+
+      ggplot2::ylab("Recreational haddock mortality (mt)")+
       ggplot2::xlab("Recreational cod mortality (mt)")
 
     fig<- plotly::ggplotly(p) %>%
@@ -632,9 +633,9 @@ server <- function(input, output, session){
       ggplot2::geom_hline( yintercept =cod_acl())+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`CV($M)`[catch$policy_name == "SQ"])) +
-      ggplot2::xlab(NULL)+
+      ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
-      ggplot2::labs(title = "<b>Cod mortality and economic effects on anglers</b><br>Negative compensating variation indicates overall economic gains to anglers relative to November 2025 through October 2026; <br>positive values indicate economic losses.",
+      ggplot2::labs(title = "<b>Cod mortality and economic effects on anglers</b><br>Negative compensating variation (CV) indicates aggregate economic gains to anglers relative to the November 2025 through October 2026 period; <br>positive values indicate economic losses.",
                     subtitle = "testing")+
       ggplot2::theme(legend.position = "none")
 
@@ -670,15 +671,15 @@ server <- function(input, output, session){
           # any plot size.
 
           # x-axis title pinned to CV = 0
-          list(
-            x = 0, y = 0,
-            xref = "x", yref = "paper",
-            xanchor = "center", yanchor = "top",
-            yshift = -25,
-            showarrow = FALSE,
-            text = "Compensating variation ($ millions)",
-            font = list(size = 14)
-          ),
+          # list(
+          #   x = 0, y = 0,
+          #   xref = "x", yref = "paper",
+          #   xanchor = "center", yanchor = "top",
+          #   yshift = -25,
+          #   showarrow = FALSE,
+          #   text = "Compensating variation ($ millions)",
+          #   font = list(size = 14)
+          # ),
           # arrow starting at 0 and pointing toward the gains/losses side
           list(
             x = arrow_end, y = 0,         # head (data x)
@@ -755,9 +756,9 @@ server <- function(input, output, session){
       ggplot2::geom_hline( yintercept =had_acl())+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=catch$`CV($M)`[catch$policy_name == "SQ"])) +
-      ggplot2::xlab(NULL)+
+      ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
-      ggplot2::labs(title = "<b>Haddock mortality and economic effects on anglers</b><br>Negative compensating variation indicates overall economic gains to anglers relative to November 2025 through October 2026; <br>positive values indicate economic losses.",
+      ggplot2::labs(title = "<b>Haddock  mortality and economic effects on anglers</b><br>Negative compensating variation (CV) indicates aggregate economic gains to anglers relative to the November 2025 through October 2026 period; <br>positive values indicate economic losses.",
                     subtitle = "testing")+
       ggplot2::theme(legend.position = "none")
 
@@ -793,15 +794,15 @@ server <- function(input, output, session){
           # any plot size.
 
           # x-axis title pinned to CV = 0
-          list(
-            x = 0, y = 0,
-            xref = "x", yref = "paper",
-            xanchor = "center", yanchor = "top",
-            yshift = -25,
-            showarrow = FALSE,
-            text = "Compensating variation ($ millions)",
-            font = list(size = 14)
-          ),
+          # list(
+          #   x = 0, y = 0,
+          #   xref = "x", yref = "paper",
+          #   xanchor = "center", yanchor = "top",
+          #   yshift = -25,
+          #   showarrow = FALSE,
+          #   text = "Compensating variation ($ millions)",
+          #   font = list(size = 14)
+          # ),
           # arrow starting at 0 and pointing toward the gains/losses side
           list(
             x = arrow_end, y = 0,         # head (data x)
