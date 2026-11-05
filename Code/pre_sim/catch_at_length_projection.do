@@ -508,9 +508,8 @@ merge 1:1 species season length draw using `selectivity' ;
 sort species season draw length ;
 
 gen catch_proj= frac_caught_smooth*proj_nal_smooth ;
-mvencode catch, mv(0) ;
-* FLAG -- not sure if this is okay.
-*mvencode catch_proj, mv(0) ;
+mvencode catch_proj, mv(0) override ; 
+
 
 keep length species season draw  catch catch_proj cod_replicate hadd_replicate proj_* base* ;
 tostring draw, gen(draw2) ;
