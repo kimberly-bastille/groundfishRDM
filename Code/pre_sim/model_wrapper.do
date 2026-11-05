@@ -137,16 +137,6 @@ global FesYear 2025
 /*set mrip type either cal_2018 or cal_2026 */
 global mrip_cal_type "cal_2018"
 
-/* years/waves of MRIP data.*/
-/* used by:
-tidyup_mrip_data_fromR.do
-MRIP_column_cases.do (dead code)
-compare wave 5 data.do*/
-
-global yr_wvs 20241 20242 20243 20244 20245 20246  ///
-			  20251 20252 20253 20254 20255 20256  ///
-			  20261 20262 20263 20264 20265 20266  
-
 /* First and last year of MRIP data.*/
 /* used by:
 tidyup_mrip_data_fromR.do*/
