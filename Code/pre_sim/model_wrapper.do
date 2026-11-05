@@ -127,6 +127,8 @@ global seed 03211990
 /* Section C: MRIP year/wave globals and assessment-year globals */
 /******************************************************************************/
 /******************************************************************************/
+global ManagementCycle 2027
+global FesYear 2025 
 
 /*set mrip type either cal_2018 or cal_2026 */
 global mrip_cal_type "cal_2018"
