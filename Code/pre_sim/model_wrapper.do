@@ -182,6 +182,9 @@ global trawl_survey_start_year 2022
 /* Section D: Execution control (toggle each pipeline step on/off) */
 /******************************************************************************/
 /******************************************************************************/
+loc verify_settings= 1      	    		// Run code that shows globals.
+
+
 
 // Control which modules to run (set to 0 to skip)
 loc process_commercial_landings = 1      	    // Get commercial landings from Oracle
@@ -282,6 +285,17 @@ if `proto' {
 
 local executed_scripts ""
 local skipped_scripts  ""
+
+
+if `verify_settings' {
+	di "Verify Settings"
+	do "$input_code_cd\verify_settings.do"
+	local executed_scripts `executed_scripts' verify_settings.R
+}
+else {
+	local skipped_scripts `skipped_scripts' verify_settings.R
+}
+
 
 /******************************************************************************/
 /******************************************************************************/
