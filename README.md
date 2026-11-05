@@ -208,7 +208,7 @@ Both hand-offs out of Stage 2 are filesystem-only. The Stata → R hand-off (Sta
 
 Cross-script state is carried almost entirely by Stata **global macros** set in the wrapper and read by every script that runs afterwards in the same session — paths (`$misc_data_cd`, `$figure_cd`, `$gfdatadir`, `$calib_catch_draws_cd`), settings (`$ndraws`, `$seed 03211990`), and in some cases whole filter expressions (`$calibration_year` expands to a complete `if` condition). A script that expects a global the wrapper did not set will silently do the wrong thing rather than error. The R side follows the same pattern with global-environment objects set at the top of `R code wrapper.R` (`code_cd`, the `final_process_*_cd` paths, `n_simulations`, `n_draws`) and consumed implicitly by everything it sources.
 
-## Running the Shiny Application {#running-the-shiny-application}
+## Running the Shiny Application
 
 ``` r
 # from the repository root

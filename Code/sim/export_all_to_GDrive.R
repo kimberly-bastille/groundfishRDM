@@ -8,22 +8,30 @@
 #               "R code wrapper.R"); the corresponding shared-drive folders.
 # Outputs:      Files uploaded to Google Drive; a printed report of missing files.
 # Dependencies: Requires a cached Drive token (.secrets)
-#	Takes 3 arguments: Fishery, ManagementCycle and n_simulations. First two control folders
+#	Takes 4 arguments: Fishery, ManagementCycle and n_simulations. First two control folders.  
+#                    uncertain is the flag for the uncertainty project
 # Pipeline:     Sourced by "model_wrapper.do"  after calibration.
 ################################################################################
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 3) {
-  stop("Error: This script requires exactly three arguments.", call. = FALSE)
+if (length(args) != 4) {
+  stop("Error: This script requires exactly four arguments.", call. = FALSE)
 }
 
 #read in arguments. Ensure they are numeric
 Fishery<-args[1]
 ManagementCycle<-as.numeric(args[2])
 n_simulations  <- as.numeric(args[3]) # Number of model iterations.
+uncertain <- as.numeric(args[4]) # Uncertainty project flag.
+
+
+if (length(args) != 2) {
+  stop("Error: This script requires exactly two arguments.", call. = FALSE)
+}
 
 # Show them, just in case.
 cat("Number of Simulations :", n_simulations, "\n")
+cat("Uncertainty (0 = normal, 1 = uncertainty data):", uncertain, "\n")
 
 library(here)
 library(tidyverse)
@@ -61,13 +69,27 @@ drive_auth(cache = here(".secrets"), email = TRUE)
 ################################################################################
 ################################################################################
 
+# Fallback in case 'uncertain' isn't defined in the environment
+if (!exists("uncertain")) {
+  uncertain <- 0
+}
 
+# 1. Define the common root folder path
+gdrive_base <- file.path("socialsci", "RecreationalDST", 
+                         glue("{ManagementCycle}_management_cycle_data"),
+                         glue("{Fishery}RDM")
+                        )
 
-# Output folders on google drive
-base_outcomes_path <-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"base_outcomes")
-n_choice_occasions_path<-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"n_choice_occasions")
-calib_catch_draws_path <-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"calib_catch_draws")
-miscellaneous_path <-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"miscellaneous")
+# 2. Add the "uncertain" folder layer if the argument is 1
+if (uncertain == 1) {
+  gdrive_base <- file.path(gdrive_base, "uncertain")
+}
+
+# 3. Build the final output folders on google drive
+base_outcomes_path <- file.path(gdrive_base, "base_outcomes")
+n_choice_occasions_path <- file.path(gdrive_base, "n_choice_occasions")
+calib_catch_draws_path <- file.path(gdrive_base, "calib_catch_draws")
+miscellaneous_path <- file.path(gdrive_base, "miscellaneous")
 
 folder_info <- drive_get(
   path = base_outcomes_path,
