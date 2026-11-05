@@ -269,6 +269,13 @@ if `get_mrip_oracle' {
   	di "Tidyup finished"
 
 }
+if `get_fes_from_gdrive' {
+  	di "pulling "
+	do "$input_code_cd\get_fes_from_gdrive.do" $ManagementCycle $FesYear
+    di "Oracle Data Pull Finished"
+
+}
+
 
 
 
