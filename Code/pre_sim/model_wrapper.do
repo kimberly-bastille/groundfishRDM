@@ -149,6 +149,8 @@ tidyup_mrip_data_fromR.do*/
 
 global first_mrip_year 2024
 global last_mrip_year 2026
+
+
 numlist "$first_mrip_year/$last_mrip_year"
 
 /* Yearlist and wavelist.*/
@@ -245,7 +247,7 @@ if `proto' {
 if `get_assessment_from_gdrive' {
 	di "Pulling Assessment data from google"
 
-	do "$input_code_cd\get_assessment_from_gdrive.do"
+	do "$input_code_cd\get_assessment_from_gdrive.do" $ManagementCycle
 }
 
 // 0) Pull MRIP data from Oracle (takes a while).

@@ -14,12 +14,24 @@
  Pipeline:     Step 1 of model_wrapper.do, gated by `pull_assessment' (default ON).
                The NAA files it stages are produced upstream by
                get_cod_assessment_data.R / get_haddock_assessment_data.R.
-*******************************************************************************/
+			   
+			  Requires 1 arguments, ManagementCycle 
+			  ManagementCycle is used to assemble the google folder.
 
-local google_folder "D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/input_data"
+*******************************************************************************/
+args ManagementCycle  
+
+if missing("`ManagementCycle'") {
+    display as error "Error: Missing required arguments."
+    display as error "Syntax: do get_assessment_from_gdrive.do <ManagementCycle> "
+    exit 198 /* invalid syntax exit code */
+}
+
+local google_folder "D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/`ManagementCycle'_management_cycle_data/groundfishRDM/input_data"
 local filestubs  "GOM_Haddock_historical_NAA GOM_Haddock_projected_NAA WGOM_Cod_projected_NAA WGOM_Cod_historical_NAA"
 
 display "Pulling latest assessment NAA files from Google Drive ..."
+local filecount=0
 
 foreach s of local filestubs {
     clear
@@ -33,7 +45,17 @@ foreach s of local filestubs {
     local fullpath `"`google_folder'/`myfile'"' // build full path
     di as text "Loading: `fullpath'" 
 	copy "`fullpath'" `"$misc_data_cd/`s'.dta"' , replace /*copy files from google drive to misc_data_cd*/
+	local ++filecount 
 }
 
-display "Finished copying assessment NAA files to misc_data_cd."
+display "Finished copying `filecount' assessment NAA files to misc_data_cd."
+
+
+display "Pulled `filecount' of 4 Assessment files from Google Drive"
+if (`filecount'!=4) {
+    display as error "Error: incorrect number of Assessment files copied."
+}
+
+
+
 
