@@ -8,17 +8,26 @@
 #               "R code wrapper.R"); the corresponding shared-drive folders.
 # Outputs:      Files uploaded to Google Drive; a printed report of missing files.
 # Dependencies: Requires a cached Drive token (.secrets)
+#	Takes 4 arguments: Fishery, ManagementCycle and n_simulations. First two control folders.  
+#                    uncertain is the flag for the uncertainty project
 # Pipeline:     Sourced by "model_wrapper.do"  after calibration.
 ################################################################################
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) {
-  stop("Error: This script requires exactly two arguments.", call. = FALSE)
+if (length(args) != 4) {
+  stop("Error: This script requires exactly four arguments.", call. = FALSE)
 }
 
 #read in arguments. Ensure they are numeric
-n_simulations  <- as.numeric(args[1]) # Number of model iterations.
-uncertain <- as.numeric(args[2]) # Uncertainty project flag.
+Fishery<-args[1]
+ManagementCycle<-as.numeric(args[2])
+n_simulations  <- as.numeric(args[3]) # Number of model iterations.
+uncertain <- as.numeric(args[4]) # Uncertainty project flag.
+
+
+if (length(args) != 2) {
+  stop("Error: This script requires exactly two arguments.", call. = FALSE)
+}
 
 # Show them, just in case.
 cat("Number of Simulations :", n_simulations, "\n")
@@ -26,6 +35,7 @@ cat("Uncertainty (0 = normal, 1 = uncertainty data):", uncertain, "\n")
 
 library(here)
 library(tidyverse)
+library(glue)
 library(conflicted)
 conflicts_prefer(here::here)
 conflicts_prefer(dplyr::filter)
@@ -65,7 +75,10 @@ if (!exists("uncertain")) {
 }
 
 # 1. Define the common root folder path
-gdrive_base <- file.path("socialsci", "RecreationalDST", "2027_management_cycle_data", "groundfishRDM")
+gdrive_base <- file.path("socialsci", "RecreationalDST", 
+                         glue("{ManagementCycle}_management_cycle_data"),
+                         glue("{Fishery}RDM")
+                        )
 
 # 2. Add the "uncertain" folder layer if the argument is 1
 if (uncertain == 1) {

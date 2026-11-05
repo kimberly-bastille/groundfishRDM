@@ -59,30 +59,33 @@ set varabbrev on
 /******************************************************************************/
 
 /*Set calibration year-waves*/
-global calibration_year "(year==2025 & inlist(wave, 1, 2, 3, 4, 5)) | (year==2024 & inlist(wave, 6))"  // last six waves of data  updated
-global calibration_date_start td(01nov2024)
-global calibration_date_end td(31oct2025)
+global calibration_year "(year==2026 & inlist(wave, 1, 2, 3, 4, 5)) | (year==2025 & inlist(wave, 6))"  // last six waves of data  updated
+global calibration_date_start td(01nov2025)
+global calibration_date_end td(31oct2026)
 
-global projection_date_start td(01may2026)
-global projection_date_end td(30apr2027)
+global projection_date_start td(01may2027)
+global projection_date_end td(30apr2028)
 
-* add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level
+* add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level.   https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/
 
-* fed holidays in the calibration year
-global fed_holidays "inlist(day, td(11nov2024), td(28nov2024), td(25dec2024), td(01jan2025), td(20jan2025), td(17feb2025), td(26may2025), td(19jun2025), td(04jul2025), td(01sep2025), td(13oct2025))"
+* fed holidays in the calibration year. The intended intended use is:
+*  <command> if $fed_holidays. It operates on the column "day"
+global fed_holidays "inlist(day, td(11nov2025), td(27nov2025), td(25dec2025), td(01jan2026), td(19jan2026), td(16feb2026), td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026))"
 
-* fed holidays in the projection year
-global fed_holidays_y2 "inlist(day1, td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026), td(11nov2026),  td(26nov2026),  td(25dec2026), td(01jan2027), td(18jan2027), td(15feb2027))"
+* fed holidays in the projection year. The intended use is:
+* <command> if $fed_holidays_y2.  It operates on the column "day1"
+global fed_holidays_y2 "inlist(day1, td(31may2027), td(18jun2027), td(05jul2027), td(06sep2027), td(11oct2027), td(11nov2027),  td(25nov2027),  td(24dec2027), td(01jan2028), td(17jan2028), td(21feb2028))"
 
 * leap-year days here
-global leap_yr_days "td(29feb2024)"
+global leap_yr_days "td(29feb2028)"
 
 * set number of model iterations to create
 global ndraws 101
 
-* adjust 2022 survey trip costs to account for inflation (January 2022 - January 2025)
+* adjust 2022 survey trip costs to account for inflation (January 2022 - January 2026)
+
 * source =https://www.bls.gov/data/inflation_calculator.htm
-global inflation_expansion=1.13
+global inflation_expansion=1.16
 
 /******************************************************************************/
 /******************************************************************************/
@@ -133,26 +136,22 @@ global seed 03211990
 /* Section C: MRIP year/wave globals and assessment-year globals */
 /******************************************************************************/
 /******************************************************************************/
+global Fishery "groundfish" /*can be set to "groundfish" or "fluke". */
+
+global ManagementCycle 2027
+global FesYear 2025 
 
 /*set mrip type either cal_2018 or cal_2026 */
 global mrip_cal_type "cal_2018"
-
-/* years/waves of MRIP data.*/
-/* used by:
-tidyup_mrip_data_fromR.do
-MRIP_column_cases.do (dead code)
-compare wave 5 data.do*/
-
-global yr_wvs 20231 20232 20233 20234 20235 20236  ///
-			  20241 20242 20243 20244 20245 20246  ///
-			  20251 20252 20253 20254 20255 20256
 
 /* First and last year of MRIP data.*/
 /* used by:
 tidyup_mrip_data_fromR.do*/
 
-global first_mrip_year 2023
-global last_mrip_year 2025
+global first_mrip_year 2024
+global last_mrip_year 2026
+
+
 numlist "$first_mrip_year/$last_mrip_year"
 
 /* Yearlist and wavelist.*/
@@ -176,7 +175,7 @@ global hadd_NAA_proj_year 2027
 	 but do not want to use historical data too far in the past.
 used by catch_at_length_projection.do*/
 
-global trawl_survey_start_year 2022
+global trawl_survey_start_year 2023
 
 
 
@@ -194,6 +193,7 @@ loc process_haddock_assess = 0            // Process Haddock Assessment data
 
 loc get_assessment_from_gdrive = 1				// Pull Assessment data
 loc get_mrip_oracle = 1		 					      // Pull MRIP data.
+loc get_fes_from_gdrive=1						// get the fes data from google drive
 loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
 
 loc get_svdbs_data = 1		 					  // Pull MRIP site list.
@@ -338,7 +338,8 @@ else {
 /* This code requires you to mount your google drive to D on your computer */
 if `get_assessment_from_gdrive' {
 	di "Pulling Assessment data from google"
-	do "$input_code_cd\get_assessment_from_gdrive.do"
+
+	do "$input_code_cd\get_assessment_from_gdrive.do" "$Fishery" $ManagementCycle
 	local executed_scripts `executed_scripts' get_assessment_from_gdrive.R
 }
 else {
@@ -347,7 +348,7 @@ else {
 
 // 0) Pull MRIP data from Oracle (takes a while).
 
-
+z
 
 
 /* Paths to the tidied MRIP extracts (written by tidyup_mrip_data_fromR.do). */
@@ -368,6 +369,13 @@ if `get_mrip_oracle' {
 else {
 	local skipped_scripts `skipped_scripts' tidyup_mrip_data_fromR.do get_mrip_oracle.R
 }
+if `get_fes_from_gdrive' {
+  	di "Copying FES from Google Drive "
+	do "$input_code_cd\get_fes_from_gdrive.do" "$Fishery" $ManagementCycle $FesYear
+  	di "FES Files copied from Google Drive "
+
+}
+
 
 
 
@@ -602,10 +610,10 @@ if `Rcodewrapper'{
 else {
    local skipped_scripts `skipped_scripts' R_code_wrapper.R
 }
-
+/* if this fails, you might need to remove the double quotes around $Fishery */
 if `export_all_to_GDrive'{
 di "Exporting calibration outputs to Google Drive ..."
-  rscript using "$here\Code\sim\export_all_to_GDrive.R", args($ndraws $uncertain)
+  rscript using "$here\Code\sim\export_all_to_GDrive.R", args("$Fishery" $ManagementCycle $ndraws $uncertain)
 	local executed_scripts `executed_scripts' export_all_to_GDrive.R
 	}
 else {
@@ -615,7 +623,8 @@ else {
 
 if (`projected_naa_uncertain' & "$developer"=="TP"){
 	di "Resetting Assessment data from google"
-	do "$input_code_cd\get_assessment_from_gdrive.do"
+	
+	do "$input_code_cd\get_assessment_from_gdrive.do" "$Fishery" $ManagementCycle
 	local executed_scripts `executed_scripts' AssesmentReset
 }
 
