@@ -15,19 +15,20 @@
                The NAA files it stages are produced upstream by
                get_cod_assessment_data.R / get_haddock_assessment_data.R.
 			   
-			  Requires 1 arguments, ManagementCycle 
-			  ManagementCycle is used to assemble the google folder.
+			  Requires 2 arguments, Fishery and ManagementCycle 
+			  Both used to assemble the google folder.
 
 *******************************************************************************/
-args ManagementCycle  
+args Fishery ManagementCycle 
 
-if missing("`ManagementCycle'") {
+if missing("`Fishery'") | missing("`ManagementCycle'")  {
     display as error "Error: Missing required arguments."
-    display as error "Syntax: do get_assessment_from_gdrive.do <ManagementCycle> "
+    display as error "Syntax: do get_assessment_from_gdrive.do <Fishery> <ManagementCycle> "
     exit 198 /* invalid syntax exit code */
 }
 
-local google_folder "D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/`ManagementCycle'_management_cycle_data/groundfishRDM/input_data"
+
+local google_folder "D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/`ManagementCycle'_management_cycle_data/`Fishery'RDM/input_data"
 local filestubs  "GOM_Haddock_historical_NAA GOM_Haddock_projected_NAA WGOM_Cod_projected_NAA WGOM_Cod_historical_NAA"
 
 display "Pulling latest assessment NAA files from Google Drive ..."

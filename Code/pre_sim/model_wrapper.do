@@ -127,6 +127,8 @@ global seed 03211990
 /* Section C: MRIP year/wave globals and assessment-year globals */
 /******************************************************************************/
 /******************************************************************************/
+global Fishery "groundfish" /*can be set to "groundfish" or "fluke". */
+
 global ManagementCycle 2027
 global FesYear 2025 
 
@@ -247,12 +249,12 @@ if `proto' {
 if `get_assessment_from_gdrive' {
 	di "Pulling Assessment data from google"
 
-	do "$input_code_cd\get_assessment_from_gdrive.do" $ManagementCycle
+	do "$input_code_cd\get_assessment_from_gdrive.do" "$Fishery" $ManagementCycle
 }
 
 // 0) Pull MRIP data from Oracle (takes a while).
 
-
+z
 
 
 /* Paths to the tidied MRIP extracts (written by tidyup_mrip_data_fromR.do). */
@@ -274,9 +276,9 @@ if `get_mrip_oracle' {
 
 }
 if `get_fes_from_gdrive' {
-  	di "pulling "
-	do "$input_code_cd\get_fes_from_gdrive.do" $ManagementCycle $FesYear
-    di "Oracle Data Pull Finished"
+  	di "Copying FES from Google Drive "
+	do "$input_code_cd\get_fes_from_gdrive.do" "$Fishery" $ManagementCycle $FesYear
+  	di "FES Files copied from Google Drive "
 
 }
 
@@ -426,7 +428,7 @@ if `Rcodewrapper'{
 if `export_all_to_GDrive'{
 
 di "Exporting calibration outputs to Google Drive ..."
-  rscript using "$here\Code\sim\export_all_to_GDrive.R", args($ndraws)
+  rscript using "$here\Code\sim\export_all_to_GDrive.R", args($Fishery $ManagementCycle $ndraws)
 di "Export complete."
 
 }

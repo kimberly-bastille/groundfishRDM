@@ -5,20 +5,20 @@
  Dependencies: Global $misc_data_cd (set in model_wrapper.do). Google Drive
                mounted to D:.
  Pipeline:     Step 1 of model_wrapper.do, gated by `get_fes_from_gdrive' (default ON).
-              Requires 2 arguments, the ManagementCycle and the FesYear.
-			  ManagementCycle is used to assemble the google folder.
+              Requires 3 arguments, Fishery, ManagementCycle and the FesYear.
+			  Fishery and ManagementCycle is used to assemble the google folder.
 			  FES year is used to search for the proper files
 *******************************************************************************/
 
-args ManagementCycle  FesYear
+args Fishery ManagementCycle  FesYear
 
-if missing("`ManagementCycle'") | missing("`FesYear'") {
+if missing("`FesYear'") | missing("`ManagementCycle'") | missing("`FesYear'")  {
     display as error "Error: Missing required arguments."
-    display as error "Syntax: do get_fes_from_gdrive.do <ManagementCycle> <FesYear>"
+    display as error "Syntax: do get_fes_from_gdrive.do <Fishery> <ManagementCycle> <FesYear>"
     exit 198 /* invalid syntax exit code */
 }
 
-local google_folder "D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/`ManagementCycle'_management_cycle_data/groundfishRDM/miscellaneous"
+local google_folder "D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/`ManagementCycle'_management_cycle_data/`Fishery'RDM/miscellaneous"
 local filestubs  "fes_person_final_`FesYear'"
 
 display "Pulling FES_person_final files Google Drive ..."
