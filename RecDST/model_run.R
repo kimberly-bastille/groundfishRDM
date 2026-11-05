@@ -62,7 +62,7 @@ draws         <- if (exists("draws")) draws else seq_len(n_simulations)
 n_draws       <- 50L
 
 policy_name <- args[1]
-#policy_name <- "18inchHad"
+#policy_name <- "SQ"
 
 
 source(here::here("Code/sim/predict_rec_catch_functions.R"))

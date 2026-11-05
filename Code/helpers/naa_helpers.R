@@ -63,9 +63,11 @@ validate_naa_data <- function(df) {
     is.character(df$units) && !any(is.na(df$units))
   )
 
-  # Ensure species_itis and value are numeric
-  stopifnot(is.numeric(df$species_itis))
-  stopifnot(is.numeric(df$value))
+  # Ensure species_itis and value are numeric and contains no NAs
+  stopifnot(
+    is.numeric(df$species_itis) && !any(is.na(df$species_itis)),
+    is.numeric(df$value) && !any(is.na(df$value))
+  )
 
   # Ensure data_version is a Date class
   stopifnot(inherits(df$data_version, "Date"))

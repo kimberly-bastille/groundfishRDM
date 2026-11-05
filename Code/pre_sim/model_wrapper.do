@@ -117,7 +117,14 @@ timer on 1           // Starts timing
 
 /* start log */
 cap log close
-log using "${log_dir}\model_wrapper_log_${S_DATE}_${S_TIME}.smcl", replace
+local date_string = subinstr(trim("${S_DATE}"), ":" , "_", .)
+local date_string = subinstr("`date_string'", " " , "_", .)
+
+
+local time_string = subinstr(trim("${S_TIME}"), ":" , "_", .)
+
+log using "${log_dir}\model_wrapper_log_`date_string'_`time_string'.smcl", replace
+
 
 
 * set a global seed
@@ -187,6 +194,10 @@ loc process_haddock_assess = 0            // Process Haddock Assessment data
 loc get_assessment_from_gdrive = 1				// Pull Assessment data
 loc get_mrip_oracle = 1		 					      // Pull MRIP data.
 loc get_fes_from_gdrive=1						// get the fes data from google drive
+loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
+
+loc get_svdbs_data = 1		 					  // Pull MRIP site list.
+
 loc directed_trips_calibration = 1				// Estimate Directed Trips
 loc survey_trip_costs = 1  						    // Create Distributions of costs per trip (run 1x)
 loc estimate_angler_preferences = 1				// Create draw of angler preference parameters (run 1x)
@@ -213,8 +224,9 @@ loc export_all_to_GDrive = 0             // Export calibration and all data to G
 loc rdb_processing_catch_per_trip= 0  	  // prep data for dashboard
 loc rdb_catch_per_trip_to_drive =0 	  	  // Push to google drive in R
 loc rdb_catch_at_length= 0	              // Prep catch at length data for dashboard
-loc rdb_catch_at_len_to_drive =0 	        // Push catch at length data to  google drive in R
-
+loc rdb_catch_at_len_to_drive =0 	      // Push catch at length data to google drive in R
+loc rdb_directed_trips =0 	        	  // Prep directed trips data for dashboard
+loc rdb_dtrips_to_drive =0 	      		  // Push directed trips data to google drive in R
 
 
 /********************* Uncertainty Project Toggles *************************************/
@@ -292,7 +304,7 @@ else {
 }
 if `process_cod_assess' {
 	di "Processing cod assessment"
-	rscript using "$input_code_cd\process_cod_assessment_data.R"
+	rscript using "$input_code_cd\process_cod_assessment_data.R", args($cod_NAA_proj_year)
 	local executed_scripts `executed_scripts' process_cod_assessment_data.R
 }
 else {
@@ -301,11 +313,11 @@ else {
 
 if `process_haddock_assess'{
 	di "Processing haddock assessment"
-	rscript using "$input_code_cd\process_hadd_assessment_data.R"
-	local executed_scripts `executed_scripts' process_hadd_assessment_data.R
+	rscript using "$input_code_cd\process_haddock_assessment_data.R", args($hadd_NAA_proj_year)
+	local executed_scripts `executed_scripts' process_haddock_assessment_data.R
 }
 else {
-	local skipped_scripts `skipped_scripts' process_hadd_assessment_data.R
+	local skipped_scripts `skipped_scripts' process_haddock_assessment_data.R
 }
 
 
@@ -368,6 +380,29 @@ if `get_fes_from_gdrive' {
 
 
 
+if `get_mrip_site_list' {
+  	di "Pulling MRIP site list from oracle"
+	rscript using "$input_code_cd\get_mrip_site_list.R"
+	local executed_scripts `executed_scripts' get_mrip_site_list.R
+}
+else {
+	local skipped_scripts `skipped_scripts' get_mrip_site_list.R
+}
+
+
+
+if `get_svdbs_data' {
+  	di "Pulling SVDBS data from  oracle"
+	rscript using "$input_code_cd\get_svdbs_data.R"
+	local executed_scripts `executed_scripts' get_svdbs_data.R
+}
+else {
+	local skipped_scripts `skipped_scripts' get_svdbs_data.R
+}
+
+
+
+
 
 // 2) Estimate directed trips at the month, mode, kind-of day level
 
@@ -392,6 +427,25 @@ if `directed_trip_uncertain' {
 }
 else {
 	local skipped_scripts `skipped_scripts' directed_trip_uncertain.do
+}
+
+		//Process directed trips and format it for the rec dashboard
+if `rdb_directed_trips'{
+   	di "Processing and formatting directed trips for dashboard"
+	do "$input_code_cd\rdb_directed_trips.do"
+	local executed_scripts `executed_scripts' rdb_directed_trips.do
+}
+else {
+    local skipped_scripts `skipped_scripts' rdb_directed_trips.do
+}
+		//run this script in R to read in the directed trips processed for the rec dashboard, save it as an Rds, and push it to Google Drive
+if `rdb_dtrips_to_drive'{
+    di "Pushing rec dashboard catch at length data to gdrive using R"
+	rscript using "$input_code_cd\rdb_dtrips_to_drive.R"
+	local executed_scripts `executed_scripts' rdb_dtrips_to_drive.R
+}
+else {
+   local skipped_scripts `skipped_scripts' rdb_dtrips_to_drive.R
 }
 
 // 3) Create distributions of costs per trip across strata - only needs to be run once
@@ -566,10 +620,12 @@ else {
   local skipped_scripts `skipped_scripts' export_all_to_GDrive.R
   di "Export complete."
 }
-if `projected_naa_uncertain' & $developer=="TP"{
+
+if (`projected_naa_uncertain' & "$developer"=="TP"){
 	di "Resetting Assessment data from google"
 	
 	do "$input_code_cd\get_assessment_from_gdrive.do" "$Fishery" $ManagementCycle
+	local executed_scripts `executed_scripts' AssesmentReset
 }
 
 display "model_wrapper.do: Stata pre-simulation stage complete."
