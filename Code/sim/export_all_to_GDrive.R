@@ -8,22 +8,26 @@
 #               "R code wrapper.R"); the corresponding shared-drive folders.
 # Outputs:      Files uploaded to Google Drive; a printed report of missing files.
 # Dependencies: Requires a cached Drive token (.secrets)
+#	Takes 3 arguments: Fishery, ManagementCycle and n_simulations. First two control folders
 # Pipeline:     Sourced by "model_wrapper.do"  after calibration.
 ################################################################################
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop("Error: This script requires exactly one arguments.", call. = FALSE)
+if (length(args) != 3) {
+  stop("Error: This script requires exactly three arguments.", call. = FALSE)
 }
 
 #read in arguments. Ensure they are numeric
-n_simulations  <- as.numeric(args[1]) # Number of model iterations.
+fishery<-args[1]
+ManagementCycle<-as.numeric(args[2])
+n_simulations  <- as.numeric(args[3]) # Number of model iterations.
 
 # Show them, just in case.
 cat("Number of Simulations :", n_simulations, "\n")
 
 library(here)
 library(tidyverse)
+library(glue)
 library(conflicted)
 conflicts_prefer(here::here)
 conflicts_prefer(dplyr::filter)
@@ -57,11 +61,13 @@ drive_auth(cache = here(".secrets"), email = TRUE)
 ################################################################################
 ################################################################################
 
+
+
 # Output folders on google drive
-base_outcomes_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","base_outcomes")
-n_choice_occasions_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","n_choice_occasions")
-calib_catch_draws_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","calib_catch_draws")
-miscellaneous_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","miscellaneous")
+base_outcomes_path <-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"base_outcomes")
+n_choice_occasions_path<-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM")","n_choice_occasions")
+calib_catch_draws_path <-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"calib_catch_draws")
+miscellaneous_path <-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"miscellaneous")
 
 folder_info <- drive_get(
   path = base_outcomes_path,
