@@ -134,7 +134,7 @@ ui <- fluidPage(
                label = "Supplemental Figures",
                choiceNames = list(
                  tagList(
-                   "CV",
+                   "Economic effects on anglers (CV)",
                    tags$a(
                      icon("circle-info"),
                      href = "https://github.com/kimberly-bastille/groundfishRDM/blob/main/docs/USER_GUIDE_GROUNDFISH.md#Understanding-Compensating-Variation",
