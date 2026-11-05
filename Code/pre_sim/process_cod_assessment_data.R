@@ -13,6 +13,7 @@
 #                 mod_base_2023_noBLLS.rds       (accepted WHAM model),
 #                 WGOM_COD_ASAP_2023_SEL3_2023.DAT (ASAP input file).
 #               "commercial_CY_removals_{vintage_string}.Rds"
+#               Designed to have an argument (YearProj) passed in.
 # Outputs:      input_data/WGOMCod_Projections_<date>.Rds,
 #               input_data/WGOM_Cod_historical_NAA_<date>.{Rds,dta},
 #               input_data/WGOM_Cod_projected_NAA_<date>.{Rds,dta}
@@ -53,6 +54,17 @@ library(googledrive)
 library(here)
 cod_wham_lib <- file.path(Sys.getenv("R_LIBS_USER"), "cod_wham_install")
 library(wham,lib.loc = cod_wham_lib)
+
+
+
+# Define arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 1) {
+  stop("Error: This script requires exactly 1 argument.", call. = FALSE)
+}
+
+#read in arguments. force to numeric
+YearProj  <- as.numeric(args[1])
 
 
 ###########Begin Housekeeping##################################################
@@ -215,8 +227,7 @@ cat("Installed wham commit is", packageDescription("wham")$RemoteSha,"\n")
 
 # Placeholders and parameters
 periods<-12 # there are 12 months in a year
-# Which year do you want a projection for, How many projections? Set a seed.
-YearProj<-2027
+# How many projections? Set a seed.
 num_NAA_draws<-500
 set.seed(6)
 
@@ -301,7 +312,6 @@ actual_2026_rec_catch_mt<-NA # Update this for 2028 management:
 
 actual_2023_catch_mt<-actual_2023_commercial_catch_mt+actual_2023_rec_catch_mt
 actual_2024_catch_mt<-actual_2024_commercial_catch_mt+actual_2024_rec_catch_mt
-# 2025 not used (yet)
  actual_2025_catch_mt<-actual_2025_commercial_catch_mt+actual_2025_rec_catch_mt
 # 2026 not used (yet)
 # actual_2026_catch_mt<-actual_2026_commercial_catch_mt+actual_2026_rec_catch_mt

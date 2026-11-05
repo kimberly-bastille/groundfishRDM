@@ -17,15 +17,20 @@ library(here)
 library(furrr)
 library(future)
 library(conflicted)
+library(WriteXLS)
+library(readxl)
+library(writexl)
 conflicts_prefer(data.table::month)
 # Optional parallel backend is loaded only in the wrapper below.
 
-final_process_data_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle"
-final_process_outcomes_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/base_outcomes"
-final_process_choice_occasions_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/n_choice_occasions"
-final_process_misc_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/miscellaneous"
-final_process_calib_catch_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/calib_catch_draws"
+final_process_data_cd="D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM"
+final_process_outcomes_cd="D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/base_outcomes"
+final_process_choice_occasions_cd="D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/n_choice_occasions"
+final_process_misc_cd="D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/miscellaneous"
+final_process_calib_catch_cd="D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/calib_catch_draws"
 test_results_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/simulation_testing"
+
+
 
 # -----------------------------------------------------------------------------
 # User-facing controls
@@ -46,14 +51,19 @@ had_lw_b <- if (exists("had_lw_b")) had_lw_b else 3.0205
 
 directed_trips <- as.data.table(read_fst(file.path(final_process_misc_cd,"directed_trip_draws.fst")))
 
+
 # Code below to manually adjust the regulations
-# one inch decrease
+# Run once after loading the original directed_trips regulations
 directed_trips <- directed_trips %>%
   dplyr::mutate(
-    cod_min  = dplyr::if_else(cod_bag > 0, cod_min + 2*2.54, cod_min),
-    hadd_min = dplyr::if_else(hadd_bag > 0, hadd_min + 2*2.54, hadd_min)
+    cod_min = dplyr::if_else(cod_bag > 0, cod_min - 2*2.54, cod_min),
+    hadd_min = dplyr::if_else(hadd_bag > 0, hadd_min + 2*2.54, hadd_min),
+    hadd_bag = dplyr::case_when(
+      as.integer(format(date_parsed, "%m")) == 6L ~ 0,
+      hadd_bag > 0 ~ 10,
+      TRUE ~ hadd_bag
+    )
   )
-
 # -----------------------------------------------------------------------------
 # Main projection execution
 # -----------------------------------------------------------------------------
@@ -94,9 +104,10 @@ prediction_long[, species := data.table::fcase(
 )]
 
 # Save test output here
-#write_xlsx(prediction_long, file.path(test_results_cd, "test_sim_SQ_9_9_26.xlsx"))
+write_xlsx(prediction_long, file.path(test_results_cd, "lou_local_altregs_10_27_26.xlsx"))
+#write_xlsx(prediction_long, file.path(test_results_cd, "test_sim_SQ_10_15_26.xlsx"))
 #write_xlsx(prediction_long, file.path(test_results_cd, "test_sim_sizeminus2_9_9_26.xlsx"))
-write_xlsx(prediction_long, file.path(test_results_cd, "test_sim_sizeplus2_9_9_26.xlsx"))
+#write_xlsx(prediction_long, file.path(test_results_cd, "test_sim_sizeplus2_9_9_26.xlsx"))
 
 
 

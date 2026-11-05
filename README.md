@@ -101,40 +101,17 @@ One command runs the whole pipeline. groundfishRDM chains its two wrappers: the 
 do Code/pre_sim/model_wrapper.do
 ```
 
-Execution order and the controlling toggle for each step:
-
+Execution order and the controlling toggle for each step this begins section D -- look at this section in the `model_wrapper.do` code.
 ```
- 0.                                   developer_setup_stata.do          (unconditional)
- 1.  pull_assessment                  get_assessment_from_gdrive.do
- 2.  pull_MRIP                        get_mrip_oracle.R → tidyup_mrip_data_fromR.do
- 3.  processMRIP                      MRIP_column_cases.do              ["dead code" per source]
- 4.  assemblemriplists                MRIP_lists.do                     ["dead code" per source]
- 5.  estimate_dtrips                  directed_trips_calibration.do
-       5a.                            └─ set_regulations.do             (nested, unconditional)
- 6.  costs_per_trip                   survey_trip_costs.do
- 7.  draw_angler_preferences          estimate_angler_preferences.do
- 8.  catch_per_trip1                  calibration_catch_per_trip_part1.do
- 9.  copula_in_R                      copula_modeling_calibration.R
-10.  catch_per_trip2                  calibration_catch_per_trip_part2.do
-11.  compare_calibration_MRIP         compare_calibration_data_to_MRIP.do
-12.  prep_cpt_for_dashboard           rdb_processing_catch_per_trip.do
-13.  Rpush_cpt_to_gdrive              rdb_catch_per_trip_to_drive.R
-14.  angler_demogs                    additional_angler_dems.do
-15.  generate_baseline                catch_at_length_calibration.do
-                                        └─ catch_at_length_programs.do  (loaded, not toggled)
-16.  prep_catch_at_length_for_dash    rdb_catch_at_length.do
-17.  Rpush_catch_at_length_to_gdrive  rdb_catch_at_len_to_drive.R
-18.  catch_at_length_project          catch_at_length_projection.do
-                                        └─ catch_at_length_programs.do  (loaded, not toggled)
-19.  run_calibration                  Code/sim/R code wrapper.R
-       19a.                           ├─ developer_setup.R
-       19b.                           ├─ calibrate_rec_catch0.R              ["STEP 1"]
-       19c.                           ├─ calibration_routine.R               ["STEP 2"]
-                                      │    └─ calibrate_rec_catch1.R  (re-sourced in loops)
-       19d.                           └─ export_to_GoogleDrive.R
+/******************************************************************************/
+/******************************************************************************/
+/* Section D: Execution control (toggle each pipeline step on/off) */
+/******************************************************************************/
+/******************************************************************************/
 ```
 
-**About the toggles.** All 19 are Stata *locals* (not globals), defined in one contiguous
+
+**About the toggles.** All toggles are Stata *locals* (not globals), defined in one contiguous
 block in Section D ("Execution control") of `model_wrapper.do`, uniformly `0`/`1`,
 uniformly checked via `` if `toggle' ``. Setting one to `0` deletes nothing — it just
 skips that step, which is normal when its output already exists on disk. **The committed
@@ -143,7 +120,7 @@ commit to commit; check Section D before every run and set each toggle for the r
 intend. `processMRIP` and `assemblemriplists` are labeled "(dead code)" in the wrapper's
 own comments and are expected to stay `0`.
 
-A 20th flag, `proto`, sits just below the toggles. It gates no script: when it is `1` the
+The `proto` flag, sits just below the toggles. It gates no script: when it is `1` the
 wrapper overwrites `$ndraws` (set to 101 in Section A) with a small number for fast
 prototyping runs. Like the toggles, its committed value reflects the last run, not a
 default; a production run needs `proto = 0`. The wrapper prints a reminder at the end of
@@ -164,9 +141,7 @@ Rscript Run_Model.R <Run_Name>
 
 This path has **no code-level link** to either wrapper or to `app.R`. It consumes files the wrappers produce, but the connection is a shared-filesystem convention rather than a call. In production, `app.R` enqueues an Azure Storage queue message and a separate worker (`keda/consume_and_run.sh`, running the `Dockerfile.RmodelGroundFish` image) picks it up and executes this command.
 
-Scripts with no confirmed caller anywhere in the repo — `RP_data_analysis.do`,
-`baseline_and_projected_NAL.do`, `get_cod_assessment_data.R`,
-`get_haddock_assessment_data.R`, `get_commercial_landings.R`
+Scripts with no confirmed caller anywhere in the repo — `RP_data_analysis.do` and `baseline_and_projected_NAL.do`, 
 — are legacy, exploratory, or run manually. 
 
 The two `get_*_assessment_data.R` scripts are how the the pre-computed assessment files that step 1 downloads are generated in

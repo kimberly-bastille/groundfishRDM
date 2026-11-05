@@ -279,26 +279,26 @@ di "directed_trips_calibration: drawing $ndraws directed-trip draws per stratum 
    point estimate with that stratum's SE, then truncate at zero. The bias this
    truncation introduces is corrected further below. */
 global drawz
-forv d = 1/`num'{
-u `new', clear
+quietly forv d = 1/`num'{
+	u `new', clear
 
-keep if _n==`d'
-su dtrip
-local est = `r(mean)'
+	keep if _n==`d'
+	su dtrip
+	local est = `r(mean)'
 
-su se
-local sd = `r(mean)'
+	su se
+	local sd = `r(mean)'
 
-expand $ndraws
-gen dtrip_not_trunc=rnormal(`est', `sd')
-gen dtrip_new=max(dtrip_not_trunc, 0)
+	expand $ndraws
+	gen dtrip_not_trunc=rnormal(`est', `sd')
+	gen dtrip_new=max(dtrip_not_trunc, 0)
 
- 
-gen draw=_n
+	 
+	gen draw=_n
 
-tempfile drawz`d'
-save `drawz`d'', replace
-global drawz "$drawz "`drawz`d''" " 
+	tempfile drawz`d'
+	save `drawz`d'', replace
+	global drawz "$drawz "`drawz`d''" " 
 }
 
 clear
@@ -399,53 +399,53 @@ di "directed_trips_calibration: building the calendar and computing trips per da
    simulation consumes. */
 global drawz2
 
-forv d = 1/$ndraws{
+quietly forv d = 1/$ndraws{
 	u `new1', clear 
 	keep if draw==`d'
 
 	tempfile dtrips`d'
 	save `dtrips`d'', replace 
 	
-clear 
-set obs 2
-gen day=$calibration_date_start if _n==1
-replace day=$calibration_date_end if _n==2
-format day %td
-/* Drop February 29 so calibration and projection years have the same length */
-drop if day==$leap_yr_days
-/* Only the two endpoints were entered; tsfill materializes every day between */
-tsset day
-tsfill, full
-gen day_i=_n
+	clear 
+	set obs 2
+	gen day=$calibration_date_start if _n==1
+	replace day=$calibration_date_end if _n==2
+	format day %td
+	/* Drop February 29 so calibration and projection years have the same length */
+	drop if day==$leap_yr_days
+	/* Only the two endpoints were entered; tsfill materializes every day between */
+	tsset day
+	tsfill, full
+	gen day_i=_n
 
-gen dow = dow(day)  //0=Sunday,...,6=Saturday
+	gen dow = dow(day)  //0=Sunday,...,6=Saturday
 
-/* Friday, Saturday and Sunday count as "weekend" days for effort purposes */
-gen kod="we" if inlist(dow, 5, 6, 0)
-replace kod="wd" if inlist(dow, 1, 2, 3, 4)
+	/* Friday, Saturday and Sunday count as "weekend" days for effort purposes */
+	gen kod="we" if inlist(dow, 5, 6, 0)
+	replace kod="wd" if inlist(dow, 1, 2, 3, 4)
 
-//add the 12 federal holidays as weekends
-replace kod="we" if $fed_holidays
+	//add the 12 federal holidays as weekends
+	replace kod="we" if $fed_holidays
 
-gen year=year(day)				
-gen month=month(day)				
-gen month2 = string(month,"%02.0f")
-tostring year, replace
-drop month
-rename month2 month
-gen mode="sh"
-expand 2, gen(dup)
-replace mode="pr" if dup==1
-drop dup
-expand 2 if mode=="pr", gen(dup)
-replace mode="fh" if dup==1
-drop dup
+	gen year=year(day)				
+	gen month=month(day)				
+	gen month2 = string(month,"%02.0f")
+	tostring year, replace
+	drop month
+	rename month2 month
+	gen mode="sh"
+	expand 2, gen(dup)
+	replace mode="pr" if dup==1
+	drop dup
+	expand 2 if mode=="pr", gen(dup)
+	replace mode="fh" if dup==1
+	drop dup
 
-merge m:1  kod month mode using `dtrips`d''
-*gen draw=`d'
-tempfile drawz2`d'
-save `drawz2`d'', replace
-global drawz2 "$drawz2 "`drawz2`d''" " 
+	merge m:1  kod month mode using `dtrips`d''
+	*gen draw=`d'
+	tempfile drawz2`d'
+	save `drawz2`d'', replace
+	global drawz2 "$drawz2 "`drawz2`d''" " 
 
 }
 clear
@@ -535,33 +535,34 @@ save `base', replace
 global drawz
 
 levelsof draw, local(drawss)
-foreach d of local drawss{
+quietly foreach d of local drawss{
 
-u `base', clear
+	u `base', clear
 
-keep if draw==`d'
-gen domain_y1=mode+"_"+month_y1+"_"+kod
-gen domain_y2=mode+"_"+month_y2+"_"+kod_y2
+	keep if draw==`d'
+	gen domain_y1=mode+"_"+month_y1+"_"+kod
+	gen domain_y2=mode+"_"+month_y2+"_"+kod_y2
 
-/* Where the day keeps the same mode-month-kind-of-day in both years, carry the
-   trips straight across; otherwise fill in from the mean of the calibration
-   year days that do match the projection-year stratum. */
-gen dtrip_y2=dtrip if domain_y1==domain_y2
+	/* Where the day keeps the same mode-month-kind-of-day in both years, carry the
+	   trips straight across; otherwise fill in from the mean of the calibration
+	   year days that do match the projection-year stratum. */
+	gen dtrip_y2=dtrip if domain_y1==domain_y2
 
-levelsof domain_y2 if dtrip_y2==., local(domains)
-foreach p of local domains{
-	su dtrip if domain_y1=="`p'"
-	return list
-	replace dtrip_y2=`r(mean)' if  domain_y2=="`p'" & dtrip_y2==.
-	
-}
-collapse (sum) dtrip dtrip_y2, by(month_y1 mode)
-gen expansion_factor = dtrip_y2/dtrip
-gen draw=`d'
+	levelsof domain_y2 if dtrip_y2==., local(domains)
+		quietly foreach p of local domains{
+			su dtrip if domain_y1=="`p'"
+			return list
+			replace dtrip_y2=`r(mean)' if  domain_y2=="`p'" & dtrip_y2==.
+			
+		}
+	collapse (sum) dtrip dtrip_y2, by(month_y1 mode)
+	gen expansion_factor = dtrip_y2/dtrip
+	gen draw=`d'
 
-tempfile drawz`d'
-save `drawz`d'', replace
-global drawz "$drawz "`drawz`d''" " 
+	tempfile drawz`d'
+	save `drawz`d'', replace
+	global drawz "$drawz "`drawz`d''" " 
+	noisily display "finished with draw `d' "
 }
 
 dsconcat $drawz
