@@ -18,7 +18,7 @@ if (length(args) != 3) {
 }
 
 #read in arguments. Ensure they are numeric
-fishery<-args[1]
+Fishery<-args[1]
 ManagementCycle<-as.numeric(args[2])
 n_simulations  <- as.numeric(args[3]) # Number of model iterations.
 
@@ -65,7 +65,7 @@ drive_auth(cache = here(".secrets"), email = TRUE)
 
 # Output folders on google drive
 base_outcomes_path <-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"base_outcomes")
-n_choice_occasions_path<-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM")","n_choice_occasions")
+n_choice_occasions_path<-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"n_choice_occasions")
 calib_catch_draws_path <-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"calib_catch_draws")
 miscellaneous_path <-file.path("socialsci","RecreationalDST",glue("{ManagementCycle}_management_cycle_data"),glue("{Fishery}RDM"),"miscellaneous")
 
