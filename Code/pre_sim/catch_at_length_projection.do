@@ -260,13 +260,6 @@ end ;
 set seed $seed ;
 
 
-*uses the uncertainty project "baseline_catch_at_length_observed_uc.dta" if uncertain global == 1 in model_wrapper.do ;
-local suffix "" ;
-if "$uncertain" == "1" { ;
-    local suffix "_uc" ;
-} ;
-
-
 import delimited using "$misc_data_cd/baseline_catch_at_length_observed.csv", clear ;
 keep if draw<= $ndraws ;
 sort draw season species length ;
@@ -602,7 +595,7 @@ drop domain1 domain2 ;
 rename fitted_prob fitted_prob_proj ;
 
 preserve ;
-import delimited using "$misc_data_cd/baseline_catch_at_length`suffix'.csv", clear ;
+import delimited using "$misc_data_cd/baseline_catch_at_length.csv", clear ;
 keep if draw<= $ndraws ;
 tempfile baseyr ;
 save `baseyr', replace ;
@@ -668,7 +661,7 @@ keep draw length species season  fitted_prob_proj ;
 drop if missing(fitted_prob_proj) | fitted_prob_proj == 0 ;
 rename fitted_prob_proj fitted_prob ;
 compress ;
-export delimited using "$misc_data_cd/projected_catch_at_length`suffix'.csv", replace ;
+export delimited using "$misc_data_cd/projected_catch_at_length.csv", replace ;
 
 di "catch_at_length_projection: done." ;
 
