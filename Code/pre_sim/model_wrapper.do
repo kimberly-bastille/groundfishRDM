@@ -196,7 +196,7 @@ loc process_haddock_assess = 0            // Process Haddock Assessment data
 
 loc get_assessment_from_gdrive = 1				// Pull Assessment data
 loc get_mrip_oracle = 1		 					      // Pull MRIP data.
-
+loc get_fes_from_gdrive=1						// get the fes data from google drive
 loc directed_trips_calibration = 1				// Estimate Directed Trips
 loc survey_trip_costs = 1  						    // Create Distributions of costs per trip (run 1x)
 loc estimate_angler_preferences = 1				// Create draw of angler preference parameters (run 1x)
