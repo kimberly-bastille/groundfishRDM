@@ -136,10 +136,9 @@ global seed 03211990
 /* Section C: MRIP year/wave globals and assessment-year globals */
 /******************************************************************************/
 /******************************************************************************/
-global Fishery "groundfish" /*can be set to "groundfish" or "fluke". should match the casing of the drive folders */
-
-global ManagementCycle 2027
-global FesYear 2025 
+global Fishery "groundfish" /* can be set to "groundfish" or "fluke". should match the casing of the drive folders */
+global ManagementCycle 2027 /* the year for which we are setting regulations. In December of 2026, we are working on the management cycle for FY2027*/
+global FesYear 2025  /* FES year from MRIP */
 
 /*set mrip type either cal_2018 or cal_2026 */
 global mrip_cal_type "cal_2018"
