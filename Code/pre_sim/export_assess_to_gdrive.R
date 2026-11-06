@@ -27,19 +27,29 @@ library(here)
 
 # Define arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop("Error: This script requires exactly one argument.", call. = FALSE)
+if (length(args) != 3) {
+  stop("Error: This script requires exactly three argument.", call. = FALSE)
 }
 
 
 #read in arguments. Ensure they are numeric
-stocks  <- args[1]
+Fishery<-args[1]
+management_cycle<-as.numeric(args[2])
+stocks<- args[3]
+
+if (!Fishery %in% c("groundfish","fluke")) {
+  stop(glue("First argument is {Fishery}. It must take on value of \"groundfish\" or \"fluke\"."), call. = FALSE)
+}
+
 
 if (!stocks %in% c("cod","haddock","both")) {
   stop(glue("First argument is {stocks}. It must take on value of \"cod\", \"haddock\" or \"both\"."), call. = FALSE)
 }
 
 # Show them, just in case.
+cat("Fishery:", Fishery, "\n")
+cat("management cycle:", management_cycle, "\n")
+
 cat("Stocks to export:", stocks, "\n")
 
 
@@ -74,7 +84,14 @@ HaddockHistoricalNAASaveFile<-glue("GOM_Haddock_historical_NAA_{data_version}")
 # NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
 drive_auth(cache = here(".secrets"), email = TRUE)
 # Output folder on google drive
-groundfish_processed_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","input_data")
+
+#Assemble beginning of path
+groundfish_processed_path<-file.path("socialsci","RecreationalDST",
+                                     glue("{management_cycle}_management_cycle_data"),
+                                     glue("{Fishery}RDM"),
+                                     "input_data"
+                                     )
+
 folder_info <- drive_get(
   path = groundfish_processed_path,
   shared_drive = "NMFS NEC READ SSB"

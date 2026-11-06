@@ -24,7 +24,8 @@
 # Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
 #               the Stata pipeline: its NAA outputs feed the catch-at-length
 #               steps (see catch_at_length_projection.do).
-#
+# Notes:        Takes 2 arguments,  management_cycle and projection_year.
+#                 Those will probably be the same
 # Background (units and conventions):
 #   - Aggregate weights (SSB, catch) are in metric tons; weight-at-age vectors
 #     are in kg.
@@ -59,12 +60,13 @@ library(wham,lib.loc = cod_wham_lib)
 
 # Define arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop("Error: This script requires exactly 1 argument.", call. = FALSE)
+if (length(args) != 2) {
+  stop("Error: This script requires exactly 2 arguments.", call. = FALSE)
 }
 
 #read in arguments. force to numeric
-YearProj  <- as.numeric(args[1])
+management_cycle  <- as.numeric(args[1])
+YearProj  <- as.numeric(args[2])
 
 
 ###########Begin Housekeeping##################################################
@@ -98,7 +100,9 @@ stock_stats_df<-tibble(
   metric="Numbers At Age",
   units = "Thousands",
   source = "2024 Assessment",
-  data_version= data_version
+  data_version= data_version,
+  management_cycle= management_cycle
+
 )
 
 # Save 3 years years of historical NAA

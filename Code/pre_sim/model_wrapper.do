@@ -136,7 +136,7 @@ global seed 03211990
 /* Section C: MRIP year/wave globals and assessment-year globals */
 /******************************************************************************/
 /******************************************************************************/
-global Fishery "groundfish" /*can be set to "groundfish" or "fluke". */
+global Fishery "groundfish" /*can be set to "groundfish" or "fluke". should match the casing of the drive folders */
 
 global ManagementCycle 2027
 global FesYear 2025 
@@ -287,7 +287,7 @@ else {
 }
 if `process_cod_assess' {
 	di "Processing cod assessment"
-	rscript using "$input_code_cd\process_cod_assessment_data.R", args($cod_NAA_proj_year)
+	rscript using "$input_code_cd\process_cod_assessment_data.R", args($ManagementCycle $cod_NAA_proj_year)
 	local executed_scripts `executed_scripts' process_cod_assessment_data.R
 }
 else {
@@ -296,7 +296,7 @@ else {
 
 if `process_haddock_assess'{
 	di "Processing haddock assessment"
-	rscript using "$input_code_cd\process_haddock_assessment_data.R", args($hadd_NAA_proj_year)
+	rscript using "$input_code_cd\process_haddock_assessment_data.R", args($ManagementCycle $hadd_NAA_proj_year)
 	local executed_scripts `executed_scripts' process_haddock_assessment_data.R
 }
 else {
@@ -306,7 +306,7 @@ else {
 
 if `export_assess_to_gdrive' {
 	di "Exporting assessment results for `assess_upload' stocks to gdrive"
-	rscript using "$input_code_cd\export_assess_to_gdrive.R", args(`assess_upload')
+	rscript using "$input_code_cd\export_assess_to_gdrive.R", args($Fishery $ManagementCycle `assess_upload')
 	local executed_scripts `executed_scripts' export_assess_to_gdrive.R
 }
 else {
@@ -554,7 +554,7 @@ else {
 		//run this script in R to read in the catch at length processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `rdb_catch_at_len_to_drive'{
     di "Pushing rec dashboard catch at length data to gdrive using R"
-	rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R"
+	rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R, args("$Fishery" $ManagementCycle)
 	local executed_scripts `executed_scripts' rdb_catch_at_len_to_drive.R
 }
 else {
