@@ -144,23 +144,6 @@ global FesYear 2025
 /*set mrip type either cal_2018 or cal_2026 */
 global mrip_cal_type "cal_2018"
 
-/* First and last year of MRIP data.*/
-/* used by:
-tidyup_mrip_data_fromR.do*/
-
-global first_mrip_year 2024
-global last_mrip_year 2026
-
-
-numlist "$first_mrip_year/$last_mrip_year"
-
-/* Yearlist and wavelist.*/
-/* used by:
-MRIP_lists.do (dead code) */
-
-global yearlist  `r(numlist)'
-global wavelist 1 2 3 4 5 6
-
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
 
