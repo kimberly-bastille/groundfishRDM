@@ -569,8 +569,8 @@ if `projected_naa_uncertain' {
   di "Estimating uncertainty project NAA "
   do "$input_code_cd\projected_naa_uncertain.do" cod 	//here put in cod, haddock or both for which species to set deterministic in projected catch at length
  	di "NAA overwritten to examine projected catch at length uncertainty"
- 	local executed_scripts `executed_scripts' rdb_catch_at_len_to_drive.R
-}
+ 	local executed_scripts `executed_scripts' projected_naa_uncertain.do
+	}
 else {
    local skipped_scripts `skipped_scripts' projected_naa_uncertain.do
 }
