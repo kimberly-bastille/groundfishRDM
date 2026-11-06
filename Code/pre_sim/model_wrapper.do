@@ -292,6 +292,8 @@ else {
 if `process_cod_assess' {
 	di "Processing cod assessment"
 	rscript using "$input_code_cd\process_cod_assessment_data.R", args($ManagementCycle $cod_NAA_proj_year)
+	di "Cod assessment processed.  NAA for $cod_NAA_proj_year are in the input_data folder."
+
 	local executed_scripts `executed_scripts' process_cod_assessment_data.R
 }
 else {
@@ -301,6 +303,8 @@ else {
 if `process_haddock_assess'{
 	di "Processing haddock assessment"
 	rscript using "$input_code_cd\process_haddock_assessment_data.R", args($ManagementCycle $hadd_NAA_proj_year)
+	di "Haddock assessment processed.  NAA for $hadd_NAA_proj_year are in the input_data folder."
+
 	local executed_scripts `executed_scripts' process_haddock_assessment_data.R
 }
 else {
