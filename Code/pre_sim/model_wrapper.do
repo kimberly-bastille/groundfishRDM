@@ -144,6 +144,10 @@ global FesYear 2025
 /*set mrip type either cal_2018 or cal_2026 */
 global mrip_cal_type "cal_2018"
 
+/*First and last mrip year in datapull*/
+global first_mrip_year 2024
+global last_mrip_year 2026
+
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
 
