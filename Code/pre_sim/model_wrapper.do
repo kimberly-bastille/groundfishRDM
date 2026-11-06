@@ -148,6 +148,15 @@ global mrip_cal_type "cal_2018"
 global first_mrip_year 2024
 global last_mrip_year 2026
 
+/* assemble yr_wvs, used for subsetting*/
+foreach year of numlist $first_mrip_year/$last_mrip_year {
+	foreach w of numlist 1/6{
+		global yr_wvs $yr_wvs `year'`w'
+	}
+}
+di "$yr_wvs"
+
+
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
 
