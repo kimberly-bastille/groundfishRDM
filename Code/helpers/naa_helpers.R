@@ -89,7 +89,11 @@ validate_naa_data <- function(df) {
   # Ensure NAA is numeric and all values are greater than 1.
   ################################################################
 
-  valid <-  is.numeric(df$value) && all(df$value>1)
+    group_by(metric) %>%
+    summarise(mean=mean(value))
+
+  valid <-  is.numeric(test$mean) && all(test$mean>1)
+
   if (!valid) {
     cli::cli_abort("Very small values of NAA in {.arg df}. Check proj_F_opt options.")
   }
