@@ -88,7 +88,7 @@ validate_naa_data <- function(df) {
   ################################################################
   # Ensure NAA is numeric and average NAA are greater than 1)
 
-  test<-NAA_long %>%
+  test<-df %>%
     dplyr::group_by(metric) %>%
     dplyr::summarise(mean=mean(value))
 
