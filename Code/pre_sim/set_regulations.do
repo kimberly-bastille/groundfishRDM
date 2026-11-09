@@ -39,10 +39,15 @@
    * Wave 1 of 2026 serves as a proxy for Wave 1 of CY2027
    * Wave 2 of 2026 serves as a proxy for Wave 2 of CY2027
 
+ *From Spencer Talmage 11/9/26: For haddock, rulemaking effectiveness will matter. The minimum size of 18 inches was in place for the start of FY25, but was replaced by the 17 inch minimum size limit by FW69, which was not effective until March 9, 2026. 
+ 
 /* These are the actual regulations, including the effective dates of implementation:
-Species     open                               mode       bag   size
-Haddock     5/1/25-2/28/26,  4/1/26-4/30/26    both      	15     18
-Haddock     5/1/26-2/28/27, 4/1/27-4/30/27     both       15     17
+Species     open                               	mode       bag   size
+Haddock     5/1/25-2/28/26,			    both      	15     18
+Haddock     4/1/26-4/8/26    				both      	15     18
+Haddock     4/9/26-2/28/27    				both      	15     17
+Haddock     4/1/27-4/30/27     			both       	15     17
+
 Cod         9/1/25-10/31/25                    both      	1      23
 Cod         9/1/26-10/31/26                    both       1      23
 https://www.fisheries.noaa.gov/new-england-mid-atlantic/recreational-fishing/recreational-fishing-regulations-species
@@ -63,8 +68,11 @@ gen hadd_min = 100
 replace hadd_bag = 15        if inrange(day, td(01may2025), td(28feb2026)) 
 replace hadd_min = 18*2.54 if inrange(day, td(01may2025), td(28feb2026)) 
 
-replace hadd_bag = 15        if inrange(day, td(01apr2026), td(30apr2026)) 
-replace hadd_min = 18*2.54 if inrange(day, td(01apr2026), td(30apr2026)) 
+replace hadd_bag = 15        if inrange(day, td(01apr2026), td(08apr2026)) 
+replace hadd_min = 18*2.54 if inrange(day, td(01apr2026), td(08apr2026)) 
+
+replace hadd_bag = 15        if inrange(day, td(09apr2026), td(31apr2026)) 
+replace hadd_min = 17*2.54 if inrange(day, td(09apr2026), td(31apr2026)) 
 
 
 replace hadd_bag = 15        if inrange(day, td(01may2026), td(28feb2027)) 
