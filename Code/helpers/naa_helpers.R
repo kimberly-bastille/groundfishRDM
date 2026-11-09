@@ -7,7 +7,7 @@
 # Inputs:       None at source time (defines functions only).
 # Outputs:      Functions pivot_naa_long() and validate_naa_data() in the
 #               calling environment.
-# Dependencies: glue
+# Dependencies: glue, cli, tidyr,dplyr
 # Pipeline:     Sourced by the two get_*_assessment_data.R scripts; not called
 #               by any wrapper.
 ################################################################################
@@ -32,9 +32,9 @@ pivot_naa_long <- function(df) {
     tidyr::pivot_longer(cols = all_of(age_cols),
                         names_to  = "age",
                         values_to = "value") %>%
-    mutate(age = as.integer(sub("age", "", age)),
+    dplyr::mutate(age = as.integer(sub("age", "", age)),
            metric=glue("{metric} {age}")) %>%
-    select(-age)
+    dplyr::select(-age)
 }
 
 
@@ -89,8 +89,8 @@ validate_naa_data <- function(df) {
   # Ensure NAA is numeric and average NAA are greater than 1)
 
   test<-NAA_long %>%
-    group_by(metric) %>%
-    summarise(mean=mean(value))
+    dplyr::group_by(metric) %>%
+    dplyr::summarise(mean=mean(value))
 
   valid <-  is.numeric(test$mean) && all(test$mean>1)
 
