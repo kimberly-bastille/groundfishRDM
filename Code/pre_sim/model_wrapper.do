@@ -531,7 +531,7 @@ else {
 		//run this script in R to read in the catch per trip processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `rdb_catch_per_trip_to_drive'{
    	di "Pushing rec dashboard data to gdrive using R"
-	rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R"
+	rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R", args("$Fishery" $ManagementCycle)
 	local executed_scripts `executed_scripts' rdb_catch_per_trip_to_drive.R
 }
 else {
