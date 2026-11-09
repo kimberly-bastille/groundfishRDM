@@ -121,7 +121,8 @@ HistoricalNAASaveFile<-glue("WGOM_Cod_historical_NAA_{data_version}")
 # NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
 drive_auth(cache = here(".secrets"), email = TRUE)
 # Output folder on google drive
-groundfish_processed_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","input_data")
+groundfish_processed_path<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                                     "groundfishRDM","input_data")
 folder_info <- drive_get(
   path = groundfish_processed_path,
   shared_drive = "NMFS NEC READ SSB"
@@ -129,7 +130,8 @@ folder_info <- drive_get(
 groundfish_processed_path<-folder_info$id
 
 #read in the assessment file
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","cod_assessment",assessment_file_in)
+readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                  "groundfishRDM","cod_assessment",assessment_file_in)
 file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 #
 # Create a path for a temporary file
@@ -254,7 +256,7 @@ cM=cMyr/periods
 ############
 # Parameters that come out of the stock assessment
 ############
-# Weights at age. Opem the ASAP3 file in the ASAP gui and pick through the pointers.
+# Weights at age. Open the ASAP3 file in the ASAP gui and pick through the pointers.
 # cod_jan1_weights=  Matrix 3 for Jan 1
 cod_jan1_weights = tail(asap3[[1]]$dat$WAA_mats[[3]],1)
 
