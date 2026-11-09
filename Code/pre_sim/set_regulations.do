@@ -156,10 +156,11 @@ gen hadd_min_y2 = 100
 *-------------------------------
 *        HADDOCK            
 *-------------------------------
-replace hadd_bag_y2 = 15        if inrange(day, td(01apr2027), td(28feb2028)) 
-replace hadd_min_y2 = 17*2.54 if inrange(day, td(01apr2027), td(28feb2028)) 
+replace hadd_bag_y2 = 15        if inrange(day, td(01may2027), td(28feb2028)) 
+replace hadd_min_y2 = 17*2.54 if inrange(day, td(01may2027), td(28feb2028)) 
 
-
+replace hadd_bag_y2 = 15        if inrange(day, td(01apr2028), td(30apr2028)) 
+replace hadd_min_y2 = 17*2.54 if inrange(day, td(01apr2028), td(30apr2028)) 
 
 *-------------------------------
 *            COD                 
