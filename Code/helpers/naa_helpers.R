@@ -86,9 +86,9 @@ validate_naa_data <- function(df) {
     cli::cli_abort("Missing values of NAA OR non-numeric values of NAA in {.arg df}")
   }
   ################################################################
-  # Ensure NAA is numeric and all values are greater than 1.
-  ################################################################
+  # Ensure NAA is numeric and average NAA are greater than 1)
 
+  test<-NAA_long %>%
     group_by(metric) %>%
     summarise(mean=mean(value))
 
