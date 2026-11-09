@@ -26,6 +26,10 @@
 #               steps (see catch_at_length_projection.do).
 # Notes:        Takes 2 arguments,  management_cycle and projection_year.
 #                 Those will probably be the same
+#
+#               Set the mortality type options properly. You do not want to pass in
+#                metric tons as an F.
+#
 # Background (units and conventions):
 #   - Aggregate weights (SSB, catch) are in metric tons; weight-at-age vectors
 #     are in kg.
@@ -337,9 +341,9 @@ set_specs <- function(mod) {
          n.yrs       = rep(list(4), times = 1),   # Number of years is set in in (list(numyears)). Number of scenarios is set with times
 
          # NOTE: proj_F_opt maps projection modes for each of the 4 projection years: 5 = catch in MT, 4 = fixed instantaneous F
-         proj_F_opt  = list(c(5, 5, 4, 4)),  # length=numyears.  stack on different things to make different projections. 5=metric tons, 4=an instantanous fishing mortality rate (F)
+         proj_F_opt  = list(c(5, 5, 5, 4)),  # length=numyears.  stack on different things to make different projections. 5=metric tons, 4=an instantanous fishing mortality rate (F)
 
-         # NOTE: Year 1 & 2 use specified MT bridging catch; Year 3 & 4 apply the 75% Fmsy rate
+         # NOTE: Years 1, 2 and 3 use specified MT bridging catch; Year 4 applies the 75% Fmsy rate
          proj_Fcatch = list(c(actual_2023_catch_mt, actual_2024_catch_mt, actual_2025_catch_mt, rep(0.75 * Fmsy, 1))) #2 # length=numyears
     )
 }
