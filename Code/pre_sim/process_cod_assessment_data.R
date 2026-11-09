@@ -174,7 +174,7 @@ mod_list <- list(mod_accepted)
 
 
 # Read the ASAP file from google drive
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","cod_assessment",ASAP_file_in)
+readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),"groundfishRDM","cod_assessment",ASAP_file_in)
 file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 #
 # Create a path for a temporary file
