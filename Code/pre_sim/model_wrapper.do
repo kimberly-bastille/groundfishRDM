@@ -136,30 +136,25 @@ global seed 03211990
 /* Section C: MRIP year/wave globals and assessment-year globals */
 /******************************************************************************/
 /******************************************************************************/
-global Fishery "groundfish" /*can be set to "groundfish" or "fluke". */
-
-global ManagementCycle 2027
-global FesYear 2025 
+global Fishery "groundfish" /* can be set to "groundfish" or "fluke". should match the casing of the drive folders */
+global ManagementCycle 2027 /* the year for which we are setting regulations. In December of 2026, we are working on the management cycle for FY2027*/
+global FesYear 2025  /* FES year from MRIP */
 
 /*set mrip type either cal_2018 or cal_2026 */
 global mrip_cal_type "cal_2018"
 
-/* First and last year of MRIP data.*/
-/* used by:
-tidyup_mrip_data_fromR.do*/
-
+/*First and last mrip year in datapull*/
 global first_mrip_year 2024
 global last_mrip_year 2026
 
+/* assemble yr_wvs, used for subsetting*/
+foreach year of numlist $first_mrip_year/$last_mrip_year {
+	foreach w of numlist 1/6{
+		global yr_wvs $yr_wvs `year'`w'
+	}
+}
+di "$yr_wvs"
 
-numlist "$first_mrip_year/$last_mrip_year"
-
-/* Yearlist and wavelist.*/
-/* used by:
-MRIP_lists.do (dead code) */
-
-global yearlist  `r(numlist)'
-global wavelist 1 2 3 4 5 6
 
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
@@ -304,7 +299,9 @@ else {
 }
 if `process_cod_assess' {
 	di "Processing cod assessment"
-	rscript using "$input_code_cd\process_cod_assessment_data.R", args($cod_NAA_proj_year)
+	rscript using "$input_code_cd\process_cod_assessment_data.R", args($ManagementCycle $cod_NAA_proj_year)
+	di "Cod assessment processed.  NAA for $cod_NAA_proj_year are in the input_data folder."
+
 	local executed_scripts `executed_scripts' process_cod_assessment_data.R
 }
 else {
@@ -313,7 +310,9 @@ else {
 
 if `process_haddock_assess'{
 	di "Processing haddock assessment"
-	rscript using "$input_code_cd\process_haddock_assessment_data.R", args($hadd_NAA_proj_year)
+	rscript using "$input_code_cd\process_haddock_assessment_data.R", args($ManagementCycle $hadd_NAA_proj_year)
+	di "Haddock assessment processed.  NAA for $hadd_NAA_proj_year are in the input_data folder."
+
 	local executed_scripts `executed_scripts' process_haddock_assessment_data.R
 }
 else {
@@ -323,7 +322,7 @@ else {
 
 if `export_assess_to_gdrive' {
 	di "Exporting assessment results for `assess_upload' stocks to gdrive"
-	rscript using "$input_code_cd\export_assess_to_gdrive.R", args(`assess_upload')
+	rscript using "$input_code_cd\export_assess_to_gdrive.R", args($Fishery $ManagementCycle `assess_upload')
 	local executed_scripts `executed_scripts' export_assess_to_gdrive.R
 }
 else {
@@ -348,7 +347,7 @@ else {
 
 // 0) Pull MRIP data from Oracle (takes a while).
 
-z
+
 
 
 /* Paths to the tidied MRIP extracts (written by tidyup_mrip_data_fromR.do). */
@@ -441,7 +440,7 @@ else {
 		//run this script in R to read in the directed trips processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `rdb_dtrips_to_drive'{
     di "Pushing rec dashboard catch at length data to gdrive using R"
-	rscript using "$input_code_cd\rdb_dtrips_to_drive.R"
+	rscript using "$input_code_cd\rdb_dtrips_to_drive.R" , args("$Fishery" $ManagementCycle)
 	local executed_scripts `executed_scripts' rdb_dtrips_to_drive.R
 }
 else {
@@ -532,7 +531,7 @@ else {
 		//run this script in R to read in the catch per trip processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `rdb_catch_per_trip_to_drive'{
    	di "Pushing rec dashboard data to gdrive using R"
-	rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R"
+	rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R", args("$Fishery" $ManagementCycle)
 	local executed_scripts `executed_scripts' rdb_catch_per_trip_to_drive.R
 }
 else {
@@ -571,7 +570,7 @@ else {
 		//run this script in R to read in the catch at length processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `rdb_catch_at_len_to_drive'{
     di "Pushing rec dashboard catch at length data to gdrive using R"
-	rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R"
+	rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R, args("$Fishery" $ManagementCycle)
 	local executed_scripts `executed_scripts' rdb_catch_at_len_to_drive.R
 }
 else {
@@ -582,8 +581,8 @@ if `projected_naa_uncertain' {
   di "Estimating uncertainty project NAA "
   do "$input_code_cd\projected_naa_uncertain.do" cod 	//here put in cod, haddock or both for which species to set deterministic in projected catch at length
  	di "NAA overwritten to examine projected catch at length uncertainty"
- 	local executed_scripts `executed_scripts' rdb_catch_at_len_to_drive.R
-}
+ 	local executed_scripts `executed_scripts' projected_naa_uncertain.do
+	}
 else {
    local skipped_scripts `skipped_scripts' projected_naa_uncertain.do
 }
