@@ -140,6 +140,7 @@ global mrip_cal_type "cal_2018"
 global first_mrip_year 2024
 global last_mrip_year 2026
 
+global yr_wvs
 /* assemble yr_wvs, used for subsetting*/
 foreach year of numlist $first_mrip_year/$last_mrip_year {
 	foreach w of numlist 1/6{
