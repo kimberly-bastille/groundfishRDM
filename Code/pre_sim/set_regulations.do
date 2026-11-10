@@ -168,3 +168,5 @@ replace hadd_min_y2 = 17*2.54 if inrange(day, td(01apr2028), td(30apr2028))
 replace cod_bag_y2 = 1           if inrange(day, td(01sep2027), td(31oct2027))
 replace cod_min_y2 = 23*2.54  if inrange(day, td(01sep2027), td(31oct2027))
 
+
+di "set_regulations.do finished"
