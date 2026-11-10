@@ -216,11 +216,12 @@ loc export_all_to_GDrive = 0             // Export calibration and all data to G
 /********************* Dashboard Toggles  *************************************/
 /********************* (versions on main should be set to 0)****************************/
 
-loc rdb_processing_catch_per_trip= 0  	  // prep data for dashboard
-loc rdb_catch_per_trip_to_drive =0 	  	  // Push to google drive in R
-loc rdb_catch_at_length= 0	              // Prep catch at length data for dashboard
+loc rdb_processing_catch_per_trip= 1  	  // prep data for dashboard
+loc rdb_catch_at_length= 1	              // Prep catch at length data for dashboard
+loc rdb_directed_trips =1 	        	  // Prep directed trips data for dashboard
+
 loc rdb_catch_at_len_to_drive =0 	      // Push catch at length data to google drive in R
-loc rdb_directed_trips =0 	        	  // Prep directed trips data for dashboard
+loc rdb_catch_per_trip_to_drive =0 	  	  // Push to google drive in R
 loc rdb_dtrips_to_drive =0 	      		  // Push directed trips data to google drive in R
 
 
