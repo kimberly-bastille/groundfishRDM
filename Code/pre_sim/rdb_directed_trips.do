@@ -7,7 +7,7 @@
                the month-mode-kind of day level, and adds descriptive columns.  
  Inputs:       $misc_data_cd/directed_trip_draws.csv (written by directed_trips_calibration.do).
  Outputs:      $misc_data_cd/rdb_dtrips.dta
- Dependencies: Global $misc_data_cd (set in model_wrapper.do).
+ Dependencies: Global $misc_data_cd and $ManagementCycle (set in model_wrapper.do).
  Pipeline:     Wrapped by model_wrapper.do, gated by `prep_trips_for_dash'
                Followed by rdb_dtrips_to_drive.R, which pushes
                the output to Google Drive as an Rds.
@@ -61,6 +61,9 @@ collapse (median) dtrip, by(mode kod month year)
 /* Section B: Add descriptive columns for the dashboard and save */
 /******************************************************************************/
 /******************************************************************************/
+
+/* ensure ManagementCycle is in range*/
+assert $ManagementCycle>=2026
 
 * Re-label and rename some variables 
 replace kod="weekday" if kod=="wd"
