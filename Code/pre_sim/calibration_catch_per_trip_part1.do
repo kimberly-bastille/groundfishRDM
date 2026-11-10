@@ -285,8 +285,12 @@ program define prep_mrip_trip_catch ;
     preserve ;
     keep my_dom_id my_dom_id_string ;
     duplicates drop ;
+	qui count;
+	di "r(N) observations in "`domainsfile'";
     save "`domainsfile'", replace ;
     restore ;
+	qui count;
+	di "r(N) observations in "`basefile'";
 
     save "`basefile'", replace ;
 end ;
@@ -469,6 +473,12 @@ gen missing_se=. ;
 tempfile base_results ;
 save `base_results', replace ;
 
+count  ; 
+if r(N) == 0 {;
+    display "No observations after estimating. This might be trouble." ;
+};
+
+
 count if se==. ; 
 if r(N) == 0 {;
     display "No imputation necessary. Skipping se imputation ." ;
@@ -562,9 +572,11 @@ quietly foreach s of local stratz {;
 dsconcat $impute ;
 
 merge 1:1  varname my_dom_id_string using `missing_se' ;
+tab _merge;
 keep if _merge==3 ;
 drop _merge ;
 merge 1:1 varname my_dom_id_string using `base_results' ;
+tab _merge;
 
 replace se=mean*pse_impute if se==. & _merge==3 ;
 drop month mode area_s common ;
