@@ -137,8 +137,13 @@ global FesYear 2025  /* FES year from MRIP */
 global mrip_cal_type "cal_2018"
 
 /*First and last mrip year in datapull*/
+/* production */
 global first_mrip_year 2024
 global last_mrip_year 2026
+
+/*prototyping */
+global first_mrip_year 2023
+global last_mrip_year 2025
 
 global yr_wvs
 /* assemble yr_wvs, used for subsetting*/
