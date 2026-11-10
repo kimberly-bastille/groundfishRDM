@@ -114,7 +114,9 @@ waa_file_in<-"waa_pred_2026-07-07.xlsx"
 drive_auth(cache = here(".secrets"), email = TRUE)
 
 # Output folder on google drive
-groundfish_processed_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","input_data")
+groundfish_processed_path<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                                     "groundfishRDM","input_data")
+
 folder_info <- drive_get(
   path = groundfish_processed_path,
   shared_drive = "NMFS NEC READ SSB"
@@ -122,7 +124,8 @@ folder_info <- drive_get(
 groundfish_processed_path<-folder_info$id
 
 # Read in the assessment file
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","haddock_assessment",assessment_file_in)
+readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                                     "groundfishRDM","haddock_assessment",assessment_file_in)
 file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 
 # Create a path for a temporary file
@@ -159,7 +162,8 @@ if (file.exists(temp_path)) {
 
 
 # readin the WAA file
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","haddock_assessment",waa_file_in)
+readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                  "groundfishRDM","haddock_assessment",waa_file_in)
 file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 temp_path <- tempfile(fileext = ".xlsx")
 
