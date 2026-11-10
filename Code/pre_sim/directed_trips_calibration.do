@@ -502,8 +502,8 @@ restore
 
 preserve
 keep mode day draw cod_bag cod_min hadd_bag hadd_min day_y2 dtrip ///
-			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 ///
-			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt
+			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 
+/*			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt */
 compress
 
 export delimited using "$misc_data_cd\directed_trip_draws.csv",  replace 
@@ -521,8 +521,8 @@ restore
    stratum with the same mode-month-kind-of-day, then computes an expansion
    factor = projection-year trips / calibration-year trips by month and mode. */
 keep mode day draw cod_bag cod_min hadd_bag hadd_min day_y2 kod kod_y2 dtrip ///
-			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 ///
-			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt
+			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 
+/*			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt */
 			
 gen month_y1=month(day)
 gen month_y2=month(day_y2)
