@@ -124,6 +124,7 @@ append using `c_med' `c_min' `c_max' `h_med' `h_min' `h_max'
 
 
 *add dataframe columns common to both species
+gen management_cycle= $ManagementCycle 
 gen wave=1 if inlist(month, 1, 2)
 replace wave=2 if inlist(month, 3, 4)
 replace wave=3 if inlist(month, 5, 6)
@@ -144,7 +145,7 @@ gen state=.
 gen source="model intermediate"
 
 *reorder columns. sort data on month, common, mode.
-order fishery common species_itis stock_abbrev state mode year wave month metric value units source
+order fishery common species_itis stock_abbrev state mode year management_cycle wave month metric value units source
 sort month common mode
 
 //get rid of var label on value 

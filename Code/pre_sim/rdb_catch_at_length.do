@@ -150,6 +150,7 @@ drop season1-season4
 /******************************************************************************/
 /******************************************************************************/
 
+gen management_cycle= $ManagementCycle 
 gen common = "atlanticcod" if species=="cod"
 replace common = "haddock" if species=="hadd"
 gen species_itis = 164712 if species=="cod"
@@ -169,7 +170,7 @@ gen year=2025
 replace year=2026 if units=="projected fitted percent of catch"
 
 
-order fishery common species_itis stock_abbrev year metric value units source
+order fishery common species_itis stock_abbrev year management_cycle metric value units source
 
 save "$misc_data_cd\rdb_cat_len.dta", replace 
 

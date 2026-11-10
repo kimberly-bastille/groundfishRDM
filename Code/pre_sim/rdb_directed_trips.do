@@ -70,8 +70,9 @@ rename dtrip value
 gen units="calibrated directed trips"
 gen source="model intermediate"
 gen fishery= "NE Groundfish"
+gen management_cycle= $ManagementCycle 
 label variable value ""
-order fishery year month mode metric value units source
+order fishery year management_cycle month mode metric value units source
 
 * Look at the data as a stacked bar chart 
 graph bar value, over(metric) over(month) asyvars stack by(mode) ytitle("Directed Trips")
