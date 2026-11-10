@@ -71,8 +71,8 @@ replace hadd_min = 18*2.54 if inrange(day, td(01may2025), td(28feb2026))
 replace hadd_bag = 15        if inrange(day, td(01apr2026), td(08apr2026)) 
 replace hadd_min = 18*2.54 if inrange(day, td(01apr2026), td(08apr2026)) 
 
-replace hadd_bag = 15        if inrange(day, td(09apr2026), td(31apr2026)) 
-replace hadd_min = 17*2.54 if inrange(day, td(09apr2026), td(31apr2026)) 
+replace hadd_bag = 15        if inrange(day, td(09apr2026), td(30apr2026)) 
+replace hadd_min = 17*2.54 if inrange(day, td(09apr2026), td(30apr2026)) 
 
 
 replace hadd_bag = 15        if inrange(day, td(01may2026), td(28feb2027)) 
