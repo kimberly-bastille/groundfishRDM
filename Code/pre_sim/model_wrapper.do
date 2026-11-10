@@ -47,12 +47,10 @@
    - MRIP source data come from Oracle
 
 
- THESE GLOBALS AND REGULATIONS MUST BE UPDATED EVERY YEAR (see Section A).
+ THESE GLOBALS AND REGULATIONS MUST BE UPDATED EVERY YEAR (see Section B).
 *******************************************************************************/
 
 set varabbrev on
-
-/******************************************************************************/
 /******************************************************************************/
 /* Section A: Year-specific global parameters (UPDATE EVERY YEAR) */
 /******************************************************************************/
@@ -90,9 +88,19 @@ global inflation_expansion=1.16
 here, nogit
 
 do "${here}/Code/helpers/developer_setup_stata.do"
+global input_code_cd "${here}/Code/pre_sim"
+global log_dir "${input_code_cd}/logs"
+/* start log */
+cap log close
+local date_string = subinstr(trim("${S_DATE}"), ":" , "_", .)
+local date_string = subinstr("`date_string'", " " , "_", .)
+local time_string = subinstr(trim("${S_TIME}"), ":" , "_", .)
+log using "${log_dir}\model_wrapper_log_`date_string'_`time_string'.smcl", replace
+
+set varabbrev on
+pause on
 
 * adjust project paths based on user
-global input_code_cd "${here}/Code/pre_sim"
 global misc_data_cd "${gfdatadir}/miscellaneous"
 global calib_catch_draws_cd "${gfdatadir}/calib_catch_draws"
 global figure_cd  "${gfdatadir}/figures"
@@ -108,20 +116,37 @@ capture mkdir $log_dir
 timer clear 1        // Resets timer #1
 timer on 1           // Starts timing
 
-/* start log */
-cap log close
-local date_string = subinstr(trim("${S_DATE}"), ":" , "_", .)
-local date_string = subinstr("`date_string'", " " , "_", .)
-
-
-local time_string = subinstr(trim("${S_TIME}"), ":" , "_", .)
-
-log using "${log_dir}\model_wrapper_log_`date_string'_`time_string'.smcl", replace
-
-
-
 * set a global seed
 global seed 03211990
+
+
+/******************************************************************************/
+/******************************************************************************/
+/* Section B: Year-specific global parameters (UPDATE EVERY YEAR) */
+/******************************************************************************/
+/******************************************************************************/
+
+
+* add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level.   https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/
+
+* fed holidays in the calibration year. The intended intended use is:
+*  <command> if $fed_holidays. It operates on the column "day"
+global fed_holidays "inlist(day, td(11nov2025), td(27nov2025), td(25dec2025), td(01jan2026), td(19jan2026), td(16feb2026), td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026))"
+
+* fed holidays in the projection year. The intended use is:
+* <command> if $fed_holidays_y2.  It operates on the column "day1"
+global fed_holidays_y2 "inlist(day1, td(31may2027), td(18jun2027), td(05jul2027), td(06sep2027), td(11oct2027), td(11nov2027),  td(25nov2027),  td(24dec2027), td(01jan2028), td(17jan2028), td(21feb2028))"
+
+* leap-year days here
+global leap_yr_days "td(29feb2028)"
+
+* set number of model iterations to create
+global ndraws 101
+
+* adjust 2022 survey trip costs to account for inflation (January 2022 - January 2026)
+
+* source =https://www.bls.gov/data/inflation_calculator.htm
+global inflation_expansion=1.16
 
 
 /******************************************************************************/
@@ -163,10 +188,12 @@ local calib_year_back2=`calib_year'-2
 global calibration_year "(year==`calib_year' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back' & inlist(wave, 6))"  // last six waves of data  updated
 
 
-
+/* calibration year starts on Nov 1 (wave 6) and end on oct 31 (wave 4 of next year)*/
 global calibration_date_start mdy(11,1,`calib_year_back')
 global calibration_date_end mdy(10,31,`calib_year')
 
+
+/* projection year is groundfish fishing year (May 1 to April 30)*/
 global projection_date_start mdy(5,1,$ManagementCycle) 
 local next_yr=$ManagementCycle+1
 global projection_date_end mdy(4,30,`next_yr') 
@@ -199,9 +226,32 @@ used by catch_at_length_projection.do*/
 
 global trawl_survey_start_year 2023
 
+di "Management Cycle, calibration year:"
+mac list ManagementCycle _calib_year _calib_year_back _calib_year_back2
+di "Please verify these are set up as intended"
+pause 
 
+di "Calibration wave global:"
+mac list calibration_year
 
+di "Calibration start and end dates, projection start and end dates:"
+mac list calibration_date_start  calibration_date_end projection_date_start projection_date_end
+di "Please verify these are set up as intended"
+pause 
 
+di "baseline and projection year NAA:"
+mac list cod_NAA_base_year  hadd_NAA_base_year cod_NAA_proj_year hadd_NAA_proj_year
+
+di "Trawl Survey Start year:"
+mac list trawl_survey_start_year
+
+di "Please verify these are set up as intended"
+pause 
+
+di "Seriously, verify them"
+pause 
+
+pause off
 /******************************************************************************/
 /******************************************************************************/
 /* Section D: Execution control (toggle each pipeline step on/off) */
