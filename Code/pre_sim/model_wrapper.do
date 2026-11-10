@@ -58,13 +58,6 @@ set varabbrev on
 /******************************************************************************/
 /******************************************************************************/
 
-/*Set calibration year-waves*/
-global calibration_year "(year==2026 & inlist(wave, 1, 2, 3, 4, 5)) | (year==2025 & inlist(wave, 6))"  // last six waves of data  updated
-global calibration_date_start td(01nov2025)
-global calibration_date_end td(31oct2026)
-
-global projection_date_start td(01may2027)
-global projection_date_end td(30apr2028)
 
 * add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level.   https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/
 
@@ -154,6 +147,29 @@ foreach year of numlist $first_mrip_year/$last_mrip_year {
 	}
 }
 di "$yr_wvs"
+
+
+local calib_year=$ManagementCycle-1
+local calib_year_back=`calib_year'-1
+local calib_year_back2=`calib_year'-2
+
+/*calibration year-waves. The next 5 globals will get picked up based on the MangementCycle.*/
+global calibration_year "(year==`calib_year' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back' & inlist(wave, 6))"  // last six waves of data  updated
+
+
+
+global calibration_date_start mdy(11,1,`calib_year_back')
+global calibration_date_end mdy(10,31,`calib_year')
+
+global projection_date_start mdy(5,1,$ManagementCycle) 
+local next_yr=$ManagementCycle+1
+global projection_date_end mdy(4,30,`next_yr') 
+
+
+
+
+
+
 
 
 /* set the baseline year and projection year numbers-at-age globals
