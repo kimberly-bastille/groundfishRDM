@@ -8,7 +8,7 @@
  Inputs:       $misc_data_cd/simulated_catch_totals3.dta (written by
                compare_calibration_data_to_MRIP.do).
  Outputs:      $misc_data_cd/rdb_sim_catch_per_trip.dta
- Dependencies: Global $misc_data_cd (set in model_wrapper.do).
+ Dependencies: Global $misc_data_cd and $ManagementCycle (set in model_wrapper.do).
  Pipeline:     Wrapped by model_wrapper.do, gated by `prep_cpt_for_dashboard'
                (default ON). Followed by rdb_catch_per_trip_to_drive.R, which
                pushes the output to Google Drive as an Rds.
@@ -122,6 +122,8 @@ restore
 clear
 append using `c_med' `c_min' `c_max' `h_med' `h_min' `h_max'
 
+/* ensure ManagementCycle is in range*/
+assert $ManagementCycle>=2026
 
 *add dataframe columns common to both species
 gen management_cycle= $ManagementCycle 
