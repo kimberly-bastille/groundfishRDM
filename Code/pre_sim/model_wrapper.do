@@ -177,32 +177,6 @@ global calibration_date_end mdy(10,31,`calib_year')
 global projection_date_start mdy(5,1,$ManagementCycle) 
 local next_yr=$ManagementCycle+1
 global projection_date_end mdy(4,30,`next_yr') 
-/******************************************************************************/
-/* JUST FOR TESTING  - temporarily rebuild the calibration_year global and the mrip globals to get a different set of data*/
-	global calibration_year "(year==`calib_year_back' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back2' & inlist(wave, 6))"  // last six waves of data  updated
-	global calibration_date_start mdy(11,1,`calib_year_back2')
-	global calibration_date_end mdy(10,31,`calib_year_back')
-
-
-	
-	global first_mrip_year 2023
-	global last_mrip_year 2025
-	global yr_wvs
-	/* assemble yr_wvs, used for subsetting*/
-	foreach year of numlist $first_mrip_year/$last_mrip_year {
-		foreach w of numlist 1/6{
-			global yr_wvs $yr_wvs `year'`w'
-		}
-	}
-	di "$yr_wvs"
-
-/* END  JUST FOR TESTING */
-/******************************************************************************/
-
-
-
-
-
 
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
@@ -219,6 +193,29 @@ global hadd_NAA_proj_year 2027
 used by catch_at_length_projection.do*/
 
 global trawl_survey_start_year 2023
+
+
+
+/******************************************************************************/
+/* Section C2:JUST FOR TESTING  - temporarily rebuild the calibration_year global 
+and the mrip globals to get a different set of data*/
+	global calibration_year "(year==`calib_year_back' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back2' & inlist(wave, 6))"  // last six waves of data  updated
+	global calibration_date_start mdy(11,1,`calib_year_back2')
+	global calibration_date_end mdy(10,31,`calib_year_back')
+
+	global first_mrip_year 2023
+	global last_mrip_year 2025
+	global yr_wvs
+	/* assemble yr_wvs, used for subsetting*/
+	foreach year of numlist $first_mrip_year/$last_mrip_year {
+		foreach w of numlist 1/6{
+			global yr_wvs $yr_wvs `year'`w'
+		}
+	}
+	di "$yr_wvs"
+
+/* END  JUST FOR TESTING */
+/******************************************************************************/
 
 /******************************************************************************/
 /******************************************************************************/
