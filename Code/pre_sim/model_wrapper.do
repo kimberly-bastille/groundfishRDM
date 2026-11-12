@@ -321,64 +321,55 @@ if `uncertain_loc' {
 */
 if (`final_data_prep'==0){
  	global ndraws 5
-	confirm_prompt "Prototyping data setup, ndraws set to $ndraws."
+	confirm_prompt "Prototyping data setup, ndraws set to $ndraws." "1"
 }
 
 if (`final_data_prep')==1{
-	confirm_prompt "Final data setup, ndraws set to $ndraws."
+	confirm_prompt "Final data setup, ndraws set to $ndraws." 1
 }
-	
-	/* Management Cycle and calibration year macros */
-mac list first_mrip_year last_mrip_year 
-if (`final_data_prep')==1{
-	confirm_prompt "Please verify first and last mrip years"
-}
-
 	
 /* Management Cycle and calibration year macros */
-mac list ManagementCycle _calib_year 
-if (`final_data_prep')==1{
-	confirm_prompt "Please verify that Management Cycle ($ManagementCycle) is `calib_year'+1."
-}
+mac list first_mrip_year last_mrip_year 
+confirm_prompt "Please verify first and last mrip years" `final_data_prep'
+
+
+/* Management Cycle and calibration year macros */
+confirm_prompt "Please verify that Management Cycle ($ManagementCycle) is `calib_year'+1." `final_data_prep'
+
 /* calibration_year global macro */
 mac list calibration_year 
-if (`final_data_prep')==1{
-	confirm_prompt "Please verify that calibration year global is set properly."
-}
+confirm_prompt "Please verify that calibration year global is set properly."  `final_data_prep'
+
 
 /* Calibration start and end dates, projection start and end dates:*/
 mac list calibration_date_start  calibration_date_end projection_date_start projection_date_end
-if (`final_data_prep')==1{
-	confirm_prompt "Please verify that Calibration start and end dates, projection start and end dates are properly set."
-}
+confirm_prompt "Please verify that Calibration start and end dates, projection start and end dates are properly set." `final_data_prep'
+
 /* NAA years for cod and haddock:*/
 mac list cod_NAA_base_year  hadd_NAA_base_year cod_NAA_proj_year hadd_NAA_proj_year
-if (`final_data_prep')==1{
-	confirm_prompt "Please verify that baseline and projection year NAA are properly set."
-}
+confirm_prompt "Please verify that baseline and projection year NAA are properly set." `final_data_prep'
+
 
 di "Trawl Survey Start year: $trawl_survey_start_year"
-if (`final_data_prep')==1{
-	confirm_prompt "Please verify that the Trawl Survey Start year are properly set."
-}
-/* add a last check that the mangement year and mrip year and calibration years are aligned */
+confirm_prompt "Please verify that the Trawl Survey Start year are properly set." `final_data_prep'
 
+/* add a last check that the mangement year and mrip year and calibration years are aligned */
 local cal_string "$calibration_year"
 /* Use Unicode regex to find year== followed by 4 digits */
 if ustrregexm("`cal_string'", "year==([0-9]{4})") {
     local extracted_year = ustrregexs(1)
 }
 
-/* verify */
 di "`extracted_year'"
 if ("`extracted_year'"!="`calib_year'") {
-	confirm_prompt "********Warning********  calibration_year global is inconsistent with the calib_year local. Something might be wrong."
+	confirm_prompt "********Warning********  calibration_year global is inconsistent with the calib_year local. Something might be wrong." 1
+} 
+else if("`extracted_year'"!="`calib_year'"){
+	di as message "ccalibration_year global consistent with calib_year local"
 }
 
 
-
-
-confirm_prompt "Everything is set. Last chance to reset globals."
+confirm_prompt "Everything is set. Last chance to reset globals." 1
 /********************* end of local and global verification *************************************/
 
 
