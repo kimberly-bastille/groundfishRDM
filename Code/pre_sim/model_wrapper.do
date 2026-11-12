@@ -50,37 +50,9 @@
  THESE GLOBALS AND REGULATIONS MUST BE UPDATED EVERY YEAR (see Section B).
 *******************************************************************************/
 
-set varabbrev on
-/******************************************************************************/
-/* Section A: Year-specific global parameters (UPDATE EVERY YEAR) */
 /******************************************************************************/
 /******************************************************************************/
-
-
-* add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level.   https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/
-
-* fed holidays in the calibration year. The intended intended use is:
-*  <command> if $fed_holidays. It operates on the column "day"
-global fed_holidays "inlist(day, td(11nov2025), td(27nov2025), td(25dec2025), td(01jan2026), td(19jan2026), td(16feb2026), td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026))"
-
-* fed holidays in the projection year. The intended use is:
-* <command> if $fed_holidays_y2.  It operates on the column "day1"
-global fed_holidays_y2 "inlist(day1, td(31may2027), td(18jun2027), td(05jul2027), td(06sep2027), td(11oct2027), td(11nov2027),  td(25nov2027),  td(24dec2027), td(01jan2028), td(17jan2028), td(21feb2028))"
-
-* leap-year days here
-global leap_yr_days "td(29feb2028)"
-
-* set number of model iterations to create
-global ndraws 101
-
-* adjust 2022 survey trip costs to account for inflation (January 2022 - January 2026)
-
-* source =https://www.bls.gov/data/inflation_calculator.htm
-global inflation_expansion=1.16
-
-/******************************************************************************/
-/******************************************************************************/
-/* Section B: Directories, log, and seed */
+/* Section A: Directories, log, and seed */
 /******************************************************************************/
 /******************************************************************************/
 /* `here' finds the project root. This only works if you have already cd'd into
@@ -166,10 +138,6 @@ global mrip_cal_type "cal_2018"
 global first_mrip_year 2024
 global last_mrip_year 2026
 
-/*prototyping */
-global first_mrip_year 2023
-global last_mrip_year 2025
-
 global yr_wvs
 /* assemble yr_wvs, used for subsetting*/
 foreach year of numlist $first_mrip_year/$last_mrip_year {
@@ -197,13 +165,27 @@ global calibration_date_end mdy(10,31,`calib_year')
 global projection_date_start mdy(5,1,$ManagementCycle) 
 local next_yr=$ManagementCycle+1
 global projection_date_end mdy(4,30,`next_yr') 
+/******************************************************************************/
+/* JUST FOR TESTING  - temporarily rebuild the calibration_year global and the mrip globals to get a different set of data*/
+	global calibration_year "(year==`calib_year_back' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back2' & inlist(wave, 6))"  // last six waves of data  updated
+	global calibration_date_start mdy(11,1,`calib_year_back2')
+	global calibration_date_end mdy(10,31,`calib_year_back')
 
-/* JUST FOR TESTING */
 
-global calibration_year "(year==`calib_year_back' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back2' & inlist(wave, 6))"  // last six waves of data  updated
-global calibration_date_start mdy(11,1,`calib_year_back2')
-global calibration_date_end mdy(10,31,`calib_year_back')
+	
+	global first_mrip_year 2023
+	global last_mrip_year 2025
+	global yr_wvs
+	/* assemble yr_wvs, used for subsetting*/
+	foreach year of numlist $first_mrip_year/$last_mrip_year {
+		foreach w of numlist 1/6{
+			global yr_wvs $yr_wvs `year'`w'
+		}
+	}
+	di "$yr_wvs"
+
 /* END  JUST FOR TESTING */
+/******************************************************************************/
 
 
 
