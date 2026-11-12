@@ -301,6 +301,8 @@ quietly forv d = 1/`num'{
 	global drawz "$drawz "`drawz`d''" " 
 }
 
+noisily display "Finished drawing directed-trips"
+
 clear
 dsconcat $drawz
 
@@ -448,6 +450,9 @@ quietly forv d = 1/$ndraws{
 	global drawz2 "$drawz2 "`drawz2`d''" " 
 
 }
+
+noisily display "Finished Building one-row-per-calendar-day skeleton for the calibration year"
+
 clear
 dsconcat $drawz2
 sort day  mode draw
@@ -567,8 +572,9 @@ quietly foreach d of local drawss{
 	tempfile drawz`d'
 	save `drawz`d'', replace
 	global drawz "$drawz "`drawz`d''" " 
-	noisily display "finished with draw `d' "
 }
+
+noisily display "Finished Calendar adjustment step"
 
 dsconcat $drawz
 
