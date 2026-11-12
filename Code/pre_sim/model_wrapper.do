@@ -227,28 +227,28 @@ global trawl_survey_start_year 2023
 /******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
-loc process_commercial_landings = 1      	    // Get commercial landings from Oracle
-loc process_cod_assess = 1                		// Process Cod Assessment data
+loc process_commercial_landings = 0      	    // Get commercial landings from Oracle
+loc process_cod_assess = 0                		// Process Cod Assessment data
 loc process_haddock_assess = 0            // Process Haddock Assessment data
 
-loc get_assessment_from_gdrive = 1				// Pull Assessment data
-loc get_mrip_oracle = 1		 					      // Pull MRIP data.
-loc get_fes_from_gdrive=1						// get the fes data from google drive
-loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
+loc get_assessment_from_gdrive = 0				// Pull Assessment OUTPUTs 
+loc get_mrip_oracle = 0	 		 			      // Pull MRIP data.
+loc get_fes_from_gdrive=0						// get the fes data from google drive
+loc get_mrip_site_list = 0		 					  // Pull MRIP site list.
 
-loc get_svdbs_data = 1		 					  // Pull MRIP site list.
+loc get_svdbs_data = 0		 					  // Pull MRIP site list.
 
-loc directed_trips_calibration = 1				// Estimate Directed Trips
-loc survey_trip_costs = 1  						    // Create Distributions of costs per trip (run 1x)
-loc estimate_angler_preferences = 1				// Create draw of angler preference parameters (run 1x)
-loc calib_catch_per_trip_part1 = 1				// Part 1 of catch per trip
-loc copula_modeling_calibration = 1				// Copula model in R
-loc calib_catch_per_trip_part2 = 1				// Part 2 of catch per trip
-loc compare_calib_data_to_MRIP = 1				// compare calibration output to MRIP
-loc additional_angler_dems	=1					  // add additional angler demographics
-loc catch_at_length_calibration=1			   	// Generate baseline-year catch-at-length
-loc catch_at_length_project=1					    // Generate projection-year catch-at-length
-loc Rcodewrapper=1								        // Run calibration routine in R
+loc directed_trips_calibration = 0				// Estimate Directed Trips
+loc survey_trip_costs = 0  						    // Create Distributions of costs per trip (run 1x)
+loc estimate_angler_preferences = 0				// Create draw of angler preference parameters (run 1x)
+loc calib_catch_per_trip_part1 = 0				// Part 1 of catch per trip
+loc copula_modeling_calibration = 0				// Copula model in R
+loc calib_catch_per_trip_part2 = 0				// Part 2 of catch per trip
+loc compare_calib_data_to_MRIP = 0				// compare calibration output to MRIP
+loc additional_angler_dems	=0					  // add additional angler demographics
+loc catch_at_length_calibration=0			   	// Generate baseline-year catch-at-length
+loc catch_at_length_project=0					    // Generate projection-year catch-at-length
+loc Rcodewrapper=0								        // Run calibration routine in R
 
 
 /********************* Push to google drive toggles*************************************/
@@ -261,9 +261,9 @@ loc export_all_to_GDrive = 0             // Export calibration and all data to G
 /********************* Dashboard Toggles  *************************************/
 /********************* (versions on main should be set to 0)****************************/
 
-loc rdb_processing_catch_per_trip= 1  	  // prep data for dashboard
-loc rdb_catch_at_length= 1	              // Prep catch at length data for dashboard
-loc rdb_directed_trips =1 	        	  // Prep directed trips data for dashboard
+loc rdb_processing_catch_per_trip= 0  	  // prep data for dashboard
+loc rdb_catch_at_length= 0	              // Prep catch at length data for dashboard
+loc rdb_directed_trips =0 	        	  // Prep directed trips data for dashboard
 
 loc rdb_catch_at_len_to_drive =0 	      // Push catch at length data to google drive in R
 loc rdb_catch_per_trip_to_drive =0 	  	  // Push to google drive in R
@@ -281,14 +281,12 @@ directed_trips_calibration to replace directed_trip_draws.csv with original vers
 median trips or another source of uncertainty. When not testing catch per trip uncertainty, must either
 run copula_modeling_calibration or run copula_both but set manual species toggle to "none" in copula_both.R. */
 global uncertain 0				/* Uncertainty project argument for passing into R code  */
-local copula_both=0			    /* Copula model with ability to remove sampling uncertainty for testing catch per 
-								trip uncertainty (use manual toggle 'species_no_uncertainty' in the R script to select 
-								one or both species, or neither when testing the other uncertainty sources). Turn off 
+local copula_both=0			    /* Copula model with ability to remove sampling uncertainty for testing catch per
 								copula_modeling_calibration local above to save time when copula_both=1 */
-local projected_naa_uncertain=0   /* Removes uncertainty in numbers at age to examine catch at length uncertainty  
-									(Manually change species in code below to cod, haddock, or both in this line: 
+local projected_naa_uncertain=0   /* Removes uncertainty in numbers at age to examine catch at length uncertainty
+									(Manually change species in code below to cod, haddock, or both in this line:
 									do "$input_code_cd\projected_naa_uncertain.do" above step 10) */
-local directed_trip_uncertain=0   /* Removes uncertainty in simulated directed trips (there's a manual 
+local directed_trip_uncertain=0   /* Removes uncertainty in simulated directed trips (there's a manual
 								    toggle in the do file to take median trips or mean trips).  */
 local uncertain_loc=0			  /* save the alternative data in its own 'uncertainty' folders */
 
