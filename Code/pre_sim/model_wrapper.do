@@ -204,6 +204,7 @@ loc compare_calib_data_to_MRIP = 1				// compare calibration output to MRIP
 loc additional_angler_dems	=1					  // add additional angler demographics
 loc catch_at_length_calibration=1			   	// Generate baseline-year catch-at-length
 loc catch_at_length_project=1					    // Generate projection-year catch-at-length
+loc estimate_fishery_choice_model=0					// Estimate fishery choice model
 loc prepare_fishery_choice_data=1					// Generate data and parameters from fishery choice model
 
 loc Rcodewrapper=1								        // Run calibration routine in R
@@ -590,7 +591,20 @@ else {
    local skipped_scripts `skipped_scripts' catch_at_length_projection.do
 }
 
-// 11) Generate fishery choice model data and parameters which feed into projection
+// 11a) Estimate fishery choice model
+if `prepare_fishery_choice_data'{
+	di "Estimate fishery choice model"
+	do "$input_code_cd\estimate_fishery_choice_model.do"
+	local executed_scripts `executed_scripts' estimate_fishery_choice_model.do
+	
+	
+	}
+else {
+   local skipped_scripts `skipped_scripts' estimate_fishery_choice_model.do
+
+}	
+
+// 11b) Generate fishery choice model data and parameters which feed into projection
 if `prepare_fishery_choice_data'{
 	di "Preparing fishery choice data"
 	do "$input_code_cd\prepare_fishery_choice_data.do"
