@@ -504,6 +504,8 @@ preserve
 keep mode day draw cod_bag cod_min hadd_bag hadd_min day_y2 dtrip ///
 			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 
 /*			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt */
+/* _y2_alt variables were only relevant in the 2026 management cycle. 
+They are  the regulations that were voted for but not actually implemented . */
 compress
 
 export delimited using "$misc_data_cd\directed_trip_draws.csv",  replace 
@@ -523,6 +525,9 @@ restore
 keep mode day draw cod_bag cod_min hadd_bag hadd_min day_y2 kod kod_y2 dtrip ///
 			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 
 /*			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt */
+/* _y2_alt variables were only relevant in the 2026 management cycle. 
+They are  the regulations that were voted for but not actually implemented . */
+
 			
 gen month_y1=month(day)
 gen month_y2=month(day_y2)
