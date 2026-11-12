@@ -184,30 +184,30 @@ global trawl_survey_start_year 2022
 /******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
-loc process_commercial_landings = 1      	    // Get commercial landings from Oracle
-loc process_cod_assess = 1                		// Process Cod Assessment data
+loc process_commercial_landings = 0      	    // Get commercial landings from Oracle
+loc process_cod_assess = 0                		// Process Cod Assessment data
 loc process_haddock_assess = 0            // Process Haddock Assessment data
 
-loc get_assessment_from_gdrive = 1				// Pull Assessment data
-loc get_mrip_oracle = 1		 					      // Pull MRIP data.
-loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
+loc get_assessment_from_gdrive = 0				// Pull Assessment data
+loc get_mrip_oracle = 0		 					      // Pull MRIP data.
+loc get_mrip_site_list = 0		 					  // Pull MRIP site list.
 
-loc get_svdbs_data = 1		 					  // Pull MRIP site list.
+loc get_svdbs_data = 0		 					  // Pull MRIP site list.
 
-loc directed_trips_calibration = 1				// Estimate Directed Trips
-loc survey_trip_costs = 1  						    // Create Distributions of costs per trip (run 1x)
-loc estimate_angler_preferences = 1				// Create draw of angler preference parameters (run 1x)
-loc calib_catch_per_trip_part1 = 1				// Part 1 of catch per trip
-loc copula_modeling_calibration = 1				// Copula model in R
-loc calib_catch_per_trip_part2 = 1				// Part 2 of catch per trip
-loc compare_calib_data_to_MRIP = 1				// compare calibration output to MRIP
-loc additional_angler_dems	=1					  // add additional angler demographics
-loc catch_at_length_calibration=1			   	// Generate baseline-year catch-at-length
-loc catch_at_length_project=1					    // Generate projection-year catch-at-length
-loc estimate_fishery_choice_model=0					// Estimate fishery choice model
+loc directed_trips_calibration = 0				// Estimate Directed Trips
+loc survey_trip_costs = 0  						    // Create Distributions of costs per trip (run 1x)
+loc estimate_angler_preferences = 0				// Create draw of angler preference parameters (run 1x)
+loc calib_catch_per_trip_part1 = 0				// Part 1 of catch per trip
+loc copula_modeling_calibration = 0				// Copula model in R
+loc calib_catch_per_trip_part2 = 0				// Part 2 of catch per trip
+loc compare_calib_data_to_MRIP = 0				// compare calibration output to MRIP
+loc additional_angler_dems	=0					  // add additional angler demographics
+loc catch_at_length_calibration=0			   	// Generate baseline-year catch-at-length
+loc catch_at_length_project=0					    // Generate projection-year catch-at-length
+loc estimate_fishery_choice_model=1					// Estimate fishery choice model
 loc prepare_fishery_choice_data=1					// Generate data and parameters from fishery choice model
 
-loc Rcodewrapper=1								        // Run calibration routine in R
+loc Rcodewrapper=0							        // Run calibration routine in R
 
 
 /********************* Push to google drive toggles*************************************/
@@ -610,7 +610,7 @@ if `prepare_fishery_choice_data'{
 	do "$input_code_cd\prepare_fishery_choice_data.do"
 	local executed_scripts `executed_scripts' prepare_fishery_choice_data.do
 	
-	do "$input_code_cd\predict_fishery_choice_probabilites.do"
+	do "$input_code_cd\predict_fishery_choice_probabilities.do"
 	local executed_scripts `executed_scripts' predict_fishery_choice_probabilites.do
 	
 	}
