@@ -357,12 +357,12 @@ if ustrregexm("`cal_string'", "year==([0-9]{4})") {
     local extracted_year = ustrregexs(1)
 }
 
-di "`extracted_year'"
+di "WARNING: First year extracted from calibration_year global is `extracted_year'.  We expected to it to be `calib_year'!! 
 if ("`extracted_year'"!="`calib_year'") {
-	confirm_prompt "********Warning********  calibration_year global is inconsistent with the calib_year local. Something might be wrong." 1
+	confirm_prompt "WARNING: calibration_year global is inconsistent with the calib_year local. Something might be wrong." 1
 } 
 else if("`extracted_year'"!="`calib_year'"){
-	di as message "ccalibration_year global consistent with calib_year local"
+	di as message "Calibration_year global consistent with calib_year local"
 }
 
 
