@@ -192,7 +192,7 @@ read_projection_common_inputs_cod_hadd <- function(final_process_misc_cd,
   data.table::setkey(calib, season, mode, draw, species)
 
   size_lookup <- as.data.table(
-    readr::read_csv(file.path(final_process_misc_cd, "baseline_catch_at_length.csv"),
+    readr::read_csv(file.path(final_process_misc_cd, "projected_catch_at_length.csv"),
                     show_col_types = FALSE))
 
   # Expected columns from calibration: species, draw, season, fitted_prob, length.
