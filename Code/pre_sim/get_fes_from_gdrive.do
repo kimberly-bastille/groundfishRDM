@@ -1,7 +1,7 @@
 /*******************************************************************************
  Script:       get_fes_from_gdrive.do
  Purpose:      Copies the most recent FES data from Google drive.
- Outputs:      $misc_data_cd/{fes_person_final_<year><w>}.dta
+ Outputs:      $misc_data_cd/fes_person_final_<year><w>.dta
  Dependencies: Global $misc_data_cd (set in model_wrapper.do). Google Drive
                mounted to D:.
  Pipeline:     Step 1 of model_wrapper.do, gated by `get_fes_from_gdrive' (default ON).

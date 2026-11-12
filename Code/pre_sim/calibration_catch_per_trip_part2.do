@@ -14,7 +14,7 @@
                cost and angler demographics (drawn once per iteration), samples
                catch-per-trip outcomes from the copula output for that iteration
                (by mode and month), and saves one calib_catch_draws_`i'.dta.
- Inputs:       $misc_data_cd/fes_person_final_2023`w'.dta (waves 1-6),
+ Inputs:       $misc_data_cd/fes_person_final_2025`w'.dta (waves 1-6),
                $misc_data_cd/directed_trip_draws.csv,
                $misc_data_cd/trip_costs.dta,
                $calib_catch_draws_cd/calib_catch_draws_raw_`i'.dta (copula output).

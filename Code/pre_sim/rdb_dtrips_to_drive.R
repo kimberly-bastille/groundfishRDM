@@ -5,7 +5,7 @@
 #               the shared Google Drive miscellaneous folder for the rec
 #               dashboard.
 # Inputs:       <gf.data.dir>/miscellaneous/rdb_dtrips.dta (written by rdb_directed_trips.do)
-# Outputs:      <gf.data.dir>/miscellaneous/rdb_dtips_<date>.Rds,
+# Outputs:      <gf.data.dir>/miscellaneous/rdb_dtrips_<date>.Rds,
 #               and a copy of that file uploaded to Google Drive.
 # Dependencies: Sources developer_setup.R (for gf.data.dir). Requires a cached
 #               Drive token in .secrets (see googledrivesetup.R).
