@@ -254,7 +254,7 @@ loc Rcodewrapper=0								        // Run calibration routine in R
 /********************* Push to google drive toggles*************************************/
 /********************* (versions on main should be set to 0)****************************/
 loc export_assess_to_gdrive = 0          // Export assessment to google drive
-local assess_upload = "cod"				 // arguments for uploading. Can be "cod", "haddock", or "both"
+local assess_upload = "both"			    	 // arguments for uploading. Can be "cod", "haddock", or "both"
 loc export_all_to_GDrive = 0             // Export calibration and all data to Google
 
 
@@ -282,6 +282,8 @@ median trips or another source of uncertainty. When not testing catch per trip u
 run copula_modeling_calibration or run copula_both but set manual species toggle to "none" in copula_both.R. */
 global uncertain 0				/* Uncertainty project argument for passing into R code  */
 local copula_both=0			    /* Copula model with ability to remove sampling uncertainty for testing catch per
+								trip uncertainty (use manual toggle 'species_no_uncertainty' in the R script to select
+								one or both species, or neither when testing the other uncertainty sources). Turn off
 								copula_modeling_calibration local above to save time when copula_both=1 */
 local projected_naa_uncertain=0   /* Removes uncertainty in numbers at age to examine catch at length uncertainty
 									(Manually change species in code below to cod, haddock, or both in this line:
