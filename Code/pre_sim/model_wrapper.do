@@ -60,6 +60,8 @@
 here, nogit
 
 do "${here}/Code/helpers/developer_setup_stata.do"
+do "${here}/Code/helpers/confirm_prompt.do"
+
 global input_code_cd "${here}/Code/pre_sim"
 global log_dir "${input_code_cd}/logs"
 /* start log */
@@ -90,6 +92,16 @@ timer on 1           // Starts timing
 
 * set a global seed
 global seed 03211990
+
+
+/* is this the final data prep?
+=1 for final data prep
+=0 for prototyping
+ */
+local final_data_prep= 0
+
+
+
 
 
 /******************************************************************************/
@@ -208,32 +220,6 @@ used by catch_at_length_projection.do*/
 
 global trawl_survey_start_year 2023
 
-di "Management Cycle, calibration year:"
-mac list ManagementCycle _calib_year _calib_year_back _calib_year_back2
-di "Please verify these are set up as intended"
-pause 
-
-di "Calibration wave global:"
-mac list calibration_year
-
-di "Calibration start and end dates, projection start and end dates:"
-mac list calibration_date_start  calibration_date_end projection_date_start projection_date_end
-di "Please verify these are set up as intended"
-pause 
-
-di "baseline and projection year NAA:"
-mac list cod_NAA_base_year  hadd_NAA_base_year cod_NAA_proj_year hadd_NAA_proj_year
-
-di "Trawl Survey Start year:"
-mac list trawl_survey_start_year
-
-di "Please verify these are set up as intended"
-pause 
-
-di "Seriously, verify them"
-pause 
-
-pause off
 /******************************************************************************/
 /******************************************************************************/
 /* Section D: Execution control (toggle each pipeline step on/off) */
@@ -329,15 +315,72 @@ if `uncertain_loc' {
 	capture mkdir $figure_cd
 }
 
-
-
-
-// Prototyping: set proto=1 to override $ndraws down to the small value below for a fast test run.
-local proto = 1
-
-if `proto' {
-	global ndraws 5
+/********************* local and global verification *************************************/
+/* if this is not the final data prep, short cut by setting ndraws=5 
+   Display all macros, but only have confirmations trig
+*/
+if (`final_data_prep'==0){
+ 	global ndraws 5
+	confirm_prompt "Prototyping data setup, ndraws set to $ndraws."
 }
+
+if (`final_data_prep')==1{
+	confirm_prompt "Final data setup, ndraws set to $ndraws."
+}
+	
+	/* Management Cycle and calibration year macros */
+mac list first_mrip_year last_mrip_year 
+if (`final_data_prep')==1{
+	confirm_prompt "Please verify first and last mrip years"
+}
+
+	
+/* Management Cycle and calibration year macros */
+mac list ManagementCycle _calib_year 
+if (`final_data_prep')==1{
+	confirm_prompt "Please verify that Management Cycle ($ManagementCycle) is `calib_year'+1."
+}
+/* calibration_year global macro */
+mac list calibration_year 
+if (`final_data_prep')==1{
+	confirm_prompt "Please verify that calibration year global is set properly."
+}
+
+/* Calibration start and end dates, projection start and end dates:*/
+mac list calibration_date_start  calibration_date_end projection_date_start projection_date_end
+if (`final_data_prep')==1{
+	confirm_prompt "Please verify that Calibration start and end dates, projection start and end dates are properly set."
+}
+/* NAA years for cod and haddock:*/
+mac list cod_NAA_base_year  hadd_NAA_base_year cod_NAA_proj_year hadd_NAA_proj_year
+if (`final_data_prep')==1{
+	confirm_prompt "Please verify that baseline and projection year NAA are properly set."
+}
+
+di "Trawl Survey Start year: $trawl_survey_start_year"
+if (`final_data_prep')==1{
+	confirm_prompt "Please verify that the Trawl Survey Start year are properly set."
+}
+/* add a last check that the mangement year and mrip year and calibration years are aligned */
+
+local cal_string "$calibration_year"
+/* Use Unicode regex to find year== followed by 4 digits */
+if ustrregexm("`cal_string'", "year==([0-9]{4})") {
+    local extracted_year = ustrregexs(1)
+}
+
+/* verify */
+di "`extracted_year'"
+if ("`extracted_year'"!="`calib_year'") {
+	confirm_prompt "********Warning********  calibration_year global is inconsistent with the calib_year local. Something might be wrong."
+}
+
+
+
+
+confirm_prompt "Everything is set. Last chance to reset globals."
+/********************* end of local and global verification *************************************/
+
 
 local executed_scripts ""
 local skipped_scripts  ""
@@ -689,10 +732,6 @@ if (`projected_naa_uncertain' & "$developer"=="TP"){
 
 display "model_wrapper.do: Stata pre-simulation stage complete."
 
-
-if (`proto'==1) {
-	display "Prototyping option set on. ndraws global set to $ndraws"
-}
 
 /*******************************************************
 wrap up
