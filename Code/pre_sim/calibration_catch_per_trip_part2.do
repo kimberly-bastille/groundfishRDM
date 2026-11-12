@@ -94,13 +94,15 @@ end ;
       to 12-month effort and any estimates may be highly variable.
       Wave data will produce independent estimates of 12-month effort."
   
-   I will use the most recent year of FES survey data available (2023). */
+   I will use the most recent year of FES survey data available (2025). 
+   FES survey data for 2024 and 2025 received from Rob Andrews 11/4/26.
+   Same caveats above apply to the 2024 and 2025 data.*/
 
 global dems ;
 local wvs 1 2 3 4 5 6 ;
 quietly foreach w of local wvs {;
 
-    u  "$misc_data_cd\fes_person_final_2023`w'.dta", clear ;
+    u  "$misc_data_cd\fes_person_final_2025`w'.dta", clear ;
 					 
 					   
  

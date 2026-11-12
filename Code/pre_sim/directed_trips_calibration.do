@@ -301,6 +301,8 @@ quietly forv d = 1/`num'{
 	global drawz "$drawz "`drawz`d''" " 
 }
 
+noisily display "Finished drawing directed-trips"
+
 clear
 dsconcat $drawz
 
@@ -448,6 +450,9 @@ quietly forv d = 1/$ndraws{
 	global drawz2 "$drawz2 "`drawz2`d''" " 
 
 }
+
+noisily display "Finished Building one-row-per-calendar-day skeleton for the calibration year"
+
 clear
 dsconcat $drawz2
 sort day  mode draw
@@ -502,8 +507,10 @@ restore
 
 preserve
 keep mode day draw cod_bag cod_min hadd_bag hadd_min day_y2 dtrip ///
-			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 ///
-			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt
+			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 
+/*			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt */
+/* _y2_alt variables were only relevant in the 2026 management cycle. 
+They are  the regulations that were voted for but not actually implemented . */
 compress
 
 export delimited using "$misc_data_cd\directed_trip_draws.csv",  replace 
@@ -521,8 +528,11 @@ restore
    stratum with the same mode-month-kind-of-day, then computes an expansion
    factor = projection-year trips / calibration-year trips by month and mode. */
 keep mode day draw cod_bag cod_min hadd_bag hadd_min day_y2 kod kod_y2 dtrip ///
-			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 ///
-			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt
+			cod_bag_y2 cod_min_y2 hadd_bag_y2 hadd_min_y2 
+/*			cod_bag_y2_alt cod_min_y2_alt hadd_bag_y2_alt hadd_min_y2_alt */
+/* _y2_alt variables were only relevant in the 2026 management cycle. 
+They are  the regulations that were voted for but not actually implemented . */
+
 			
 gen month_y1=month(day)
 gen month_y2=month(day_y2)
@@ -562,8 +572,9 @@ quietly foreach d of local drawss{
 	tempfile drawz`d'
 	save `drawz`d'', replace
 	global drawz "$drawz "`drawz`d''" " 
-	noisily display "finished with draw `d' "
 }
+
+noisily display "Finished Calendar adjustment step"
 
 dsconcat $drawz
 

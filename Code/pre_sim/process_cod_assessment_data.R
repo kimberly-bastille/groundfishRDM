@@ -24,6 +24,11 @@
 # Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
 #               the Stata pipeline: its NAA outputs feed the catch-at-length
 #               steps (see catch_at_length_projection.do).
+# Notes:        Takes 2 arguments,  management_cycle and projection_year.
+#                 Those will probably be the same
+#
+#               Set the mortality type options properly. You do not want to pass in
+#                metric tons as an F.
 #
 # Background (units and conventions):
 #   - Aggregate weights (SSB, catch) are in metric tons; weight-at-age vectors
@@ -59,12 +64,13 @@ library(wham,lib.loc = cod_wham_lib)
 
 # Define arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop("Error: This script requires exactly 1 argument.", call. = FALSE)
+if (length(args) != 2) {
+  stop("Error: This script requires exactly 2 arguments.", call. = FALSE)
 }
 
 #read in arguments. force to numeric
-YearProj  <- as.numeric(args[1])
+management_cycle  <- as.numeric(args[1])
+YearProj  <- as.numeric(args[2])
 
 
 ###########Begin Housekeeping##################################################
@@ -98,7 +104,9 @@ stock_stats_df<-tibble(
   metric="Numbers At Age",
   units = "Thousands",
   source = "2024 Assessment",
-  data_version= data_version
+  data_version= data_version,
+  management_cycle= management_cycle
+
 )
 
 # Save 3 years years of historical NAA
@@ -117,7 +125,8 @@ HistoricalNAASaveFile<-glue("WGOM_Cod_historical_NAA_{data_version}")
 # NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
 drive_auth(cache = here(".secrets"), email = TRUE)
 # Output folder on google drive
-groundfish_processed_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","input_data")
+groundfish_processed_path<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                                     "groundfishRDM","input_data")
 folder_info <- drive_get(
   path = groundfish_processed_path,
   shared_drive = "NMFS NEC READ SSB"
@@ -125,7 +134,8 @@ folder_info <- drive_get(
 groundfish_processed_path<-folder_info$id
 
 #read in the assessment file
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","cod_assessment",assessment_file_in)
+readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                  "groundfishRDM","cod_assessment",assessment_file_in)
 file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 #
 # Create a path for a temporary file
@@ -170,7 +180,7 @@ mod_list <- list(mod_accepted)
 
 
 # Read the ASAP file from google drive
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","cod_assessment",ASAP_file_in)
+readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),"groundfishRDM","cod_assessment",ASAP_file_in)
 file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 #
 # Create a path for a temporary file
@@ -250,7 +260,7 @@ cM=cMyr/periods
 ############
 # Parameters that come out of the stock assessment
 ############
-# Weights at age. Opem the ASAP3 file in the ASAP gui and pick through the pointers.
+# Weights at age. Open the ASAP3 file in the ASAP gui and pick through the pointers.
 # cod_jan1_weights=  Matrix 3 for Jan 1
 cod_jan1_weights = tail(asap3[[1]]$dat$WAA_mats[[3]],1)
 
@@ -331,9 +341,9 @@ set_specs <- function(mod) {
          n.yrs       = rep(list(4), times = 1),   # Number of years is set in in (list(numyears)). Number of scenarios is set with times
 
          # NOTE: proj_F_opt maps projection modes for each of the 4 projection years: 5 = catch in MT, 4 = fixed instantaneous F
-         proj_F_opt  = list(c(5, 5, 4, 4)),  # length=numyears.  stack on different things to make different projections. 5=metric tons, 4=an instantanous fishing mortality rate (F)
+         proj_F_opt  = list(c(5, 5, 5, 4)),  # length=numyears.  stack on different things to make different projections. 5=metric tons, 4=an instantanous fishing mortality rate (F)
 
-         # NOTE: Year 1 & 2 use specified MT bridging catch; Year 3 & 4 apply the 75% Fmsy rate
+         # NOTE: Years 1, 2 and 3 use specified MT bridging catch; Year 4 applies the 75% Fmsy rate
          proj_Fcatch = list(c(actual_2023_catch_mt, actual_2024_catch_mt, actual_2025_catch_mt, rep(0.75 * Fmsy, 1))) #2 # length=numyears
     )
 }

@@ -26,7 +26,8 @@
 #               the Stata pipeline: its NAA outputs feed the catch-at-length
 #               steps (see catch_at_length_projection.do). Sibling of
 #               get_cod_assessment_data.R.
-#
+# Notes:        Takes 2 arguments,  management_cycle and projection_year.
+#                 Those will probably be the same
 # Background (units and conventions):
 #   - Aggregate weights (SSB, catch) are in metric tons; weight-at-age vectors
 #     are in kg. tail(x, 1) picks the last (most recent) year of a vector/matrix.
@@ -54,12 +55,13 @@ library(wham,lib.loc = haddock_wham_lib)
 
 # Define arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop("Error: This script requires exactly 1 argument.", call. = FALSE)
+if (length(args) != 2) {
+  stop("Error: This script requires exactly 2 arguments.", call. = FALSE)
 }
 
 #read in arguments. force to numeric
-YearProj  <- as.numeric(args[1])
+management_cycle  <- as.numeric(args[1])
+YearProj  <- as.numeric(args[2])
 
 ###########Begin Housekeeping##################################################
 #Set paths, input names, and savefile names.
@@ -90,7 +92,8 @@ stock_stats_df<-tibble(
   metric="Numbers At Age",
   units = "Thousands",
   source = "2026 Assessment",
-  data_version= data_version
+  data_version= data_version,
+  management_cycle= management_cycle
 )
 # Save 3 years years of historical NAA
 yearinwindow<-3
@@ -111,7 +114,9 @@ waa_file_in<-"waa_pred_2026-07-07.xlsx"
 drive_auth(cache = here(".secrets"), email = TRUE)
 
 # Output folder on google drive
-groundfish_processed_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","input_data")
+groundfish_processed_path<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                                     "groundfishRDM","input_data")
+
 folder_info <- drive_get(
   path = groundfish_processed_path,
   shared_drive = "NMFS NEC READ SSB"
@@ -119,7 +124,8 @@ folder_info <- drive_get(
 groundfish_processed_path<-folder_info$id
 
 # Read in the assessment file
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","haddock_assessment",assessment_file_in)
+readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                                     "groundfishRDM","haddock_assessment",assessment_file_in)
 file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 
 # Create a path for a temporary file
@@ -156,7 +162,8 @@ if (file.exists(temp_path)) {
 
 
 # readin the WAA file
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","haddock_assessment",waa_file_in)
+readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+                  "groundfishRDM","haddock_assessment",waa_file_in)
 file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 temp_path <- tempfile(fileext = ".xlsx")
 
