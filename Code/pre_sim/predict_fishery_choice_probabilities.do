@@ -1,8 +1,10 @@
+
+
 * Run AFTER baseline_fishery_choice_predictions.do has saved choice_data_master.dta.
 * Requires the SAME historical coding used to estimate mnl_full_2010_2025.ster.
 version 19
 local model_file "$misc_data_cd\mnl_full_2010_2025.ster"
-local training_file "$misc_data_cd\choice_data_master15.dta"
+local training_file "$misc_data_cd\choice_data_2010_2025.dta"
 confirm file "`model_file'"
 confirm file "`training_file'"
 
