@@ -31,39 +31,134 @@ final_process_calib_catch_cd="D:/Shared drives/NMFS NEC READ SSB/socialsci/Recre
 test_results_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/simulation_testing"
 
 
+# final_process_data_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle"
+# final_process_outcomes_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/base_outcomes"
+# final_process_choice_occasions_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/n_choice_occasions"
+# final_process_misc_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/miscellaneous"
+# final_process_calib_catch_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/calib_catch_draws"
+# test_results_cd="E:/Lou_projects/groundfishRDM/2027_mgt_cycle/simulation_testing"
+
 
 # -----------------------------------------------------------------------------
 # User-facing controls
 # -----------------------------------------------------------------------------
-draws         <- 1:101
-n_simulations <- 101
+draws         <- 1:10
+n_simulations <- 10
 mode_draw     <- c("pr", "fh")
 season_draw   <- c("summer", "winter")
 draws         <- if (exists("draws")) draws else seq_len(n_simulations)
 n_draws       <- 50L
 
 source(here::here("Code/sim/predict_rec_catch_functions.R"))
+
 # Length-weight parameters from the calibration script.
 cod_lw_a <- if (exists("cod_lw_a")) cod_lw_a else 0.000005132
 cod_lw_b <- if (exists("cod_lw_b")) cod_lw_b else 3.1625
 had_lw_a <- if (exists("had_lw_a")) had_lw_a else 0.000009298
 had_lw_b <- if (exists("had_lw_b")) had_lw_b else 3.0205
 
+# Dataset needed to compute fishery choice model probabilities
+baseline_choice <- haven::read_dta(
+  file.path(final_process_misc_cd, "baseline_choice_probabilities_long.dta")
+)
+baseline<-baseline_choice
+
 directed_trips <- as.data.table(read_fst(file.path(final_process_misc_cd,"directed_trip_draws.fst")))
 
+# Generate a variable for the cod and haddock open season prior to dynamic adjustments from the web tool
+directed_trips<-directed_trips %>%
+  dplyr::mutate(
+    cod_open_y1  = dplyr::if_else(cod_bag>0, 1, 0),
+    hadd_open_y1  = dplyr::if_else(hadd_bag>0, 1, 0))
 
 # Code below to manually adjust the regulations
 # Run once after loading the original directed_trips regulations
+# directed_trips <- directed_trips %>%
+#   dplyr::mutate(
+#     cod_min = dplyr::if_else(cod_bag > 0, cod_min - 2*2.54, cod_min),
+#     hadd_min = dplyr::if_else(hadd_bag > 0, hadd_min + 2*2.54, hadd_min),
+#     hadd_bag = dplyr::case_when(
+#       as.integer(format(date_parsed, "%m")) == 6L ~ 0,
+#       hadd_bag > 0 ~ 10,
+#       TRUE ~ hadd_bag
+#     )
+#   )
+
+# close cod and haddock October
 directed_trips <- directed_trips %>%
   dplyr::mutate(
-    cod_min = dplyr::if_else(cod_bag > 0, cod_min - 2*2.54, cod_min),
-    hadd_min = dplyr::if_else(hadd_bag > 0, hadd_min + 2*2.54, hadd_min),
-    hadd_bag = dplyr::case_when(
-      as.integer(format(date_parsed, "%m")) == 6L ~ 0,
-      hadd_bag > 0 ~ 10,
-      TRUE ~ hadd_bag
-    )
+    cod_bag  = dplyr::if_else(month(date_parsed) ==10 , 0, cod_bag),
+    hadd_bag = dplyr::if_else(month(date_parsed) ==10 , 0, hadd_bag),
+    cod_min  = dplyr::if_else(month(date_parsed) ==10 , 100, cod_min),
+    hadd_min = dplyr::if_else(month(date_parsed) ==10 , 100, hadd_min),
   )
+
+directed_trips<-directed_trips %>%
+  dplyr::mutate(
+    cod_open_y2  = dplyr::if_else(cod_bag>0, 1, 0),
+    hadd_open_y2  = dplyr::if_else(hadd_bag>0, 1, 0))
+
+# call the predict_policy_probabilities() and generate the trip adjustment dataset
+policy_choice <- predict_policy_probabilities(
+  baseline = baseline_choice,
+  directed_trips = directed_trips
+)
+
+cod_haddock_probabilities <- policy_choice[
+  alt_name %in% c("atlanticcod", "haddock"),
+  .(p0_cod_haddock = sum(p0), p1_cod_haddock = sum(p1)),
+  by = .(group, state, mode_string, date_parsed, wp_int)
+]
+
+# Validate weights and ensure one row per original choice occasion.
+cod_haddock_probabilities <- data.table::as.data.table(cod_haddock_probabilities)
+
+if (anyDuplicated(cod_haddock_probabilities$group)) {
+  stop("Expected one combined cod/haddock probability per choice occasion.")
+}
+if (cod_haddock_probabilities[, any(!is.finite(wp_int) | wp_int < 0)]) {
+  stop("Missing, nonfinite, or negative trip weights: resolve before aggregation.")
+}
+if (cod_haddock_probabilities[
+  , any(!is.finite(p0_cod_haddock) | !is.finite(p1_cod_haddock))
+]) {
+  stop("Missing or nonfinite cod/haddock probabilities.")
+}
+
+# Multiply each probability by its baseline trip weight.
+cod_haddock_probabilities[, `:=`(
+  month = lubridate::month(date_parsed),
+  weighted_trips_p0 = wp_int * p0_cod_haddock,
+  weighted_trips_p1 = wp_int * p1_cod_haddock
+)]
+
+# Aggregate across states and occasions within month and mode.
+trip_adjustments <- cod_haddock_probabilities[, .(
+  n_occasions = .N,
+  total_trip_weight = sum(wp_int),
+  predicted_trips_p0 = sum(weighted_trips_p0),
+  predicted_trips_p1 = sum(weighted_trips_p1)
+), by = .(mode = mode_string, month)]
+
+# A zero baseline cannot support a multiplicative adjustment.
+if (trip_adjustments[, any(predicted_trips_p0 <= 0)]) {
+  stop("At least one month/mode has no positive baseline predicted trips.")
+}
+
+trip_adjustments[, `:=`(
+  trip_ratio = predicted_trips_p1 / predicted_trips_p0,
+  delta_trips = predicted_trips_p1 - predicted_trips_p0,
+  percent_change = 100 * (predicted_trips_p1 / predicted_trips_p0 - 1)
+)]
+
+data.table::setorder(trip_adjustments, mode, month)
+
+trip_adjustments<-trip_adjustments %>%
+  dplyr::select(mode, month, trip_ratio)
+
+write_fst(trip_adjustments, file.path(final_process_misc_cd, paste0("trip_adjustments.fst")))
+
+
 # -----------------------------------------------------------------------------
 # Main projection execution
 # -----------------------------------------------------------------------------
@@ -79,6 +174,16 @@ n_workers <- 4   # or however many Azure workers/cores you want available
 n_workers <- if (exists("n_workers")) n_workers else max(1L, parallel::detectCores(logical = FALSE) - 1L)
 use_parallel <- if (exists("use_parallel")) use_parallel else TRUE
 
+common_inputs <- read_projection_common_inputs_cod_hadd(
+  final_process_misc_cd = final_process_misc_cd,
+  directed_trips = directed_trips,
+  season_draw = season_draw,
+  mode_draw = mode_draw,
+  draws = draws
+)
+
+common_inputs$trip_adjustments <- data.table::copy(trip_adjustments)
+
 system.time({
   prediction_draws <- run_cod_hadd_projection(
     season_draw  = season_draw,
@@ -86,7 +191,7 @@ system.time({
     draws        = draws,
     n_workers    = n_workers,
     use_parallel = use_parallel,
-    common_inputs = NULL
+    common_inputs = common_inputs
   )
 })
 
@@ -104,7 +209,7 @@ prediction_long[, species := data.table::fcase(
 )]
 
 # Save test output here
-write_xlsx(prediction_long, file.path(test_results_cd, "lou_local_altregs_10_27_26.xlsx"))
+write_xlsx(prediction_long, file.path(test_results_cd, "lou_local_RPchoicemodel_test.xlsx"))
 #write_xlsx(prediction_long, file.path(test_results_cd, "test_sim_SQ_10_15_26.xlsx"))
 #write_xlsx(prediction_long, file.path(test_results_cd, "test_sim_sizeminus2_9_9_26.xlsx"))
 #write_xlsx(prediction_long, file.path(test_results_cd, "test_sim_sizeplus2_9_9_26.xlsx"))
