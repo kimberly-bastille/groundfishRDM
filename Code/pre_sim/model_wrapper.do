@@ -184,27 +184,32 @@ global trawl_survey_start_year 2022
 /******************************************************************************/
 
 // Control which modules to run (set to 0 to skip)
-loc process_commercial_landings = 1      	    // Get commercial landings from Oracle
-loc process_cod_assess = 1                		// Process Cod Assessment data
+loc process_commercial_landings = 0      	    // Get commercial landings from Oracle
+loc process_cod_assess = 0                		// Process Cod Assessment data
 loc process_haddock_assess = 0            // Process Haddock Assessment data
 
-loc get_assessment_from_gdrive = 1				// Pull Assessment data
+loc get_assessment_from_gdrive = 0				// Pull Assessment data
 loc get_mrip_oracle = 1		 					      // Pull MRIP data.
 loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
 
-loc get_svdbs_data = 1		 					  // Pull MRIP site list.
+loc get_svdbs_data = 0		 					  // Pull MRIP site list.
 
-loc directed_trips_calibration = 1				// Estimate Directed Trips
-loc survey_trip_costs = 1  						    // Create Distributions of costs per trip (run 1x)
-loc estimate_angler_preferences = 1				// Create draw of angler preference parameters (run 1x)
-loc calib_catch_per_trip_part1 = 1				// Part 1 of catch per trip
-loc copula_modeling_calibration = 1				// Copula model in R
-loc calib_catch_per_trip_part2 = 1				// Part 2 of catch per trip
-loc compare_calib_data_to_MRIP = 1				// compare calibration output to MRIP
-loc additional_angler_dems	=1					  // add additional angler demographics
-loc catch_at_length_calibration=1			   	// Generate baseline-year catch-at-length
-loc catch_at_length_project=1					    // Generate projection-year catch-at-length
-loc Rcodewrapper=1								        // Run calibration routine in R
+loc directed_trips_calibration = 0				// Estimate Directed Trips
+loc survey_trip_costs = 0  						    // Create Distributions of costs per trip (run 1x)
+loc estimate_angler_preferences = 0				// Create draw of angler preference parameters (run 1x)
+loc calib_catch_per_trip_part1 = 0				// Part 1 of catch per trip
+loc copula_modeling_calibration = 0				// Copula model in R
+loc calib_catch_per_trip_part2 = 0				// Part 2 of catch per trip
+loc compare_calib_data_to_MRIP = 0				// compare calibration output to MRIP
+loc additional_angler_dems	=0					  // add additional angler demographics
+loc catch_at_length_calibration=0			   	// Generate baseline-year catch-at-length
+loc catch_at_length_project=0					    // Generate projection-year catch-at-length
+
+loc get_fishery_choice_from_gdrive = 0				// Get files required for fishery choice model from gdrive (Lou=0 always)
+loc estimate_fishery_choice_model=1					// Estimate fishery choice model
+loc prepare_fishery_choice_data=1					// Generate data and parameters from fishery choice model
+
+loc Rcodewrapper=0							        // Run calibration routine in R
 
 
 /********************* Push to google drive toggles*************************************/
@@ -587,8 +592,53 @@ if `catch_at_length_project'{
 else {
    local skipped_scripts `skipped_scripts' catch_at_length_projection.do
 }
+
+
+// 11a) Get fishery choice data from gdrive
+/* This code requires you to mount your google drive to D on your computer */
+if `get_fishery_choice_from_gdrive' {
+	di "Getting fishery choice data from Gdrive"
+	do "$input_code_cd\get_fishery_choice_data_from_gdrive.do"
+	local executed_scripts `executed_scripts' get_fishery_choice_data_from_gdrive.do
+}
+else {
+	local skipped_scripts `skipped_scripts' get_fishery_choice_data_from_gdrive.do
+}
+
+
+// 11b) Estimate fishery choice model
+if `estimate_fishery_choice_model'{
+	di "Estimate fishery choice model"
+	do "$input_code_cd\estimate_fishery_choice_model.do"
+	local executed_scripts `executed_scripts' estimate_fishery_choice_model.do
+	
+	
+	}
+else {
+   local skipped_scripts `skipped_scripts' estimate_fishery_choice_model.do
+
+}	
+
+// 11c) Generate fishery choice model data and parameters which feed into projection
+if `prepare_fishery_choice_data'{
+	di "Preparing fishery choice data"
+	do "$input_code_cd\prepare_fishery_choice_data.do"
+	local executed_scripts `executed_scripts' prepare_fishery_choice_data.do
+	
+	do "$input_code_cd\predict_fishery_choice_probabilities.do"
+	local executed_scripts `executed_scripts' predict_fishery_choice_probabilites.do
+	
+	}
+else {
+   local skipped_scripts `skipped_scripts' prepare_fishery_choice_data.do
+   local skipped_scripts `skipped_scripts' predict_fishery_choice_probabilites.do
+
+}
 di "The calibration and projection routines can now be run in R "
-// 11) Run the calibration routine in R, export files to Google Drive
+
+
+
+// 12) Run the calibration routine in R, export files to Google Drive
 if `Rcodewrapper'{
 	di "Running calibration routine in R"
 	cd $here
