@@ -65,8 +65,8 @@ restore
         renvarlab, lower
 		tempvar keeper
 		gen `keeper'=0
-		replace `keeper'==1 if $calibration_year
-		replace `keeper'==1 if $calibration_year_back
+		replace `keeper'=1 if $calibration_year
+		replace `keeper'=1 if $calibration_year_back
 
 		keep if `keeper'==1
 		drop `keeper'
@@ -81,8 +81,8 @@ restore
         renvarlab, lower
 		tempvar keeper
 		gen `keeper'=0
-		replace `keeper'==1 if $calibration_year
-		replace `keeper'==1 if $calibration_year_back
+		replace `keeper'=1 if $calibration_year
+		replace `keeper'=1 if $calibration_year_back
 
 		keep if `keeper'==1
 		drop `keeper'
@@ -188,8 +188,8 @@ save `master', emptyok replace
 		renvarlab, lower
 		tempvar keeper
 		gen `keeper'=0
-		replace `keeper'==1 if $calibration_year
-		replace `keeper'==1 if $calibration_year_back
+		replace `keeper'=1 if $calibration_year
+		replace `keeper'=1 if $calibration_year_back
 
 		keep if `keeper'==1
 		drop `keeper'
@@ -203,8 +203,8 @@ save `master', emptyok replace
         renvarlab, lower
 		tempvar keeper
 		gen `keeper'=0
-		replace `keeper'==1 if $calibration_year
-		replace `keeper'==1 if $calibration_year_back
+		replace `keeper'=1 if $calibration_year
+		replace `keeper'=1 if $calibration_year_back
 
 		keep if `keeper'==1
 		drop `keeper'
