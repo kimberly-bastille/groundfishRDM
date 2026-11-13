@@ -176,9 +176,6 @@ tempfile master
 save `master', emptyok replace
 
 
-*foreach yr of local yrz {
-*   foreach wave of local wavelist {
-
 
 
 
@@ -288,8 +285,6 @@ save `master', emptyok replace
         
         append using `master'
         save `master', replace
-*    }
-*}
 
 use `master', clear
 
