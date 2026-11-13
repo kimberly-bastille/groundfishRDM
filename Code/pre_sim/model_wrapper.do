@@ -234,9 +234,9 @@ loc process_cod_assess = 0                		// Process Cod Assessment data
 loc process_haddock_assess = 0            // Process Haddock Assessment data
 
 loc get_assessment_from_gdrive = 0				// Pull Assessment OUTPUTs 
-loc get_mrip_oracle = 0	 		 			      // Pull MRIP data.
+loc get_mrip_oracle = 1	 		 			      // Pull MRIP data.
 loc get_fes_from_gdrive=0						// get the fes data from google drive
-loc get_mrip_site_list = 0		 					  // Pull MRIP site list.
+loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
 
 loc get_svdbs_data = 0		 					  // Pull MRIP site list.
 
@@ -253,8 +253,8 @@ loc catch_at_length_project=0					    // Generate projection-year catch-at-lengt
 
 
 loc get_fishery_choice_from_gdrive = 0				// Get files required for fishery choice model from gdrive (Lou=0 always)
-loc estimate_fishery_choice_model=0					// Estimate fishery choice model
-loc prepare_fishery_choice_data=0					// Generate data and parameters from fishery choice model
+loc estimate_fishery_choice_model=1					// Estimate fishery choice model
+loc prepare_fishery_choice_data=1					// Generate data and parameters from fishery choice model
 
 loc Rcodewrapper=0							        // Run calibration routine in R
 
