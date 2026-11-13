@@ -607,7 +607,7 @@ else {
 
 
 // 11b) Estimate fishery choice model
-if `prepare_fishery_choice_data'{
+if `estimate_fishery_choice_model'{
 	di "Estimate fishery choice model"
 	do "$input_code_cd\estimate_fishery_choice_model.do"
 	local executed_scripts `executed_scripts' estimate_fishery_choice_model.do
