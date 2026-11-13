@@ -52,7 +52,7 @@ save `mrip_sites', replace
 restore
 
 
-
+/* Note, this is a problem, we need to rewrite this to pick up the options from the wrapper*/
 local yrz "2024, 2025, 2026"
 local wavelist "1, 2, 3, 4, 5, 6"
 
