@@ -1,4 +1,34 @@
-
+/*******************************************************************************
+ Script:      			prepare_fishery_choice_data.do
+ Purpose:      		Builds the calibration-period fishery choice data used to
+							integrate estimated fishery demand into the simulation. It:
+								1) combines available MRIP trip/catch extracts and identifies
+									WGOM trips targeting one of 15 fisheries in private/rental
+									or for-hire mode,
+								2) estimates survey-weighted species catch-per-trip over the
+									preceding 14 days, with SEs and sample counts,
+								3) prepares daily retention status and expands each eligible
+									calibration trip to all 15 alternatives, and
+								4) predicts alternative-specific trip costs and merges catch
+									availability to form the prediction master dataset.
+ Inputs:       			All files below are created outside the repo and contained in $misc_data_cd:
+								trip_<year><wave>.dta, catch_<year><wave>.dta   (currently searches 2024-2026, waves 1-6)
+								MRIP_COD_ALL_SITE_LIST.csv
+								daily_rec_regulations_2010_2025.dta
+								trip_cost_species_codes.dta
+								trip_cost_model.ster
+ Outputs:      			$misc_data_cd/fishery_choice_trips.dta
+							$misc_data_cd/fishery_choice_availability.dta
+							$misc_data_cd/fishery_choice_data_master.dta
+ Dependencies: 	Set $misc_data_cd, $calibration_year, $calibration_date_start, and $calibration_date_end
+							before running. Requires user-written renvarlab and the previously estimated trip-cost model with its input variables.
+ Pipeline:     			Calibration-data branch. Run before predict_fishery_choice_probabilities.do, which combines the
+							master data with the historical fishery choice estimates.
+ Notes:        			Availability uses directed trips in the same mode and WGOM,  pooling states.
+							Missing availability is set to zero in the master data.
+							Numeric mode coding is fh=1, pr=2. 
+							Review MRIP year coverage and the year-specific regulation block for each new cycle.
+*******************************************************************************/
 
 **Step 1: pull MRIP data for the calibration period
 clear
@@ -441,8 +471,8 @@ save "$misc_data_cd\fishery_choice_availability.dta", replace
 
 
 * Update regulations for ALL species through calibration period. 
-* The regulations file used in the fishery choice model spans through 2025. Update any regulations for the calibration period that are not in the RDM calibration period
-* For mgt cycle 2027, this means 2026 regulations 
+* The regulations file used in the fishery choice model spans through 2025. Update any regulations for the calibration period that are not in the RDM calibration period.
+* For mgt cycle 2027, this means 2026 regulations.
 use "$misc_data_cd\daily_rec_regulations_2010_2025.dta", clear
 rename prim1_common alt_name
 keep state mode date alt_name open

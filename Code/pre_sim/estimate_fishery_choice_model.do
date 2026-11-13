@@ -1,3 +1,40 @@
+/*******************************************************************************
+ Script:       			estimate_fishery_choice_model.do
+ Purpose:      		Prepares historical MRIP choice occasions and estimates the
+							full-sample 2010-2025 multinomial logit (MNL) fishery choice
+							model for WGOM private/rental and for-hire trips. It:
+								1) expands each eligible trip to 15 fishery alternatives,
+								2) merges daily retention status, predicted trip costs, and
+									catch availability over the preceding 14 days,
+								3) screens support for pooled/species opening effects,
+									opening-by-month deviations, and species interactions
+									with state, mode, and calendar month, and
+								4) estimates a probability-weighted asclogit model with
+									standard errors clustered by year-stratum-PSU.
+ Inputs:     			All files below are created outside the repo and are contained in $misc_data_cd:
+								trip_data.dta
+								daily_rec_regulations_2010_2025.dta
+								trip_cost_species_codes.dta
+								trip_cost_model.ster
+								availability_state.dta
+Outputs:    		  $misc_data_cd/choice_data_2010_2025.dta (15 rows per choice occasion, generated 
+								regressors, and full_estimation_sample flag)
+						$misc_data_cd/mnl_full_2010_2025.ster (asclogit model output)
+ Dependencies: $misc_data_cd must already be set and the historical
+						trip, regulation, cost, and availability inputs prepared.
+						Support-screening programs are defined within this file.
+ Pipeline:  			Historical estimation branch. The saved estimates and choice
+						data are read by predict_fishery_choice_probabilities.do;
+						prepare_fishery_choice_data.do separately builds its
+						calibration-period prediction data.
+ Notes:    			Retention-closed fisheries remain in each choice set; open
+						enters utility. Missing catch availability is set to zero.
+						Trip cost enters in hundreds of the cost model's dollar units.
+						Seven-nest membership and singleton constraints are prepared,
+						but the fitted/saved model in this script is MNL.
+*******************************************************************************/
+
+
 version 19
 clear all
 set more off
