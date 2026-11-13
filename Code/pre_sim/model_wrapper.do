@@ -200,7 +200,11 @@ global trawl_survey_start_year 2023
 /******************************************************************************/
 /* Section C2:JUST FOR TESTING  - temporarily rebuild the calibration_year global 
 and the mrip globals to get a different set of data*/
+	local calib_year_back3=`calib_year'-3
+
 	global calibration_year "(year==`calib_year_back' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back2' & inlist(wave, 6))"  // last six waves of data  updated
+	global calibration_year "(year==`calib_year_back2' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back3' & inlist(wave, 6))"  // last six waves of data  updated
+
 	global calibration_date_start mdy(11,1,`calib_year_back2')
 	global calibration_date_end mdy(10,31,`calib_year_back')
 
