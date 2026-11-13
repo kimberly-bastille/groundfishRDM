@@ -329,7 +329,7 @@ if `uncertain_loc' {
 */
 if (`final_data_prep'==0){
  	global ndraws 5
-	confirm_prompt "Prototyping data setup, ndraws set to $ndraws." "1"
+	display as input "Prototyping enabled. Set ndraws global: " _request(ndraws)
 }
 
 if (`final_data_prep')==1{
