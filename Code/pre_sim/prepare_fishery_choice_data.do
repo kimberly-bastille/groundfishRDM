@@ -53,6 +53,10 @@ restore
 
 
 
+local yrz "2024, 2025, 2026"
+local wavelist "1, 2, 3, 4, 5, 6"
+
+
         capture confirm file "$misc_data_cd/mrip_trip.dta"
         if _rc continue
 
@@ -64,7 +68,9 @@ restore
 
         use "$misc_data_cd/mrip_trip.dta", clear
         renvarlab, lower
-		keep if $calibration_year
+        keep if inlist(year,`yrz')
+		keep if inlist(wave, `wavelist') 
+
 		
         * keep if year == `yr' & wave == `wave'
         count
@@ -75,7 +81,8 @@ restore
 		
         use "$misc_data_cd/mrip_catch.dta", clear
         renvarlab, lower
-		keep if $calibration_year
+        keep if inlist(year,`yrz')
+		keep if inlist(wave, `wavelist') 
         count
         if r(N) == 0 continue
 
@@ -169,13 +176,19 @@ tempfile master
 save `master', emptyok replace
 
 
+*foreach yr of local yrz {
+*   foreach wave of local wavelist {
+
+
+
 
         tempfile tl1 cl1
 
         use "$misc_data_cd/mrip_trip.dta", clear
 		
 		renvarlab, lower
-		keep if $calibration_year
+        keep if inlist(year,`yrz')
+		keep if inlist(wave, `wavelist') 
         count
         if r(N) == 0 continue
 
@@ -184,7 +197,8 @@ save `master', emptyok replace
 		
         use "$misc_data_cd/mrip_catch.dta", clear
         renvarlab, lower
-		keep if $calibration_year
+        keep if inlist(year,`yrz')
+		keep if inlist(wave, `wavelist') 
         count
         if r(N) == 0 continue
 
@@ -274,6 +288,8 @@ save `master', emptyok replace
         
         append using `master'
         save `master', replace
+*    }
+*}
 
 use `master', clear
 
