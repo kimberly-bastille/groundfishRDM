@@ -11,9 +11,9 @@
 									calibration trip to all 15 alternatives, and
 								4) predicts alternative-specific trip costs and merges catch
 									availability to form the prediction master dataset.
- Inputs:       			All files below are created outside the repo and contained in $misc_data_cd:
-								trip_<year><wave>.dta, catch_<year><wave>.dta   (currently searches 2024-2026, waves 1-6)
-								MRIP_COD_ALL_SITE_LIST.csv
+ Inputs:       			mrip_trip.dta, and mrip_catch.dta (from the get_mrip_oracle.R )  
+						MRIP_COD_ALL_SITE_LIST.csv from get_mrip_site_list.R 
+						These are created outside the repo and contained in $misc_data_cd:
 								daily_rec_regulations_2010_2025.dta
 								trip_cost_species_codes.dta
 								trip_cost_model.ster
@@ -51,37 +51,38 @@ tempfile mrip_sites
 save `mrip_sites', replace
 restore
 
-local yrz 2024 2025 2026
-local wavelist 1 2 3 4 5 6
 
-foreach yr of local yrz {
-    foreach wave of local wavelist {
-		*local yr 2012
-		*local wave 4
-        local yw = `yr' * 10 + `wave'
 
-        capture confirm file "$misc_data_cd/trip_`yw'.dta"
+local yrz "2024, 2025, 2026"
+local wavelist "1, 2, 3, 4, 5, 6"
+
+
+        capture confirm file "$misc_data_cd/mrip_trip.dta"
         if _rc continue
 
-        capture confirm file "$misc_data_cd/catch_`yw'.dta"
+        capture confirm file "$misc_data_cd/mrip_catch.dta"
         if _rc continue
 
-        di as text "Processing year-wave `yw'"
 
         tempfile tl1 cl1
 
-        use "$misc_data_cd/trip_`yw'.dta", clear
+        use "$misc_data_cd/mrip_trip.dta", clear
         renvarlab, lower
-        keep if year == `yr' & wave == `wave'
+        keep if inlist(year,`yrz')
+		keep if inlist(wave, `wavelist') 
+
+		
+        * keep if year == `yr' & wave == `wave'
         count
         if r(N) == 0 continue
 
         sort year strat_id psu_id id_code
         save `tl1', replace
 		
-        use "$misc_data_cd/catch_`yw'.dta", clear
+        use "$misc_data_cd/mrip_catch.dta", clear
         renvarlab, lower
-        keep if year == `yr' & wave == `wave'
+        keep if inlist(year,`yrz')
+		keep if inlist(wave, `wavelist') 
         count
         if r(N) == 0 continue
 
@@ -149,8 +150,8 @@ foreach yr of local yrz {
         
         append using `master'
         save `master', replace
-    }
-}
+*    }
+*}
 
 use `master', clear
 
@@ -175,34 +176,29 @@ tempfile master
 save `master', emptyok replace
 
 
-foreach yr of local yrz {
-   foreach wave of local wavelist {
-		*local yr 2012
-		*local wave 4
-        local yw = `yr' * 10 + `wave'
+*foreach yr of local yrz {
+*   foreach wave of local wavelist {
 
-        capture confirm file "$misc_data_cd/trip_`yw'.dta"
-        if _rc continue
 
-        capture confirm file "$misc_data_cd/catch_`yw'.dta"
-        if _rc continue
 
-        di as text "Processing year-wave `yw'"
 
         tempfile tl1 cl1
 
-        use "$misc_data_cd/trip_`yw'.dta", clear
-        renvarlab, lower
-        keep if year == `yr' & wave == `wave'
+        use "$misc_data_cd/mrip_trip.dta", clear
+		
+		renvarlab, lower
+        keep if inlist(year,`yrz')
+		keep if inlist(wave, `wavelist') 
         count
         if r(N) == 0 continue
 
         sort year strat_id psu_id id_code
         save `tl1', replace
 		
-        use "$misc_data_cd/catch_`yw'.dta", clear
+        use "$misc_data_cd/mrip_catch.dta", clear
         renvarlab, lower
-        keep if year == `yr' & wave == `wave'
+        keep if inlist(year,`yrz')
+		keep if inlist(wave, `wavelist') 
         count
         if r(N) == 0 continue
 
@@ -292,8 +288,8 @@ foreach yr of local yrz {
         
         append using `master'
         save `master', replace
-    }
-}
+*    }
+*}
 
 use `master', clear
 
