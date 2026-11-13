@@ -189,8 +189,8 @@ loc process_cod_assess = 0                		// Process Cod Assessment data
 loc process_haddock_assess = 0            // Process Haddock Assessment data
 
 loc get_assessment_from_gdrive = 0				// Pull Assessment data
-loc get_mrip_oracle = 0		 					      // Pull MRIP data.
-loc get_mrip_site_list = 0		 					  // Pull MRIP site list.
+loc get_mrip_oracle = 1		 					      // Pull MRIP data.
+loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
 
 loc get_svdbs_data = 0		 					  // Pull MRIP site list.
 
