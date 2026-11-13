@@ -701,7 +701,7 @@ else {
 /* This code requires you to mount your google drive to D on your computer */
 if `get_fishery_choice_from_gdrive' {
 	di "Getting fishery choice data from Gdrive"
-	do "$input_code_cd\get_fishery_choice_data_from_gdrive.do"
+	do "$input_code_cd\get_fishery_choice_data_from_gdrive.do" $Fishery $ManagementCycle
 	local executed_scripts `executed_scripts' get_fishery_choice_data_from_gdrive.do
 }
 else {
