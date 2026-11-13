@@ -35,25 +35,25 @@ library(future)
 library(conflicted)
 conflicts_prefer(data.table::month)
 
-final_process_data_cd=here::here("Data")
-final_process_outcomes_cd=here::here("Data/base_outcomes")
-final_process_choice_occasions_cd=here::here("Data/n_choice_occasions")
-final_process_misc_cd=here::here("Data/miscellaneous")
-final_process_calib_catch_cd=here::here("Data/calib_catch_draws")
+# final_process_data_cd=here::here("Data")
+# final_process_outcomes_cd=here::here("Data/base_outcomes")
+# final_process_choice_occasions_cd=here::here("Data/n_choice_occasions")
+# final_process_misc_cd=here::here("Data/miscellaneous")
+# final_process_calib_catch_cd=here::here("Data/calib_catch_draws")
 
-# final_process_data_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM"
-# final_process_outcomes_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/base_outcomes"
-# final_process_choice_occasions_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/n_choice_occasions"
-# final_process_misc_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/miscellaneous"
-# final_process_calib_catch_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/calib_catch_draws"
+final_process_data_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM"
+final_process_outcomes_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/base_outcomes"
+final_process_choice_occasions_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/n_choice_occasions"
+final_process_misc_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/miscellaneous"
+final_process_calib_catch_cd="Y:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/calib_catch_draws"
 
 ################################################################################
 ################################################################################
 # Section A: User-facing controls and inputs
 ################################################################################
 ################################################################################
-#draws         <- 1:101
-#n_simulations <- 101
+# draws         <- 1:5
+# n_simulations <- 6
 draws         <- 1:101
 n_simulations <- 101
 mode_draw     <- c("pr", "fh")
@@ -72,6 +72,11 @@ cod_lw_b <- if (exists("cod_lw_b")) cod_lw_b else 3.1625
 had_lw_a <- if (exists("had_lw_a")) had_lw_a else 0.000009298
 had_lw_b <- if (exists("had_lw_b")) had_lw_b else 3.0205
 
+# Dataset needed to compute fishery choice model probabilities
+baseline_choice <- haven::read_dta(
+  file.path(final_process_misc_cd, "baseline_choice_probabilities_long.dta")
+)
+baseline<-baseline_choice
 
 
 ################################################################################
@@ -93,6 +98,13 @@ directed_trips<- directed_trips %>%
   dplyr::select(mode, date_parsed, dtrip,
                 cod_bag, cod_min, hadd_bag, hadd_min, draw) %>%
   dplyr::mutate(date_adj = date_parsed)
+
+# Generate a variable for the cod and haddock open season prior to dynamic adjustments from the web tool
+directed_trips<-directed_trips %>%
+  dplyr::mutate(
+    cod_open_y1  = dplyr::if_else(cod_bag>0, 1, 0),
+    hadd_open_y1  = dplyr::if_else(hadd_bag>0, 1, 0))
+
 
 # Overwrite each day's bag/size limits with the scenario's rules. Within each
 # case_when the seasons are tested 3 -> 2 -> 1 so that, if seasons overlap, the
@@ -136,6 +148,72 @@ directed_trips <- directed_trips %>%
       TRUE ~ 100)
   )
 
+
+# Generate a variable for the cod and haddock open season after dynamic regulatory adjustments from the web tool
+directed_trips<-directed_trips %>%
+  dplyr::mutate(
+    cod_open_y2  = dplyr::if_else(cod_bag>0, 1, 0),
+    hadd_open_y2  = dplyr::if_else(hadd_bag>0, 1, 0))
+
+# call the predict_policy_probabilities() and generate the trip adjustment dataset
+policy_choice <- predict_policy_probabilities(
+  baseline = baseline_choice,
+  directed_trips = directed_trips
+)
+
+cod_haddock_probabilities <- policy_choice[
+  alt_name %in% c("atlanticcod", "haddock"),
+  .(p0_cod_haddock = sum(p0), p1_cod_haddock = sum(p1)),
+  by = .(group, state, mode_string, date_parsed, wp_int)
+]
+
+# Validate weights and ensure one row per original choice occasion.
+cod_haddock_probabilities <- data.table::as.data.table(cod_haddock_probabilities)
+
+if (anyDuplicated(cod_haddock_probabilities$group)) {
+  stop("Expected one combined cod/haddock probability per choice occasion.")
+}
+if (cod_haddock_probabilities[, any(!is.finite(wp_int) | wp_int < 0)]) {
+  stop("Missing, nonfinite, or negative trip weights: resolve before aggregation.")
+}
+if (cod_haddock_probabilities[
+  , any(!is.finite(p0_cod_haddock) | !is.finite(p1_cod_haddock))
+]) {
+  stop("Missing or nonfinite cod/haddock probabilities.")
+}
+
+# Multiply each probability by its baseline trip weight.
+cod_haddock_probabilities[, `:=`(
+  month = lubridate::month(date_parsed),
+  weighted_trips_p0 = wp_int * p0_cod_haddock,
+  weighted_trips_p1 = wp_int * p1_cod_haddock
+)]
+
+# Aggregate across states and occasions within month and mode.
+trip_adjustments <- cod_haddock_probabilities[, .(
+  n_occasions = .N,
+  total_trip_weight = sum(wp_int),
+  predicted_trips_p0 = sum(weighted_trips_p0),
+  predicted_trips_p1 = sum(weighted_trips_p1)
+), by = .(mode = mode_string, month)]
+
+# A zero baseline cannot support a multiplicative adjustment.
+if (trip_adjustments[, any(predicted_trips_p0 <= 0)]) {
+  stop("At least one month/mode has no positive baseline predicted trips.")
+}
+
+trip_adjustments[, `:=`(
+  trip_ratio = predicted_trips_p1 / predicted_trips_p0,
+  delta_trips = predicted_trips_p1 - predicted_trips_p0,
+  percent_change = 100 * (predicted_trips_p1 / predicted_trips_p0 - 1)
+)]
+
+data.table::setorder(trip_adjustments, mode, month)
+
+trip_adjustments<-trip_adjustments %>%
+  dplyr::select(mode, month, trip_ratio)
+
+
 ################################################################################
 ################################################################################
 # Section C: Run the projection
@@ -156,16 +234,54 @@ use_parallel <- if (exists("use_parallel")) use_parallel else TRUE
 message("Running cod/haddock projection for policy '", policy_name,
         "' over ", length(draws), " draw(s); this may take a while ...")
 data.table::setDTthreads(1)
+
+# Load the common inputs using the CURRENT scenario's directed-trip regulations.
+common_inputs <- read_projection_common_inputs_cod_hadd(
+  final_process_misc_cd = final_process_misc_cd,
+  directed_trips = data.table::as.data.table(data.table::copy(directed_trips)),
+  season_draw = season_draw,
+  mode_draw = mode_draw,
+  draws = draws
+)
+
+# Attach the RP adjustment calculated above for this scenario.
+common_inputs$trip_adjustments <- data.table::as.data.table(
+  data.table::copy(trip_adjustments)
+)
+
+# Verify that every simulated month/mode has exactly one valid adjustment.
+rp_adjustments <- common_inputs$trip_adjustments
+
+if (anyDuplicated(rp_adjustments[, .(mode, month)])) {
+  stop("Duplicate RP adjustments by mode/month.")
+}
+if (rp_adjustments[, any(!is.finite(trip_ratio) | trip_ratio < 0)]) {
+  stop("Invalid RP trip ratios.")
+}
+
+required_cells <- unique(common_inputs$directed_trips[
+  , .(mode, month = lubridate::month(date_parsed))
+])
+
+coverage <- merge(required_cells, rp_adjustments,
+                  by = c("mode", "month"), all.x = TRUE)
+coverage$trip_ratio[is.na(coverage$trip_ratio)] <- 1
+
+if (coverage[, anyNA(trip_ratio)]) {
+  stop("RP adjustments do not cover every simulated month/mode.")
+}
+
 system.time({
   prediction_draws <- run_cod_hadd_projection(
-    season_draw  = season_draw,
-    mode_draw    = mode_draw,
-    draws        = draws,
-    n_workers    = n_workers,
+    season_draw = season_draw,
+    mode_draw = mode_draw,
+    draws = draws,
+    n_workers = n_workers,
     use_parallel = use_parallel,
-    common_inputs = NULL
+    common_inputs = common_inputs
   )
 })
+
 message("Projection complete.")
 
 prediction_draws$policy_name <- policy_name

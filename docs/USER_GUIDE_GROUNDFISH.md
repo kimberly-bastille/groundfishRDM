@@ -213,7 +213,7 @@ Select the CV box to add two figures, one for cod and one for haddock. Each figu
 
 ------------------------------------------------------------------------
 
-![Figure 9: Screenshot of the angler satisfaction versus cod mortality figure](figures/ChangeInAnglerSatisfaction.png)
+![Figure 9: Screenshot of the compensating variation versus cod mortality figure](figures/codCV.png)
 
 ------------------------------------------------------------------------
 

@@ -77,6 +77,81 @@ zero_missing_cols <- function(dt, cols) {
   invisible(dt)
 }
 
+
+# function to pull in fishery choice parameters and predict baseline and changed probabilities
+predict_policy_probabilities <- function(baseline, directed_trips) {
+
+  baseline <- data.table::as.data.table(data.table::copy(baseline)) %>%
+    dplyr::mutate(date_parsed = parse_date_any(date))
+
+  regs <- data.table::as.data.table(data.table::copy(directed_trips))
+
+  required <- c("group", "alt_name", "date", "mode_string", "open", "p0", "beta_open")
+  if (!all(required %in% names(baseline))) stop("Baseline dataset is missing required columns.")
+
+  baseline[, date := as.Date(date)]
+
+  # Regulations repeat across draws; retain one consistent rule per date/mode.
+  regs[, date_parsed := as.Date(date_parsed)]
+  regs <- unique(regs[, .(
+    mode_string = as.character(mode),
+    date_parsed = date_parsed,
+    cod_open_y2,
+    hadd_open_y2,
+    cod_open_y1,
+    hadd_open_y1
+
+  )])
+
+  if (anyDuplicated(regs[, .(mode_string, date_parsed)])) {
+    stop("Scenario open status differs across draws for the same date and mode.")
+  }
+  if (anyNA(regs)) stop("Scenario regulation table contains missing values.")
+
+  baseline <- merge(baseline, regs, by = c("mode_string", "date_parsed"), all.x = TRUE, sort = FALSE)
+
+  if (baseline[alt_name %in% c("atlanticcod", "haddock"),
+               anyNA(cod_open_y2) | anyNA(hadd_open_y2)]) {
+    stop("Scenario regulations do not cover every required cod/haddock date and mode.")
+  }
+
+  # Change only cod and haddock regulations.
+  baseline[, open_y2 := as.integer(open)]
+  baseline[alt_name == "atlanticcod", open := cod_open_y1]
+  baseline[alt_name == "haddock", open := hadd_open_y1]
+  baseline[alt_name == "atlanticcod", open_y2 := cod_open_y2]
+  baseline[alt_name == "haddock", open_y2 := hadd_open_y2]
+  baseline[, delta_v := beta_open * (open_y2 - open)]
+
+  # Numerically stable probability update.
+  if (baseline[, anyNA(p0) | any(p0 <= 0 | p0 > 1)]) {
+    stop("p0 must be positive and nonmissing; inspect zero/underflow probabilities.")
+  }
+  baseline[, log_score := log(p0) + delta_v]
+  baseline[, score := exp(log_score - max(log_score)), by = group]
+  baseline[, p1 := score / sum(score), by = group]
+
+  checks <- baseline[, .(
+    n_alts = .N,
+    n_unique_alts = data.table::uniqueN(alt_name),
+    sum_p0 = sum(p0),
+    sum_p1 = sum(p1),
+    unchanged = all(delta_v == 0),
+    max_difference = max(abs(p1 - p0))
+  ), by = group]
+
+  if (checks[, any(n_alts != 15L | n_unique_alts != 15L |
+                   abs(sum_p0 - 1) > 1e-8 | abs(sum_p1 - 1) > 1e-8)]) {
+    stop("Choice-set or probability checks failed.")
+  }
+  if (checks[unchanged == TRUE, any(max_difference > 1e-8)]) {
+    stop("Unchanged regulations unexpectedly changed probabilities.")
+  }
+
+  baseline[, c("log_score", "score") := NULL]
+  baseline[]
+}
+
 # -----------------------------------------------------------------------------
 # Common input loading
 # -----------------------------------------------------------------------------
@@ -145,13 +220,16 @@ read_projection_common_inputs_cod_hadd <- function(final_process_misc_cd,
 
   calendar_adjustments <- read_fst(file.path(final_process_misc_cd,"calendar_adj.fst"))
 
+
   list(
     calib = calib,
     size_lookup = size_lookup,
     directed_trips = directed_trips,
     cod_disc_mort = cod_disc_mort,
     hadd_disc_mort = hadd_disc_mort,
-    calendar_adjustments = calendar_adjustments
+    calendar_adjustments = calendar_adjustments,
+    trip_adjustments = NULL
+
   )
 }
 
@@ -588,11 +666,37 @@ project_one_cod_hadd_both_modes <- function(s,
 
     if (!"expansion_factor" %in% names(mean_trip_data)) mean_trip_data[, expansion_factor := 1]
     mean_trip_data[is.na(expansion_factor), expansion_factor := 1]
-    mean_trip_data[, expand := (n_choice_occasions * 1) / n_draws]
+    mean_trip_data[, expand_base := n_choice_occasions / n_draws]
+    mean_trip_data[, expand_calendar := expand_base * expansion_factor]
 
-    scale_cols <- intersect(c(outcome_cols, "probA", "prob0", "CV"), names(mean_trip_data))
-    mean_trip_data[, (scale_cols) := lapply(.SD, function(x) x * expand), .SDcols = scale_cols]
-    data.table::setnames(mean_trip_data, c("probA", "prob0"), c("n_trips_alt", "n_trips_base"), skip_absent = TRUE)
+
+    trip_adj <- data.table::as.data.table(data.table::copy(common_inputs$trip_adjustments))
+    check_required_cols(trip_adj, c("mode", "month", "trip_ratio"), "trip_adjustments")
+    trip_adj <- trip_adj[, .(mode, month, trip_ratio)]
+
+    if (anyDuplicated(trip_adj[, .(mode, month)])) stop("Duplicate trip adjustments by mode/month.")
+    if (trip_adj[, any(!is.finite(trip_ratio) | trip_ratio < 0)]) stop("Invalid trip ratios.")
+
+    mean_trip_data <- merge(mean_trip_data, trip_adj, by = c("mode", "month"), all.x = TRUE)
+    if (mean_trip_data[, anyNA(trip_ratio)]) stop("Missing trip adjustment for a simulated mode/month.")
+
+
+    # Policy choice occasions: baseline -> calendar adjustment -> RP adjustment.
+    mean_trip_data[, expand_policy := expand_calendar * trip_ratio]
+
+    # Catch outcomes already include probA from the earlier multiplication.
+    scale_cols <- c(outcome_cols, "probA")
+    mean_trip_data[, (scale_cols) := lapply(.SD, function(x) x * expand_policy),
+                   .SDcols = scale_cols]
+
+    # CV remains defined over the same projection-calendar choice occasions.
+    mean_trip_data[, CV := CV * expand_calendar]
+
+    # Baseline trips retain the calibration-year choice-occasion population.
+    mean_trip_data[, prob0 := prob0 * expand_base]
+
+    data.table::setnames(mean_trip_data, c("probA", "prob0"), c("n_trips_alt", "n_trips_base"))
+
 
     trip_metrics <- intersect(c(
       "CV", "n_trips_alt", "n_trips_base",
@@ -606,23 +710,22 @@ project_one_cod_hadd_both_modes <- function(s,
 
     mode_outputs[[md]] <- mean_trip_data[ ,
                                           lapply(.SD, sum, na.rm = TRUE),
-                                          by = .(season, mode),
-                                          .SDcols = trip_metrics
-    ]
+                                          by = .(month, mode),
+                                          .SDcols = trip_metrics]
 
   }
 
   model_output <- data.table::rbindlist(mode_outputs, use.names = TRUE, fill = TRUE)
 
-  model_output_all <- model_output[, lapply(.SD, sum, na.rm = TRUE), by = .(season), .SDcols = setdiff(names(model_output), c("season", "mode"))]
+  model_output_all <- model_output[, lapply(.SD, sum, na.rm = TRUE), by = .(month), .SDcols = setdiff(names(model_output), c("month", "mode"))]
   model_output_all[, mode := "all modes"]
   data.table::setcolorder(model_output_all, names(model_output))
   model_output <- data.table::rbindlist(list(model_output, model_output_all), use.names = TRUE, fill = TRUE)
 
-  trip_metrics <- setdiff(names(model_output), c("season", "mode"))
+  trip_metrics <- setdiff(names(model_output), c("month", "mode"))
   model_output_long <- data.table::melt(
     model_output,
-    id.vars = c("season", "mode"),
+    id.vars = c("month", "mode"),
     measure.vars = trip_metrics,
     variable.name = "metric",
     value.name = "value"
