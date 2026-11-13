@@ -1,7 +1,37 @@
+/*******************************************************************************
+ Script:      		 predict_fishery_choice_probabilities.do
+ Purpose:      	Applies the saved historical MNL fishery choice model to
+						calibration-period choice occasions for simulation use. It:
+							1) restores alternative, state, and mode identifiers from
+								the historical training data,
+							2) reconstructs supported opening and interaction regressors
+								from saved coefficient names without re-screening,
+							3) predicts baseline choice probabilities (p0) across all
+								15 fisheries and checks they sum to one per occasion, and
+							4) calculates each alternative's effective opening coefficient
+								(beta_open), including species and monthly effects, for
+								subsequent regulation-driven probability adjustments.
+ Inputs:       		$misc_data_cd/fishery_choice_data_master.dta (created in prepare_fishery_choice_data.do)
+						$misc_data_cd/choice_data_2010_2025.dta  (created in estimate_fishery_choice_model.do)
+						$misc_data_cd/mnl_full_2010_2025.ster (created in estimate_fishery_choice_model.do)
+ Outputs:     		 $misc_data_cd/baseline_choice_probabilities_long.dta
+						(choice-occasion x alternative data with p0, beta_open, mode_string, and weekday, plus retained input variables)
+ Dependencies: $misc_data_cd must already be set. Run
+						estimate_fishery_choice_model.do to produce the historical
+						estimates/coding and prepare_fishery_choice_data.do to produce
+						the calibration master data. Requires a saved asclogit model
+						and the same variable definitions used during estimation.
+ Pipeline:     		Joins the historical-estimation and calibration-data branches.
+						Supplies baseline probabilities and opening coefficients for
+						the subsequent fishery simulation's trip-demand adjustments.
+ Notes:        		Retention-closed alternatives remain in the choice set; open
+						is a utility covariate. p0 reflects calibration-date regulations.
+						weekday is Sunday=0 through Saturday=6, without holiday
+						adjustment. This script does not generate counterfactual
+						probabilities or aggregate trip totals.
+*******************************************************************************/
 
 
-* Run AFTER baseline_fishery_choice_predictions.do has saved choice_data_master.dta.
-* Requires the SAME historical coding used to estimate mnl_full_2010_2025.ster.
 version 19
 local model_file "$misc_data_cd\mnl_full_2010_2025.ster"
 local training_file "$misc_data_cd\choice_data_2010_2025.dta"
@@ -151,8 +181,6 @@ gen byte weekday=dow(date)
 label variable weekday "Day of week: Sunday=0 through Saturday=6; not holiday-adjusted"
 label variable p0 "Baseline probability under calibration-date regulations"
 order group state mode mode_string date year cal_month alt alt_name choice open p0
-
-
 
 
 * Effective derivative of utility with respect to open.
