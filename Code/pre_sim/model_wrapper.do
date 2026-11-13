@@ -435,7 +435,7 @@ else {
 if `get_assessment_from_gdrive' {
 	di "Pulling Assessment data from google"
 
-	do "$input_code_cd\get_assessment_from_gdrive.do" "$Fishery" $ManagementCycle
+	do "$input_code_cd\get_assessment_from_gdrive.do" $Fishery $ManagementCycle
 	local executed_scripts `executed_scripts' get_assessment_from_gdrive.R
 }
 else {
@@ -467,7 +467,7 @@ else {
 }
 if `get_fes_from_gdrive' {
   	di "Copying FES from Google Drive "
-	do "$input_code_cd\get_fes_from_gdrive.do" "$Fishery" $ManagementCycle $FesYear
+	do "$input_code_cd\get_fes_from_gdrive.do" $Fishery $ManagementCycle $FesYear
   	di "FES Files copied from Google Drive "
 
 }
@@ -765,7 +765,7 @@ else {
 if (`projected_naa_uncertain' & "$developer"=="TP"){
 	di "Resetting Assessment data from google"
 	
-	do "$input_code_cd\get_assessment_from_gdrive.do" "$Fishery" $ManagementCycle
+	do "$input_code_cd\get_assessment_from_gdrive.do" $Fishery $ManagementCycle
 	local executed_scripts `executed_scripts' AssesmentReset
 }
 
