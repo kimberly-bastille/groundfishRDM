@@ -35,7 +35,9 @@ clear
 tempfile master
 save `master', emptyok replace
 
-* Build site lookup once, outside the loop
+* Build site lookup for ME and MA once, outside the loop
+* all NH is in WGOM, so we do not need it to be in this chunk of code
+
 preserve
 import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear
 keep if inlist(state, "MA", "ME")
@@ -172,22 +174,6 @@ clear
 tempfile master
 save `master', emptyok replace
 
-* Build site lookup once, outside the loop
-preserve
-import delimited using "$misc_data_cd\MRIP_COD_ALL_SITE_LIST.csv", clear
-keep if inlist(state, "MA", "ME")
-keep state intsite nmfs_stock_area nmfs_stat_area
-sort intsite nmfs_stock_area
-replace nmfs_stock_area = "WGOM" if inlist(nmfs_stat_area, 521, 526, 541, 514, 513, 515)
-replace nmfs_stock_area = "XX" if !inlist(nmfs_stat_area, 521, 526, 541, 514, 513, 515)
-keep nmfs_stock_area intsite nmfs_stat_area state
-duplicates drop
-tempfile mrip_sites
-save `mrip_sites', replace
-restore
-
-local yrz 2024 2025 2026
-local wavelist 1 2 3 4 5 6
 
 foreach yr of local yrz {
    foreach wave of local wavelist {
