@@ -166,6 +166,7 @@ local calib_year_back2=`calib_year'-2
 
 /*calibration year-waves. The next 5 globals will get picked up based on the MangementCycle.*/
 global calibration_year "(year==`calib_year' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back' & inlist(wave, 6))"  // last six waves of data  updated
+global calibration_year_back "(year==`calib_year_back' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back2' & inlist(wave, 6))"  // six waves before that
 
 
 /* calibration year starts on Nov 1 (wave 6) and end on oct 31 (wave 4 of next year)*/
