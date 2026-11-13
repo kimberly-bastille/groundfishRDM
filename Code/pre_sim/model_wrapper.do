@@ -204,6 +204,8 @@ loc compare_calib_data_to_MRIP = 0				// compare calibration output to MRIP
 loc additional_angler_dems	=0					  // add additional angler demographics
 loc catch_at_length_calibration=0			   	// Generate baseline-year catch-at-length
 loc catch_at_length_project=0					    // Generate projection-year catch-at-length
+
+loc get_fishery_choice_from_gdrive = 0				// Get files required for fishery choice model from gdrive (Lou=0 always)
 loc estimate_fishery_choice_model=1					// Estimate fishery choice model
 loc prepare_fishery_choice_data=1					// Generate data and parameters from fishery choice model
 
@@ -591,8 +593,21 @@ else {
    local skipped_scripts `skipped_scripts' catch_at_length_projection.do
 }
 
-// 11a) Estimate fishery choice model
-if `prepare_fishery_choice_data'{
+
+// 11a) Get fishery choice data from gdrive
+/* This code requires you to mount your google drive to D on your computer */
+if `get_fishery_choice_from_gdrive' {
+	di "Getting fishery choice data from Gdrive"
+	do "$input_code_cd\get_fishery_choice_data_from_gdrive.do"
+	local executed_scripts `executed_scripts' get_fishery_choice_data_from_gdrive.do
+}
+else {
+	local skipped_scripts `skipped_scripts' get_fishery_choice_data_from_gdrive.do
+}
+
+
+// 11b) Estimate fishery choice model
+if `estimate_fishery_choice_model'{
 	di "Estimate fishery choice model"
 	do "$input_code_cd\estimate_fishery_choice_model.do"
 	local executed_scripts `executed_scripts' estimate_fishery_choice_model.do
@@ -604,7 +619,7 @@ else {
 
 }	
 
-// 11b) Generate fishery choice model data and parameters which feed into projection
+// 11c) Generate fishery choice model data and parameters which feed into projection
 if `prepare_fishery_choice_data'{
 	di "Preparing fishery choice data"
 	do "$input_code_cd\prepare_fishery_choice_data.do"
