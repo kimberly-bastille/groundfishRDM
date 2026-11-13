@@ -22,6 +22,17 @@ library(glue)
 library(googledrive)
 library(here)
 
+# Define arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 2) {
+  stop("Error: This script requires exactly two argument.", call. = FALSE)
+}
+
+
+#read in arguments. Ensure they are numeric
+Fishery<-args[1]
+management_cycle<-as.numeric(args[2])
+
 here::i_am("Code/pre_sim/rdb_catch_at_len_to_drive.R")
 source(here("Code", "helpers", "developer_setup.R"))
 
@@ -54,8 +65,11 @@ message("Uploading catch-at-length Rds to Google Drive ...")
 drive_auth(cache = here(".secrets"), email = TRUE)
 
 # Output folder on google drive
-miscellaneous_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data",
-                               "groundfishRDM","miscellaneous")
+miscellaneous_path<-file.path("socialsci","RecreationalDST",
+                                     glue("{management_cycle}_management_cycle_data"),
+                                     glue("{Fishery}RDM"),
+                                     "miscellaneous"
+)
 
 folder_info <- drive_get(
   path = miscellaneous_path,

@@ -373,12 +373,12 @@ server <- function(input, output, session){
   # they read the same way as the reactives above. cod_acl and had_acl are the
   # recreational annual catch limits in metric tons; results arrive in pounds.
   cod_acl <- function(){
-    cod_acl = 118
+    cod_acl = 150
     return(cod_acl)
   }
 
   had_acl <- function(){
-    had_acl = 1146
+    had_acl = 515
     return(had_acl)
   }
 

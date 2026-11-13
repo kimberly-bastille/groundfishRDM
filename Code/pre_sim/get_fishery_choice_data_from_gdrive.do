@@ -14,7 +14,18 @@
  Pipeline:     Gated by `get_fishery_choice_from_gdrive' (default ON).
 *******************************************************************************/
 
-local google_folder "D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/2027_management_cycle_data/groundfishRDM/miscellaneous"
+args Fishery ManagementCycle
+
+if missing("`Fishery'") | missing("`ManagementCycle'")  {
+    display as error "Error: Missing required arguments."
+    display as error "Syntax: do get_fishery_choice_from_gdrive.do <Fishery> <ManagementCycle>"
+    exit 198 /* invalid syntax exit code */
+}
+
+
+
+
+local google_folder "D:/Shared drives/NMFS NEC READ SSB/socialsci/RecreationalDST/`ManagementCycle'_management_cycle_data/`Fishery'RDM/miscellaneous"
 local dta_stubs  "trip_data.dta daily_rec_regulations_2010_2025.dta trip_cost_species_codes.dta availability_state.dta trip_cost_model.ster"
 local ster_stubs "trip_cost_model"
 

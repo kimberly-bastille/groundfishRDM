@@ -162,7 +162,7 @@ program define prep_mrip_trip_catch ;
     /* Ensure only relevant states and year */
     keep if inlist(st, 23, 33, 25) ;
     keep if $calibration_year ;
-
+	tab state year ;
     gen st2 = string(st,"%02.0f") ;
 
     gen mode1="sh" if inlist(mode_fx, "1", "2", "3") ;
@@ -285,8 +285,12 @@ program define prep_mrip_trip_catch ;
     preserve ;
     keep my_dom_id my_dom_id_string ;
     duplicates drop ;
+	qui count;
+	di "r(N) observations in domainsfile";
     save "`domainsfile'", replace ;
     restore ;
+	qui count;
+	di "r(N) observations in basefile";
 
     save "`basefile'", replace ;
 end ;
@@ -469,6 +473,12 @@ gen missing_se=. ;
 tempfile base_results ;
 save `base_results', replace ;
 
+count  ; 
+if r(N) == 0 {;
+    display "No observations after estimating. This might be trouble." ;
+};
+
+
 count if se==. ; 
 if r(N) == 0 {;
     display "No imputation necessary. Skipping se imputation ." ;
@@ -505,7 +515,7 @@ save `missing_se', replace ;
    refactor: one svy: mean per missing-SE stratum, posting the
    stratum's domain string rather than the r(table) column name. */
 global impute ;
-foreach s of local stratz {;
+quietly foreach s of local stratz {;
     u `missing_se', clear ;
     keep if strata_id==`s' ;
 
@@ -556,14 +566,17 @@ foreach s of local stratz {;
     tempfile impute`s' ;
     save `impute`s'', replace ;
     global impute "$impute "`impute`s''" " ;
+	noisily display "finished imputing `s'" ;
 };
 
 dsconcat $impute ;
 
 merge 1:1  varname my_dom_id_string using `missing_se' ;
+tab _merge;
 keep if _merge==3 ;
 drop _merge ;
 merge 1:1 varname my_dom_id_string using `base_results' ;
+tab _merge;
 
 replace se=mean*pse_impute if se==. & _merge==3 ;
 drop month mode area_s common ;
