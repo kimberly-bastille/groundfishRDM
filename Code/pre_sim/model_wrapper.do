@@ -205,7 +205,7 @@ loc additional_angler_dems	=0					  // add additional angler demographics
 loc catch_at_length_calibration=0			   	// Generate baseline-year catch-at-length
 loc catch_at_length_project=0					    // Generate projection-year catch-at-length
 
-loc get_fishery_choice_from_gdrive = 1				// Get files required for fishery choice model from gdrive
+loc get_fishery_choice_from_gdrive = 0				// Get files required for fishery choice model from gdrive (Lou=0 always)
 loc estimate_fishery_choice_model=1					// Estimate fishery choice model
 loc prepare_fishery_choice_data=1					// Generate data and parameters from fishery choice model
 
