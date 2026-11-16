@@ -99,7 +99,7 @@ global seed 03211990
 =1 for final data prep
 =0 for prototyping
  */
-local final_data_prep= 0
+local final_data_prep= 1
 
 
 
@@ -784,6 +784,15 @@ quietly foreach l of local skipped_scripts{
 }
 
 /* Print some Global settings */
+
+if `final_data_prep'==1{
+	di as text "Final Data prep set to ON"
+}
+else if `final_data_prep'==0{
+	di as text "Final Data prep set to OFF"
+}
+	
+
 print_settings
 
 timer off 1          // Stops timing

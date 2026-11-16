@@ -13,15 +13,16 @@ program define print_settings
     version 17.0
 
     di as text "======================================================================================================"
-    di as text "======================================================================================================"
-	di as text "Data set up for $Fishery management in $ManagementCycle Management Cycle."
-	
+	di as text "$ndraws draws of Data for $Fishery management in $ManagementCycle Management Cycle."
+
 	if $uncertain==1{
-		di as text "Uncertainty Project set to ON (global uncertain=$uncertain)
+		di as text "Uncertainty Project set to ON (global uncertain=$uncertain)."
 	}
 	else if $uncertain==0{
-		di as text "Uncertainty Project set to OFF (global uncertain=$uncertain)
+		di as text "Uncertainty Project set to OFF (global uncertain=$uncertain)."
 	}
+    di as text "======================================================================================================"
+    di as text "======================================================================================================"
     di as text "======================================================================================================"
 	di as text "Calibration Setup is : $calibration_year."
 	di as text "First and Last years of mrip pulls: $first_mrip_year and $last_mrip_year."
