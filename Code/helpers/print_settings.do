@@ -28,12 +28,13 @@ program define print_settings
 	di as text "Haddock NAA Projection year: $hadd_NAA_proj_year."
     di as text "======================================================================================================"
 
-	di as text "Calibration Date start global is : $calibration_date_start."
-	di as text "Calibration Date end global is : $calibration_date_end."
-    di as text "======================================================================================================"
+	di as text "Calibration period starts: " %tdMonth_dd,_CCYY $calibration_date_start
 
-	di as text "Projection Date start global is : $projection_date_start."
-	di as text "Projection Date end global is : $projection_date_end."
+	di as text "Calibration period ends: " %tdMonth_dd,_CCYY $calibration_date_start
+    di as text "======================================================================================================"
+	di as text "Projection period starts: " %tdMonth_dd,_CCYY $projection_date_start
+	di as text "Projection period ends: " %tdMonth_dd,_CCYY $projection_date_end
+
     di as text "======================================================================================================"
 
 	di as text "Trawl Survey Start year: $trawl_survey_start_year."
