@@ -199,7 +199,7 @@ global trawl_survey_start_year 2023
 
 /******************************************************************************/
 /* Section C2:JUST FOR TESTING  - temporarily rebuild the calibration_year global 
-and the mrip globals to get a different set of data
+and the mrip globals to get a different set of data*/
 
 	global calibration_year "(year==`=$ManagementCycle-3' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`=$ManagementCycle-4' & inlist(wave, 6))"  // last six waves of data  updated
 
@@ -216,7 +216,7 @@ and the mrip globals to get a different set of data
 		}
 	}
 	di "$yr_wvs"
-*/
+
 /* END  JUST FOR TESTING */
 /******************************************************************************/
 
