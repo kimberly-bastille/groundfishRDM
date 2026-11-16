@@ -36,7 +36,7 @@ program define print_settings
 
 	di as text "Calibration period starts: " %tdMonth_dd,_CCYY $calibration_date_start
 
-	di as text "Calibration period ends: " %tdMonth_dd,_CCYY $calibration_date_start
+	di as text "Calibration period ends: " %tdMonth_dd,_CCYY $calibration_date_end
     di as text "======================================================================================================"
 	di as text "Projection period starts: " %tdMonth_dd,_CCYY $projection_date_start
 	di as text "Projection period ends: " %tdMonth_dd,_CCYY $projection_date_end
