@@ -139,7 +139,7 @@ global inflation_expansion=1.16
 /******************************************************************************/
 /******************************************************************************/
 global Fishery "groundfish" /* can be set to "groundfish" or "fluke". should match the casing of the drive folders */
-global ManagementCycle 2027 /* the year for which we are setting regulations. In December of 2026, we are working on the management cycle for FY2027*/
+global ManagementCycle 2026 /* the year for which we are setting regulations. In December of 2026, we are working on the management cycle for FY2027*/
 global FesYear 2025  /* FES year from MRIP */
 
 /*set mrip type either cal_2018 or cal_2026 */
@@ -200,6 +200,7 @@ global trawl_survey_start_year 2023
 /******************************************************************************/
 /* Section C2:JUST FOR TESTING  - temporarily rebuild the calibration_year global 
 and the mrip globals to get a different set of data*/
+/*
 	local calib_year_back3=`calib_year'-3
 
 	global calibration_year "(year==`calib_year_back' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back2' & inlist(wave, 6))"  // last six waves of data  updated
@@ -218,7 +219,7 @@ and the mrip globals to get a different set of data*/
 		}
 	}
 	di "$yr_wvs"
-
+*/
 /* END  JUST FOR TESTING */
 /******************************************************************************/
 
@@ -253,7 +254,7 @@ loc catch_at_length_project=0					    // Generate projection-year catch-at-lengt
 
 
 loc get_fishery_choice_from_gdrive = 0				// Get files required for fishery choice model from gdrive (Lou=0 always)
-loc estimate_fishery_choice_model=1					// Estimate fishery choice model
+loc estimate_fishery_choice_model=0					// Estimate fishery choice model
 loc prepare_fishery_choice_data=1					// Generate data and parameters from fishery choice model
 
 loc Rcodewrapper=0							        // Run calibration routine in R
