@@ -20,7 +20,7 @@
  Outputs:      			$misc_data_cd/fishery_choice_trips.dta
 							$misc_data_cd/fishery_choice_availability.dta
 							$misc_data_cd/fishery_choice_data_master.dta
- Dependencies: 	Set $misc_data_cd, $calibration_year, $calibration_date_start, and $calibration_date_end
+ Dependencies: 	Set $misc_data_cd, $calibration_year and $calibration_year_back
 							before running. Requires user-written renvarlab and the previously estimated trip-cost model with its input variables.
  Pipeline:     			Calibration-data branch. Run before predict_fishery_choice_probabilities.do, which combines the
 							master data with the historical fishery choice estimates.
@@ -38,7 +38,8 @@ save `master', emptyok replace
 * Build site lookup for ME and MA once, outside the loop
 * all NH is in WGOM, so we do not need it to be in this chunk of code
 
-preserve
+clear
+
 import delimited using "$misc_data_cd/MRIP_COD_ALL_SITE_LIST.csv", clear
 keep if inlist(state, "MA", "ME")
 keep state intsite nmfs_stock_area nmfs_stat_area
@@ -49,7 +50,7 @@ keep nmfs_stock_area intsite nmfs_stat_area state
 duplicates drop
 tempfile mrip_sites
 save `mrip_sites', replace
-restore
+
 
 
         capture confirm file "$misc_data_cd/mrip_trip.dta"
