@@ -45,6 +45,12 @@ program define print_settings
 
 	di as text "Trawl Survey Start year: $trawl_survey_start_year."
     di as text "======================================================================================================"
+	
+	di as text "The Fishery Choice Data Preparation (prepare_fishery_choice_data) gets 2 globals passed in:"
+	di as text "calibration_year: $calibration_year"
+	di as text "calibration_year_back: $calibration_year_back"
+    di as text "======================================================================================================"
+
     di as text "======================================================================================================"
 
 
