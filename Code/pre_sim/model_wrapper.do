@@ -61,6 +61,7 @@ here, nogit
 
 do "${here}/Code/helpers/developer_setup_stata.do"
 do "${here}/Code/helpers/confirm_prompt.do"
+do "${here}/Code/helpers/print_settings.do"
 
 global input_code_cd "${here}/Code/pre_sim"
 global log_dir "${input_code_cd}/logs"
@@ -98,7 +99,7 @@ global seed 03211990
 =1 for final data prep
 =0 for prototyping
  */
-local final_data_prep= 0
+local final_data_prep= 1
 
 
 
@@ -160,24 +161,23 @@ foreach year of numlist $first_mrip_year/$last_mrip_year {
 di "$yr_wvs"
 
 
-local calib_year=$ManagementCycle-1
-local calib_year_back=`calib_year'-1
-local calib_year_back2=`calib_year'-2
+/* note the immmediate evaluation of the $ManagementCycle-1 expression with `=$ManagementCycle-1'*/
 
 /*calibration year-waves. The next 5 globals will get picked up based on the MangementCycle.*/
-global calibration_year "(year==`calib_year' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back' & inlist(wave, 6))"  // last six waves of data  updated
-global calibration_year_back "(year==`calib_year_back' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back2' & inlist(wave, 6))"  // six waves before that
+global calibration_year "(year==`=$ManagementCycle-1' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`=$ManagementCycle-2' & inlist(wave, 6))"  // last six waves of data  updated
+global calibration_year_back "(year==`=$ManagementCycle-2' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`=$ManagementCycle-3' & inlist(wave, 6))"  // six waves before that
 
 
 /* calibration year starts on Nov 1 (wave 6) and end on oct 31 (wave 4 of next year)*/
-global calibration_date_start mdy(11,1,`calib_year_back')
-global calibration_date_end mdy(10,31,`calib_year')
+global calibration_date_start mdy(11,1,`=$ManagementCycle-2')
+global calibration_date_end mdy(10,31,`=$ManagementCycle-1')
 
 
-/* projection year is groundfish fishing year (May 1 to April 30)*/
+/* projection year is groundfish fishing year (May 1 to April 30)
+This runs May 1 of the ManagementCycle to April 30 of `ManagementCycle+1'
+*/
 global projection_date_start mdy(5,1,$ManagementCycle) 
-local next_yr=$ManagementCycle+1
-global projection_date_end mdy(4,30,`next_yr') 
+global projection_date_end mdy(4,30,`=$ManagementCycle+1') 
 
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
@@ -201,13 +201,11 @@ global trawl_survey_start_year 2023
 /* Section C2:JUST FOR TESTING  - temporarily rebuild the calibration_year global 
 and the mrip globals to get a different set of data*/
 /*
-	local calib_year_back3=`calib_year'-3
 
-	global calibration_year "(year==`calib_year_back' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back2' & inlist(wave, 6))"  // last six waves of data  updated
-	global calibration_year "(year==`calib_year_back2' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`calib_year_back3' & inlist(wave, 6))"  // last six waves of data  updated
+	global calibration_year "(year==`=$ManagementCycle-3' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`=$ManagementCycle-4' & inlist(wave, 6))"  // last six waves of data  updated
 
-	global calibration_date_start mdy(11,1,`calib_year_back2')
-	global calibration_date_end mdy(10,31,`calib_year_back')
+	global calibration_date_start mdy(11,1,`=$ManagementCycle-3')
+	global calibration_date_end mdy(10,31,`=$ManagementCycle-2')
 
 	global first_mrip_year 2023
 	global last_mrip_year 2025
@@ -235,9 +233,9 @@ loc process_cod_assess = 0                		// Process Cod Assessment data
 loc process_haddock_assess = 0            // Process Haddock Assessment data
 
 loc get_assessment_from_gdrive = 0				// Pull Assessment OUTPUTs 
-loc get_mrip_oracle = 1	 		 			      // Pull MRIP data.
+loc get_mrip_oracle = 0	 		 			      // Pull MRIP data.
 loc get_fes_from_gdrive=0						// get the fes data from google drive
-loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
+loc get_mrip_site_list = 0		 					  // Pull MRIP site list.
 
 loc get_svdbs_data = 0		 					  // Pull MRIP site list.
 
@@ -330,51 +328,42 @@ if `uncertain_loc' {
 */
 if (`final_data_prep'==0){
  	global ndraws 5
-	display as input "Prototyping enabled. Set ndraws global: " _request(ndraws)
+	display as input "Prototyping enabled. ndraws set to $ndraws. Overwrite or press <Enter> to continue: " _request(ndraws)
 }
 
 if (`final_data_prep')==1{
 	confirm_prompt "Final data setup, ndraws set to $ndraws." 1
 }
-	
-/* Management Cycle and calibration year macros */
-mac list first_mrip_year last_mrip_year 
-confirm_prompt "Please verify first and last mrip years" `final_data_prep'
 
-
-/* Management Cycle and calibration year macros */
-confirm_prompt "Please verify that Management Cycle ($ManagementCycle) is `calib_year'+1." `final_data_prep'
-
+/*Print the global macro settings and prompt the user to verify*/
+print_settings
 /* calibration_year global macro */
-mac list calibration_year 
 confirm_prompt "Please verify that calibration year global is set properly."  `final_data_prep'
 
-
-/* Calibration start and end dates, projection start and end dates:*/
-mac list calibration_date_start  calibration_date_end projection_date_start projection_date_end
-confirm_prompt "Please verify that Calibration start and end dates, projection start and end dates are properly set." `final_data_prep'
+/* Management Cycle and calibration year macros */
+confirm_prompt "Please verify first and last mrip years" `final_data_prep'
 
 /* NAA years for cod and haddock:*/
-mac list cod_NAA_base_year  hadd_NAA_base_year cod_NAA_proj_year hadd_NAA_proj_year
 confirm_prompt "Please verify that baseline and projection year NAA are properly set." `final_data_prep'
 
+/* Calibration start and end dates, projection start and end dates:*/
+confirm_prompt "Please verify that Calibration start and end dates, projection start and end dates are properly set." `final_data_prep'
 
-di "Trawl Survey Start year: $trawl_survey_start_year"
+/* Trawl Survey:*/
 confirm_prompt "Please verify that the Trawl Survey Start year are properly set." `final_data_prep'
 
 /* add a last check that the mangement year and mrip year and calibration years are aligned */
-local cal_string "$calibration_year"
 /* Use Unicode regex to find year== followed by 4 digits */
-if ustrregexm("`cal_string'", "year==([0-9]{4})") {
+if ustrregexm("$calibration_year'", "year==([0-9]{4})") {
     local extracted_year = ustrregexs(1)
 }
+di as text "First year extracted from calibration_year global is `extracted_year'.  We expected to it to be `=$ManagementCycle-1'!! 
 
-di "WARNING: First year extracted from calibration_year global is `extracted_year'.  We expected to it to be `calib_year'!! 
-if ("`extracted_year'"!="`calib_year'") {
-	confirm_prompt "WARNING: calibration_year global is inconsistent with the calib_year local. Something might be wrong." 1
+if ("`extracted_year'"!="`=$ManagementCycle-1'") {
+	confirm_prompt "WARNING: calibration_year global is inconsistent with the ManagementCycle global. Something might be wrong." 1
 } 
-else if("`extracted_year'"!="`calib_year'"){
-	di as message "Calibration_year global consistent with calib_year local"
+else if("`extracted_year'"!="`=$ManagementCycle-1'"){
+	di as text "Calibration_year global consistent with ManagementCycle global"
 }
 
 
@@ -785,16 +774,27 @@ wrap up
 /* Print the scripts that were run */
 
 di "These scripts were run:"
-foreach l of local executed_scripts{
-	di "`l': RUN"
+quietly foreach l of local executed_scripts{
+	noisily di as text "`l': RUN"
 }
+
 /* Print the scripts that were not run */
-
 di "These scripts were not run:"
-foreach l of local skipped_scripts{
-	di "`l': NOT RUN"
+quietly foreach l of local skipped_scripts{
+	noisily di as text "`l': NOT RUN"
 }
 
+/* Print some Global settings */
+
+if `final_data_prep'==1{
+	di as text "Final Data prep set to ON"
+}
+else if `final_data_prep'==0{
+	di as text "Final Data prep set to OFF"
+}
+	
+
+print_settings
 
 timer off 1          // Stops timing
 timer list 1         // Displays elapsed time in seconds
