@@ -36,4 +36,4 @@ RUN install2.r -e -s \
     && chown -R shiny:shiny /srv/rdmtool
 
 CMD ["sh", "-c", "/usr/bin/shiny-server & sleep 2 && tail -F /var/log/shiny-server/*.log"]
-CMD ["sh", "-c", "mkdir -p /var/log/shiny-server && chown shiny:shiny /var/log/shiny-server && /usr/bin/shiny-server 2>&1 & exec xtail /var/log/shiny-server/"]
+
