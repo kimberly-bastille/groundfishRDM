@@ -337,6 +337,26 @@ server <- function(input, output, session){
   # There is no incremental refresh: "Update" reloads the whole browser page,
   # which re-evaluates outputs() and so picks up any result files the worker
   # has written since the session started.
+
+  # observeEvent(input$runmeplease, {
+  #   output$displaymessage <- renderText(paste0("Policy ", input$Run_Name, " saved - your model run has been queued. ..."))
+  # })
+
+  observeEvent(input$runmeplease, {
+    policy_name <- input$Run_Name   # captured once, at click time
+    output$displaymessage <- renderText(
+      paste0("Policy ", policy_name, " saved - your model run has been queued. ",
+             "Be sure to change the policy name before submitting again.")
+    )
+  })
+
+  library(magrittr)
+  library(ggplot2)
+  #library(webshot)
+
+  # There is no incremental refresh: "Update" reloads the whole browser page,
+  # which re-evaluates outputs() and so picks up any result files the worker
+  # has written since the session started.
   observeEvent(input$updatedat,{
     print("updating")
     shinyjs::js$refresh_page();
@@ -373,12 +393,12 @@ server <- function(input, output, session){
   # they read the same way as the reactives above. cod_acl and had_acl are the
   # recreational annual catch limits in metric tons; results arrive in pounds.
   cod_acl <- function(){
-    cod_acl = 118
+    cod_acl = 150
     return(cod_acl)
   }
 
   had_acl <- function(){
-    had_acl = 1146
+    had_acl = 515
     return(had_acl)
   }
 
@@ -421,7 +441,6 @@ server <- function(input, output, session){
   ################################################################################
   ################################################################################
 
-
   output$DTout <- DT::renderDT({
     # Total recreational mortality = landed weight + dead discards, summed
     # across seasons within a draw, then converted from pounds to metric tons.
@@ -441,7 +460,9 @@ server <- function(input, output, session){
       dplyr::group_by(policy_name, species) %>%
       dplyr::summarise(under_acl = sum(under_acl),
                        Value = round(median(Value),0)) %>%
-      tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl))
+      tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl)) %>%
+      dplyr::mutate(under_acl_cod = round((under_acl_cod/101)*100, digits = 1),
+                    under_acl_hadd = round((under_acl_hadd/101)*100, digits = 1))
 
     # The saved regulations arrive as opaque name/value pairs, so species, mode,
     # season number and season endpoint (op/cl) are recovered by pattern
@@ -489,7 +510,7 @@ server <- function(input, output, session){
       dplyr::left_join(catch_agg, by = c("model" = "policy_name")) %>%
       dplyr::select(model, mode, codseason, codbag, codlen, hadseason, hadbag, hadlen, Value_cod, Value_hadd, under_acl_cod, under_acl_hadd) %>%
       dplyr::rename(Mode = mode,
-                    `Run Identifier` = model,
+                    `Policy Identifier` = model,
                     `Cod Bag Limit` = codbag,
                     `Cod Minimum Size (in)` = codlen,
                     `Cod Season(s)` = codseason,
@@ -557,8 +578,8 @@ server <- function(input, output, session){
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_vline( xintercept =cod_acl(), linetype="dashed")+
       ggplot2::geom_hline( yintercept =had_acl(), color="grey45")+
-      ggplot2::annotate(geom="text", x=cod_acl(), label="Cod ACL", y=1200) +
-      ggplot2::annotate(geom="text", y=had_acl(), label="Had ACL", x=100) +
+      ggplot2::annotate(geom="text", x=cod_acl(), label="Cod ACL", y=520) +
+      ggplot2::annotate(geom="text", y=had_acl(), label="Had ACL", x=80) +
       ggplot2::guides(size = "none")+
       ggplot2::ggtitle("Cod and haddock mortality")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
@@ -876,12 +897,14 @@ server <- function(input, output, session){
       ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`Cod Discard Mortality`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Cod discard mortality (mt)")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
-      ggplot2::labs(title = "Cod mortality (mt) compared to discard mortality(mt)",
+      ggplot2::labs(title = "<b>Cod mortality and cod discard mortality</b>",
                     subtitle = "")+
       ggplot2::theme(legend.position = "none")
 
     fig3<- plotly::ggplotly(p3)%>%
-      plotly::style(textposition = "top center")
+      plotly::style(textposition = "top center") %>%
+      plotly::layout(
+        title = list(font = list(size = 14)))
     fig3
   })
 
@@ -930,12 +953,14 @@ server <- function(input, output, session){
       ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=catch$`Cod Discard Mortality`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Haddock discard mortality (mt)")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
-      ggplot2::labs(title = "Haddock mortality (mt) compared to discard mortality (mt)",
+      ggplot2::labs(title = "<b>Haddock mortality and haddock discard mortality</b>",
                     subtitle = "testing")+
       ggplot2::theme(legend.position = "none")
 
     fig4<- plotly::ggplotly(p4)%>%
-      plotly::style(textposition = "top center")
+      plotly::style(textposition = "top center")%>%
+      plotly::layout(
+        title = list(font = list(size = 14)))
     fig4
   })
 
@@ -981,12 +1006,14 @@ server <- function(input, output, session){
       ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`Trips`[catch$policy_name == "SQ"]), angle=90) +
       ggplot2::xlab("Number of trips")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
-      ggplot2::labs(title = "Cod mortality (mt) compared to total number of trips",
+      ggplot2::labs(title = "<b>Cod mortality and total trips</b>",
                     subtitle = "testing")+
       ggplot2::theme(legend.position = "none")
 
     fig5<- plotly::ggplotly(p5)%>%
-      plotly::style(textposition = "top center")
+      plotly::style(textposition = "top center")%>%
+      plotly::layout(
+        title = list(font = list(size = 14)))
     fig5
   })
 
@@ -1034,14 +1061,17 @@ server <- function(input, output, session){
       ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=catch$`Trips`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Number of trips")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
-      ggplot2::labs(title = "Haddock mortality (mt) compared to total number of trips",
+      ggplot2::labs(title = "<b>Haddock mortality and total trips</b>",
                     subtitle = "testing")+
       ggplot2::theme(legend.position = "none")
 
     fig6<- plotly::ggplotly(p6)%>%
-      plotly::style(textposition = "top center")
+      plotly::style(textposition = "top center")%>%
+      plotly::layout(
+        title = list(font = list(size = 14)))
     fig6
   })
+
 
 
 ################################################################################
