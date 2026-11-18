@@ -134,9 +134,9 @@ replace wave=4 if inlist(month, 7, 8)
 replace wave=5 if inlist(month, 9, 10)
 replace wave=6 if inlist(month, 11, 12)
 
-*wave 6 is from 2024
-gen year=2025 if month<=10
-replace year=2024 if month>=11
+*Waves 1-5 are from the year prior to management cycle, wave 6 is from 2 years prior
+gen year=management_cycle-1 if month<=10
+replace year=management_cycle-2 if month>=11
 
 gen stock_abbrev="WGOM"
 replace stock_abbrev="GOM" if common=="haddock"

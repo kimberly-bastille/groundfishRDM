@@ -167,9 +167,11 @@ gen fishery= "NE Groundfish"
 //get rid of var label on value 
 label variable value ""
 
-//technically some of the data came from 2024 but 2025 is the regulatory baseline year
-gen year=2025
-replace year=2026 if units=="projected fitted percent of catch"
+/*baseline year is the one before management cycle although technically some of the 
+data came from 2 years ago (Nov, Dec)
+Projection year is the management cycle year */
+gen year=management_cycle - 1
+replace year=management_cycle if units=="projected fitted percent of catch"
 
 
 order fishery common species_itis stock_abbrev year management_cycle metric value units source
