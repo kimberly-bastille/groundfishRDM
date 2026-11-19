@@ -140,7 +140,7 @@ global inflation_expansion=1.16
 /******************************************************************************/
 /******************************************************************************/
 global Fishery "groundfish" /* can be set to "groundfish" or "fluke". should match the casing of the drive folders */
-global ManagementCycle 2026 /* the year for which we are setting regulations. In December of 2026, we are working on the management cycle for FY2027*/
+global ManagementCycle 2027 /* the year for which we are setting regulations. In December of 2026, we are working on the management cycle for FY2027. this may cause other things downstream to break until the mrip data is released*/
 global FesYear 2025  /* FES year from MRIP */
 
 /*set mrip type either cal_2018 or cal_2026 */
