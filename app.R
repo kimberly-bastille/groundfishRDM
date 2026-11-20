@@ -893,7 +893,7 @@ server <- function(input, output, session){
     if(any("Discards" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("releaseCodPlot", height = "100%")
+        plotly::plotlyOutput("releaseCodPlot", height = "90%")
       )
     }
   })
@@ -952,7 +952,7 @@ server <- function(input, output, session){
     if(any("Discards" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("releaseHadPlot", height = "100%")
+        plotly::plotlyOutput("releaseHadPlot", height = "90%")
       )
     }
   })
@@ -1011,7 +1011,7 @@ server <- function(input, output, session){
     if(any("Trips" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("tripsCodPlot", height = "100%")
+        plotly::plotlyOutput("tripsCodPlot", height = "90%")
       )
     }
   })
@@ -1068,7 +1068,7 @@ server <- function(input, output, session){
     if(any("Trips" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("tripsHadPlot", height = "100%")
+        plotly::plotlyOutput("tripsHadPlot", height = "90%")
       )
     }
   })
