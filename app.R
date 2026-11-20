@@ -143,10 +143,11 @@ ui <- fluidPage(
                      style = "margin-left: 1px; color: #337ab7;"
                    )
                  ),
-                 "Discards",
+                 #"Discards",
+                 "Harvest mortality ratio",
                  "Trips"
                ),
-               choiceValues = list("CV", "Discards", "Trips"),
+               choiceValues = list("CV", "Harvest", "Trips"),
                inline = TRUE
              ),
 
@@ -154,6 +155,7 @@ ui <- fluidPage(
              uiOutput("addCVHad"),
              uiOutput("addReleaseCod"),
              uiOutput("addReleaseHad"),
+             uiOutput("addHarvMort"),
              uiOutput("addTripsCod"),
              uiOutput("addTripsHad")),
 
@@ -544,44 +546,47 @@ server <- function(input, output, session){
       dplyr::group_by(policy_name, species) %>%
       dplyr::summarise(under_acl = (100/length(unique(iteration)))*sum(under_acl),
                        Value = round(median(Value),0))  %>%
-      tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl))
-
-    # Bin the draw counts into the discrete legend categories used by the
-    # colour scale. Written as a chain of case_when()s that each fall through
-    # to the previously assigned value rather than one multi-arm case_when.
-    catch_agg2<- catch_agg %>%
-      dplyr::mutate(under_acl_cod2 = dplyr::case_when(under_acl_cod < 50 ~ "Less than 50%", TRUE ~ ""),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 50 & under_acl_cod < 60 ~ "50-59%", TRUE ~ under_acl_cod2),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 60 & under_acl_cod < 70~ "60-69%", TRUE ~ under_acl_cod2),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 70 & under_acl_cod < 80 ~ "70-79%", TRUE ~ under_acl_cod2),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 80 & under_acl_cod < 90 ~ "80-89%", TRUE ~ under_acl_cod2),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 90 & under_acl_cod <=100 ~ "90-100%", TRUE ~ under_acl_cod2)) %>%
-      dplyr::mutate(under_acl_had2 = dplyr::case_when(under_acl_hadd < 50 ~ "Less than 50%", TRUE ~ ""),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 50 & under_acl_hadd < 60 ~ "50-59%", TRUE ~ under_acl_had2),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 60 & under_acl_hadd < 70~ "60-69%", TRUE ~ under_acl_had2),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 70 & under_acl_hadd < 80 ~ "70-79%", TRUE ~ under_acl_had2),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 80 & under_acl_hadd < 90 ~ "80-89%", TRUE ~ under_acl_had2),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 90 & under_acl_hadd <=100 ~ "90-100%", TRUE ~ under_acl_had2)) %>%
+      tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl)) %>%
       dplyr::rename(`Cod Mortality`=Value_cod) %>%
       dplyr::rename(`Haddock Mortality`=Value_hadd) %>%
       dplyr::ungroup()
 
-    p<- catch_agg2 %>%
+    # Bin the draw counts into the discrete legend categories used by the
+    # colour scale. Written as a chain of case_when()s that each fall through
+    # to the previously assigned value rather than one multi-arm case_when.
+    # catch_agg2<- catch_agg %>%
+    #   dplyr::mutate(under_acl_cod2 = dplyr::case_when(under_acl_cod < 50 ~ "Less than 50%", TRUE ~ ""),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 50 & under_acl_cod < 60 ~ "50-59%", TRUE ~ under_acl_cod2),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 60 & under_acl_cod < 70~ "60-69%", TRUE ~ under_acl_cod2),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 70 & under_acl_cod < 80 ~ "70-79%", TRUE ~ under_acl_cod2),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 80 & under_acl_cod < 90 ~ "80-89%", TRUE ~ under_acl_cod2),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 90 & under_acl_cod <=100 ~ "90-100%", TRUE ~ under_acl_cod2)) %>%
+    #   dplyr::mutate(under_acl_had2 = dplyr::case_when(under_acl_hadd < 50 ~ "Less than 50%", TRUE ~ ""),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 50 & under_acl_hadd < 60 ~ "50-59%", TRUE ~ under_acl_had2),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 60 & under_acl_hadd < 70~ "60-69%", TRUE ~ under_acl_had2),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 70 & under_acl_hadd < 80 ~ "70-79%", TRUE ~ under_acl_had2),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 80 & under_acl_hadd < 90 ~ "80-89%", TRUE ~ under_acl_had2),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 90 & under_acl_hadd <=100 ~ "90-100%", TRUE ~ under_acl_had2)) %>%
+    #   dplyr::rename(`Cod Mortality`=Value_cod) %>%
+    #   dplyr::rename(`Haddock Mortality`=Value_hadd) %>%
+    #   dplyr::ungroup()
+
+    p<- catch_agg %>%
       ggplot2::ggplot(ggplot2::aes(x = `Cod Mortality`, y = `Haddock Mortality`))+
-      ggplot2::geom_point(ggplot2::aes(colour = under_acl_cod2, size = under_acl_had2,
+      ggplot2::geom_point(ggplot2::aes(#colour = under_acl_cod2, size = under_acl_had2,
                                        text = paste0("Policy: ", policy_name,
                                                      "<br>Cod mortality (mt): ", `Cod Mortality`,
                                                      "<br>Haddock mortality (mt): ", `Haddock Mortality`,
                                                      "<br>% under cod ACL: ", round(under_acl_cod, 1),
                                                      "<br>% under haddock ACL: ", round(under_acl_hadd, 1)))) +
-      ggplot2::scale_color_manual(values = c("50-59%" = "#A9DFBF", "60-69%" = "#7DCEA0",
-                                             "70-79%" = "#52BE80","80-89%" = "#27AE60",
-                                             "90-100%" = "#1B5E20", "Less than 50%" = "red3"))+
-      # Every size is mapped to 1 and the size legend is suppressed below, so
+      # ggplot2::scale_color_manual(values = c("50-59%" = "#A9DFBF", "60-69%" = "#7DCEA0",
+      #                                        "70-79%" = "#52BE80","80-89%" = "#27AE60",
+      #                                        "90-100%" = "#1B5E20", "Less than 50%" = "red3"))+
+      # # Every size is mapped to 1 and the size legend is suppressed below, so
       # the haddock ACL bin currently has no visible effect on the plot.
-      ggplot2::scale_size_manual(values = c("50-59%" = 1, "60-69%" = 1,
-                                            "70-79%" = 1,"80-89%" = 1,
-                                            "90-100%" = 1, "Less than 50%" = 1))+
+      # ggplot2::scale_size_manual(values = c("50-59%" = 1, "60-69%" = 1,
+      #                                       "70-79%" = 1,"80-89%" = 1,
+      #                                       "90-100%" = 1, "Less than 50%" = 1))+
       ggplot2::labs(colour="% of simulations under cod ACL",
                     size="% of simulations under haddock ACL")+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
@@ -612,15 +617,16 @@ server <- function(input, output, session){
             xshift = 5           # Optional: 5 pixels of padding from the axis line
           ),
           list(
-            x = cod_acl(),               # 0 = left edge of the plot area (the y-axis)
-            y = 1,       # Data coordinate for vertical placement
+            x = cod_acl()+0.5,               # 0 = left edge of the plot area (the y-axis)
+            y = 2,       # Data coordinate for vertical placement
             text = "Cod ACL",
+            textangle = 90,
             xref = "x",      # Anchors X to the viewport (won't move when panning)
             yref = "paper",          # Anchors Y to the data (will move if zooming Y)
             xanchor = "center",  # Centers the text exactly on the vertical line
             yanchor = "bottom",  # Sits the text on top of the plot ceiling
             showarrow = FALSE,
-            yshift = -5           # Optional: 5 pixels of padding from the axis line
+            yshift = -475           # Optional: 5 pixels of padding from the axis line
           )
         )
       )
@@ -724,6 +730,7 @@ server <- function(input, output, session){
       plotly::layout(
         # fixed pixel margins: room for the 3-line title (t) and the
         # axis title + arrow + label below the plot (b)
+        xaxis = list(title = list(standoff = 5)),
         margin = list(t = 100, b = 95),
         title = list(font = list(size = 14)),
         annotations = list(
@@ -861,6 +868,7 @@ server <- function(input, output, session){
       plotly::layout(
         # fixed pixel margins: room for the 3-line title (t) and the
         # axis title + arrow + label below the plot (b)
+        xaxis = list(title = list(standoff = 5)),
         margin = list(t = 100, b = 95),
         title = list(font = list(size = 14)),
         annotations = list(
@@ -916,6 +924,66 @@ server <- function(input, output, session){
       )
 
     fig2
+  })
+
+  output$addHarvMort <- renderUI({
+    if(any("Harvest" == input$fig)){
+      div(
+        style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
+        plotly::plotlyOutput("harvmortPlot", height = "90%")
+      )
+    }
+  })
+
+  output$harvmortPlot <- plotly::renderPlotly({
+    req(any("Harvest" == input$fig))
+    harvmort <-  outputs() %>%
+      dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_keep_hadd_weight_lb_new"),
+                    mode == "all modes") %>%
+      dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+      dplyr::group_by(policy_name, iteration, species, mode) %>%
+      dplyr::summarise(harv_mort = sum(as.numeric(value)) * lb_to_mt(), .groups = "drop")
+
+    catch<- outputs() %>%
+      dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                  "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                    mode == "all modes") %>%
+      dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+      dplyr::group_by(policy_name, species, iteration) %>%
+      dplyr::summarise(Value = sum(as.numeric(value))) %>%
+      dplyr::mutate(Value = Value * lb_to_mt()) %>%
+      dplyr::group_by(policy_name, iteration, species) %>%
+      dplyr::summarise(tot_mort =round(median(Value),0)) %>%
+      dplyr::ungroup() %>%
+
+      dplyr::left_join(harvmort) %>%
+      dplyr::mutate(harvmort_ratio = harv_mort/tot_mort) %>%
+      dplyr::select(policy_name, mode, species, iteration, harvmort_ratio) %>%
+      tidyr::pivot_wider(names_from = species, values_from = c(harvmort_ratio)) %>%
+      dplyr::group_by(policy_name) %>%
+      dplyr::summarise(`Cod harvest mortality ratio` = median(cod),
+                       `Haddock harvest mortality ratio` = median(hadd)) %>%
+      dplyr::ungroup()
+
+
+    p3<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `Cod harvest mortality ratio`, y = `Haddock harvest mortality ratio`))+
+      ggplot2::geom_point(
+        ggplot2::aes(text = paste0("Policy: ", policy_name,
+                                   "<br>Cod harvest mortality ratio: ", round(`Cod harvest mortality ratio`, 2),
+                                   "<br>Haddock harvest mortality ratio: ", round(`Haddock harvest mortality ratio`, 2)))) +
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
+      ggplot2::xlab("Cod harvest mortality ratio")+
+      ggplot2::ylab("Haddock harvest mortality ratio")+
+      ggplot2::labs(title = paste0("<b>Cod harvest mortality ratio and haddock harvest mortality ratio</b>",
+                    "<br>Harvest mortality ratio calculated by dividing weight of kept fish (mt) ",
+                    "by weight of total catch (mt)"))+
+      ggplot2::theme(legend.position = "none")
+
+    fig3<- plotly::ggplotly(p3, tooltip = "text")%>%
+      plotly::style(textposition = "top center") %>%
+      plotly::layout(
+        title = list(font = list(size = 14)))
+    fig3
   })
 
 
