@@ -615,15 +615,16 @@ server <- function(input, output, session){
             xshift = 5           # Optional: 5 pixels of padding from the axis line
           ),
           list(
-            x = cod_acl(),               # 0 = left edge of the plot area (the y-axis)
-            y = 1,       # Data coordinate for vertical placement
+            x = cod_acl()+0.5,               # 0 = left edge of the plot area (the y-axis)
+            y = 2,       # Data coordinate for vertical placement
             text = "Cod ACL",
+            textangle = 90,
             xref = "x",      # Anchors X to the viewport (won't move when panning)
             yref = "paper",          # Anchors Y to the data (will move if zooming Y)
             xanchor = "center",  # Centers the text exactly on the vertical line
             yanchor = "bottom",  # Sits the text on top of the plot ceiling
             showarrow = FALSE,
-            yshift = -5           # Optional: 5 pixels of padding from the axis line
+            yshift = -475           # Optional: 5 pixels of padding from the axis line
           )
         )
       )
