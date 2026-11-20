@@ -649,6 +649,19 @@ if `catch_at_length_calibration'{
 else {
 	local skipped_scripts `skipped_scripts' catch_at_length_calibration.do
 }
+
+
+// 10) Generate projection-year catch-at-length, incorporating the stock assessment data
+if `catch_at_length_project'{
+	di "Generating projection year catch-at-length"
+	do "$input_code_cd\catch_at_length_projection.do"
+	local executed_scripts `executed_scripts' catch_at_length_projection.do
+	}
+else {
+   local skipped_scripts `skipped_scripts' catch_at_length_projection.do
+}
+
+
 		//Process catch at length and format it for the rec dashboard
 if `rdb_catch_at_length'{
    	di "Processing and formatting catch-at-length for dashboard"
@@ -679,17 +692,6 @@ else {
    local skipped_scripts `skipped_scripts' projected_naa_uncertain.do
 }
 
-
-
-// 10) Generate projection-year catch-at-length, incorporating the stock assessment data
-if `catch_at_length_project'{
-	di "Generating projection year catch-at-length"
-	do "$input_code_cd\catch_at_length_projection.do"
-	local executed_scripts `executed_scripts' catch_at_length_projection.do
-	}
-else {
-   local skipped_scripts `skipped_scripts' catch_at_length_projection.do
-}
 
 
 // 11a) Get fishery choice data from gdrive
