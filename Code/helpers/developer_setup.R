@@ -36,6 +36,9 @@ if (developer == "LCH") {
   }
 }
 
+shared_drive_root <- file.path("D:/Shared drives", "NMFS NEC READ SSB")
+
+
 message("Hello ", developer, "  Use the object gf.data.dir in place of here(Data, YYYY_mgt_cycle).")
 
 message("The value of gf.data.dir is: ", gf.data.dir)
