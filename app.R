@@ -666,8 +666,7 @@ server <- function(input, output, session){
                                    "<br>CV ($M): ", round(`CV($M)`, 2),
                                    "<br>Cod mortality (mt): ", cod))) +
       ggplot2::geom_hline( yintercept =cod_acl())+
-      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE,
-                         angle = 45, hjust = 0,nudge_x=.05, nudge_y=.05)+
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
       ggplot2::labs(title = "<b>Cod mortality and economic effects on anglers</b><br>Negative compensating variation (CV) indicates aggregate economic gains to anglers relative to the November 2025 through October 2026 period; <br>positive values indicate economic losses.",
@@ -750,7 +749,6 @@ server <- function(input, output, session){
           )
         )
       )
-
     fig1
   })
 
@@ -804,8 +802,7 @@ server <- function(input, output, session){
                                    "<br>CV ($M): ", round(`CV($M)`, 2),
                                    "<br>Haddock mortality (mt): ", hadd))) +
       ggplot2::geom_hline( yintercept =had_acl())+
-      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE,
-                         angle = 45, hjust = 0,nudge_x=.05, nudge_y=.05)+
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
       ggplot2::labs(title = "<b>Haddock  mortality and economic effects on anglers</b><br>Negative compensating variation (CV) indicates aggregate economic gains to anglers relative to the November 2025 through October 2026 period; <br>positive values indicate economic losses.",
@@ -937,8 +934,7 @@ server <- function(input, output, session){
                                    "<br>Cod discard mortality (mt): ", round(`Cod Discard Mortality`, 1),
                                    "<br>Cod mortality (mt): ", `Cod Total Mortality`))) +
       ggplot2::geom_hline( yintercept =cod_acl())+
-      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE,
-                         angle = 45, hjust = 0,nudge_x=.05, nudge_y=.05)+
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`Cod Discard Mortality`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Cod discard mortality (mt)")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
@@ -997,8 +993,7 @@ server <- function(input, output, session){
                                    "<br>Haddock discard mortality (mt): ", round(`Haddock Discard Mortality`, 1),
                                    "<br>Haddock mortality (mt): ", `Haddock Total Mortality`))) +
       ggplot2::geom_hline( yintercept =had_acl())+
-      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE,
-                         angle = 45, hjust = 0,nudge_x=.05, nudge_y=.05)+
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Haddock ACL", x=catch$`Cod Discard Mortality`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Haddock discard mortality (mt)")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
@@ -1054,8 +1049,7 @@ server <- function(input, output, session){
                                    "<br>Trips: ", format(round(Trips), big.mark = ","),
                                    "<br>Cod mortality (mt): ", cod))) +
       ggplot2::geom_hline( yintercept = cod_acl())+
-      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE,
-                         angle = 45, hjust = 0,nudge_x=.05, nudge_y=.05)+
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`Trips`[catch$policy_name == "SQ"]), angle=90) +
       ggplot2::xlab("Number of trips")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
@@ -1113,8 +1107,7 @@ server <- function(input, output, session){
                                    "<br>Trips: ", format(round(Trips), big.mark = ","),
                                    "<br>Haddock mortality (mt): ", hadd))) +
       ggplot2::geom_hline( yintercept = had_acl())+
-      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE,
-                         angle = 45, hjust = 0,nudge_x=.05, nudge_y=.05)+
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Haddock ACL", x=catch$`Trips`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Number of trips")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
