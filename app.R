@@ -476,7 +476,7 @@ server <- function(input, output, session){
         mode    = stringr::str_extract(input, "(FH|PR)"),
         season  = stringr::str_extract(input, "\\d+"),
         bound   = stringr::str_extract(input, "(op|cl)"),
-        value    = stringr::str_remove(value, "^\\d{4}-")  # remove year
+      #  value    = stringr::str_remove(value, "^\\d{4}-")  # remove year
       ) %>%
       dplyr::group_by(model, species, mode, season) %>%
       dplyr::filter(!any(value == 0))
@@ -484,10 +484,14 @@ server <- function(input, output, session){
     seasons <- regs1 %>%
       dplyr::select(!input) %>%
       dplyr::filter(bound %in% c("op", "cl")) %>%
+      dplyr::mutate(
+        value = lubridate::ymd(value),
+        value = trimws(format(value, "%b %e"))
+      ) %>%
       tidyr::pivot_wider(names_from = bound,values_from = value) %>%
       dplyr::mutate(season_range = paste(op, "-", cl)) %>%
       dplyr::group_by(model, species, mode) %>%
-      dplyr::summarise(season = paste(season_range, collapse = " ; "),.groups = "drop") %>%
+      dplyr::summarise(season = paste(season_range, collapse = ",<br>"),.groups = "drop") %>%
       tidyr::pivot_wider(names_from = species, values_from = season, names_glue = "{species}season")
 
     bags <- regs1 %>%
@@ -522,7 +526,7 @@ server <- function(input, output, session){
                     `Cod Total Mortality` = Value_cod,
                     `Haddock Total Mortality` = Value_hadd)
 
-    DT::datatable(final_table)
+    DT::datatable(final_table, escape=FALSE)
   })
 
   output$totCatch <- plotly::renderPlotly({
@@ -582,16 +586,44 @@ server <- function(input, output, session){
                     size="% of simulations under haddock ACL")+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_vline( xintercept =cod_acl(), linetype="dashed")+
-      ggplot2::geom_hline( yintercept =had_acl(), color="grey45")+
-      ggplot2::annotate(geom="text", x=cod_acl(), label="Cod ACL", y=520) +
-      ggplot2::annotate(geom="text", y=had_acl(), label="Had ACL", x=80) +
+      ggplot2::geom_hline( yintercept =had_acl())+
+      #ggplot2::annotate(geom="text", x=cod_acl(), label="Cod ACL", y=520) +
+      #ggplot2::annotate(geom="text", y=had_acl(), label="Haddock ACL", x=80) +
       ggplot2::guides(size = "none")+
       ggplot2::ggtitle("Cod and haddock mortality")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
       ggplot2::xlab("Recreational cod mortality (mt)")
 
     fig<- plotly::ggplotly(p, tooltip = "text") %>%
-      plotly::style(textposition = "top center")
+      plotly::style(textposition = "top center")%>%
+      plotly::layout(
+        title = list(font = list(size = 14)),
+        annotations= list(
+          # Add the yline for had_acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = had_acl(),       # Data coordinate for vertical placement
+            text = "Haddock ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
+          ),
+          list(
+            x = cod_acl(),               # 0 = left edge of the plot area (the y-axis)
+            y = 1,       # Data coordinate for vertical placement
+            text = "Cod ACL",
+            xref = "x",      # Anchors X to the viewport (won't move when panning)
+            yref = "paper",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "center",  # Centers the text exactly on the vertical line
+            yanchor = "bottom",  # Sits the text on top of the plot ceiling
+            showarrow = FALSE,
+            yshift = -5           # Optional: 5 pixels of padding from the axis line
+          )
+        )
+      )
     fig
   })
 
@@ -616,7 +648,7 @@ server <- function(input, output, session){
     if(any("CV" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("cvCodPlot", height = "100%")
+        plotly::plotlyOutput("cvCodPlot", height = "90%")
       )
     }
   })
@@ -660,9 +692,9 @@ server <- function(input, output, session){
         ggplot2::aes(text = paste0("Policy: ", policy_name,
                                    "<br>CV ($M): ", round(`CV($M)`, 2),
                                    "<br>Cod mortality (mt): ", cod))) +
-      ggplot2::geom_hline( yintercept =cod_acl())+
+      ggplot2::geom_hline( yintercept =cod_acl(), linetype="dashed")+
+      ggplot2::geom_vline( xintercept =0,color="grey45") +
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
-      ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`CV($M)`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
       ggplot2::labs(title = "<b>Cod mortality and economic effects on anglers</b><br>Negative compensating variation (CV) indicates aggregate economic gains to anglers relative to the November 2025 through October 2026 period; <br>positive values indicate economic losses.",
@@ -730,10 +762,21 @@ server <- function(input, output, session){
             showarrow = FALSE,
             text = arrow_text,
             font = list(size = 12)
+          ),
+          # Add the yline for cod_acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = cod_acl(),       # Data coordinate for vertical placement
+            text = "Cod ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
           )
         )
       )
-
     fig1
   })
 
@@ -742,7 +785,7 @@ server <- function(input, output, session){
     if(any("CV" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("cvHadPlot", height = "100%")
+        plotly::plotlyOutput("cvHadPlot", height = "90%")
       )
     }
   })
@@ -787,8 +830,8 @@ server <- function(input, output, session){
                                    "<br>CV ($M): ", round(`CV($M)`, 2),
                                    "<br>Haddock mortality (mt): ", hadd))) +
       ggplot2::geom_hline( yintercept =had_acl())+
+      ggplot2::geom_vline( xintercept =0,color="grey45") +
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
-      ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=catch$`CV($M)`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
       ggplot2::labs(title = "<b>Haddock  mortality and economic effects on anglers</b><br>Negative compensating variation (CV) indicates aggregate economic gains to anglers relative to the November 2025 through October 2026 period; <br>positive values indicate economic losses.",
@@ -821,7 +864,7 @@ server <- function(input, output, session){
         margin = list(t = 100, b = 95),
         title = list(font = list(size = 14)),
         annotations = list(
-          # All three below-axis annotations sit at the bottom edge of the
+          # the first two below-axis annotations sit at the bottom edge of the
           # plot area (y = 0) and are pushed down a fixed number of pixels
           # with yshift, so they stay the same distance from the axis at
           # any plot size.
@@ -856,6 +899,18 @@ server <- function(input, output, session){
             showarrow = FALSE,
             text = arrow_text,
             font = list(size = 12)
+          ),
+          # Add the yline for had_acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = had_acl(),       # Data coordinate for vertical placement
+            text = "Haddock ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
           )
         )
       )
@@ -868,7 +923,7 @@ server <- function(input, output, session){
     if(any("Discards" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("releaseCodPlot", height = "100%")
+        plotly::plotlyOutput("releaseCodPlot", height = "90%")
       )
     }
   })
@@ -907,9 +962,8 @@ server <- function(input, output, session){
         ggplot2::aes(text = paste0("Policy: ", policy_name,
                                    "<br>Cod discard mortality (mt): ", round(`Cod Discard Mortality`, 1),
                                    "<br>Cod mortality (mt): ", `Cod Total Mortality`))) +
-      ggplot2::geom_hline( yintercept =cod_acl())+
+      ggplot2::geom_hline( yintercept =cod_acl(), linetype="dashed")+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
-      ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`Cod Discard Mortality`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Cod discard mortality (mt)")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
       ggplot2::labs(title = "<b>Cod mortality and cod discard mortality</b>",
@@ -919,15 +973,30 @@ server <- function(input, output, session){
     fig3<- plotly::ggplotly(p3, tooltip = "text")%>%
       plotly::style(textposition = "top center") %>%
       plotly::layout(
-        title = list(font = list(size = 14)))
-    fig3
+        title = list(font = list(size = 14)),
+        annotations= list(
+          # Add the yline for had_acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = cod_acl(),       # Data coordinate for vertical placement
+            text = "Cod ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
+            )
+          )
+      )
+   fig3
   })
 
   output$addReleaseHad <- renderUI({
     if(any("Discards" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("releaseHadPlot", height = "100%")
+        plotly::plotlyOutput("releaseHadPlot", height = "90%")
       )
     }
   })
@@ -968,7 +1037,6 @@ server <- function(input, output, session){
                                    "<br>Haddock mortality (mt): ", `Haddock Total Mortality`))) +
       ggplot2::geom_hline( yintercept =had_acl())+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
-      ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=catch$`Cod Discard Mortality`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Haddock discard mortality (mt)")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
       ggplot2::labs(title = "<b>Haddock mortality and haddock discard mortality</b>",
@@ -978,7 +1046,23 @@ server <- function(input, output, session){
     fig4<- plotly::ggplotly(p4, tooltip = "text")%>%
       plotly::style(textposition = "top center")%>%
       plotly::layout(
-        title = list(font = list(size = 14)))
+        title = list(font = list(size = 14)),
+        annotations= list(
+        # Add the yline for had_acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = had_acl(),       # Data coordinate for vertical placement
+            text = "Haddock ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
+          )
+      )
+    )
+
     fig4
   })
 
@@ -986,7 +1070,7 @@ server <- function(input, output, session){
     if(any("Trips" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("tripsCodPlot", height = "100%")
+        plotly::plotlyOutput("tripsCodPlot", height = "90%")
       )
     }
   })
@@ -1022,9 +1106,8 @@ server <- function(input, output, session){
         ggplot2::aes(text = paste0("Policy: ", policy_name,
                                    "<br>Trips: ", format(round(Trips), big.mark = ","),
                                    "<br>Cod mortality (mt): ", cod))) +
-      ggplot2::geom_hline( yintercept = cod_acl())+
+      ggplot2::geom_hline( yintercept =cod_acl(), linetype="dashed")+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
-      ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`Trips`[catch$policy_name == "SQ"]), angle=90) +
       ggplot2::xlab("Number of trips")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
       ggplot2::labs(title = "<b>Cod mortality and total trips</b>",
@@ -1033,8 +1116,24 @@ server <- function(input, output, session){
 
     fig5<- plotly::ggplotly(p5, tooltip = "text")%>%
       plotly::style(textposition = "top center")%>%
+      plotly::style(textposition = "top center")%>%
       plotly::layout(
-        title = list(font = list(size = 14)))
+        title = list(font = list(size = 14)),
+        annotations= list(
+          # Add the yline for Cod acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = cod_acl(),       # Data coordinate for vertical placement
+            text = "Cod ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
+          )
+        )
+      )
     fig5
   })
 
@@ -1043,7 +1142,7 @@ server <- function(input, output, session){
     if(any("Trips" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("tripsHadPlot", height = "100%")
+        plotly::plotlyOutput("tripsHadPlot", height = "90%")
       )
     }
   })
@@ -1082,7 +1181,6 @@ server <- function(input, output, session){
                                    "<br>Haddock mortality (mt): ", hadd))) +
       ggplot2::geom_hline( yintercept = had_acl())+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
-      ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Had ACL", x=catch$`Trips`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Number of trips")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
       ggplot2::labs(title = "<b>Haddock mortality and total trips</b>",
@@ -1092,7 +1190,22 @@ server <- function(input, output, session){
     fig6<- plotly::ggplotly(p6, tooltip = "text")%>%
       plotly::style(textposition = "top center")%>%
       plotly::layout(
-        title = list(font = list(size = 14)))
+        title = list(font = list(size = 14)),
+        annotations= list(
+          # Add the yline for had_acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = had_acl(),       # Data coordinate for vertical placement
+            text = "Haddock ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
+          )
+        )
+      )
     fig6
   })
 
