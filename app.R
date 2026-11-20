@@ -728,6 +728,7 @@ server <- function(input, output, session){
       plotly::layout(
         # fixed pixel margins: room for the 3-line title (t) and the
         # axis title + arrow + label below the plot (b)
+        xaxis = list(title = list(standoff = 5)),
         margin = list(t = 100, b = 95),
         title = list(font = list(size = 14)),
         annotations = list(
@@ -865,6 +866,7 @@ server <- function(input, output, session){
       plotly::layout(
         # fixed pixel margins: room for the 3-line title (t) and the
         # axis title + arrow + label below the plot (b)
+        xaxis = list(title = list(standoff = 5)),
         margin = list(t = 100, b = 95),
         title = list(font = list(size = 14)),
         annotations = list(
