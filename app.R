@@ -476,7 +476,7 @@ server <- function(input, output, session){
         mode    = stringr::str_extract(input, "(FH|PR)"),
         season  = stringr::str_extract(input, "\\d+"),
         bound   = stringr::str_extract(input, "(op|cl)"),
-        value    = stringr::str_remove(value, "^\\d{4}-")  # remove year
+      #  value    = stringr::str_remove(value, "^\\d{4}-")  # remove year
       ) %>%
       dplyr::group_by(model, species, mode, season) %>%
       dplyr::filter(!any(value == 0))
@@ -484,10 +484,14 @@ server <- function(input, output, session){
     seasons <- regs1 %>%
       dplyr::select(!input) %>%
       dplyr::filter(bound %in% c("op", "cl")) %>%
+      dplyr::mutate(
+        value = lubridate::ymd(value),
+        value = trimws(format(value, "%b %e"))
+      ) %>%
       tidyr::pivot_wider(names_from = bound,values_from = value) %>%
       dplyr::mutate(season_range = paste(op, "-", cl)) %>%
       dplyr::group_by(model, species, mode) %>%
-      dplyr::summarise(season = paste(season_range, collapse = " ; "),.groups = "drop") %>%
+      dplyr::summarise(season = paste(season_range, collapse = ",<br>"),.groups = "drop") %>%
       tidyr::pivot_wider(names_from = species, values_from = season, names_glue = "{species}season")
 
     bags <- regs1 %>%
@@ -522,7 +526,7 @@ server <- function(input, output, session){
                     `Cod Total Mortality` = Value_cod,
                     `Haddock Total Mortality` = Value_hadd)
 
-    DT::datatable(final_table)
+    DT::datatable(final_table, escape=FALSE)
   })
 
   output$totCatch <- plotly::renderPlotly({
