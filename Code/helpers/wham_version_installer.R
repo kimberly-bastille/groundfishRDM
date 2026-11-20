@@ -19,11 +19,10 @@ library(tidyverse)
 library(TMB)
 library(haven)
 library(glue)
-library(googledrive)
 library(here)
 here::i_am("Code/helpers/wham_version_installer.R")
+source(here("Code", "helpers", "developer_setup.R"))
 
-drive_auth(cache = here(".secrets"), email = TRUE)
 
 ################################################################################
 ################################################################################
