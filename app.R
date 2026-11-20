@@ -587,15 +587,43 @@ server <- function(input, output, session){
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_vline( xintercept =cod_acl(), linetype="dashed")+
       ggplot2::geom_hline( yintercept =had_acl())+
-      ggplot2::annotate(geom="text", x=cod_acl(), label="Cod ACL", y=520) +
-      ggplot2::annotate(geom="text", y=had_acl(), label="Haddock ACL", x=80) +
+      #ggplot2::annotate(geom="text", x=cod_acl(), label="Cod ACL", y=520) +
+      #ggplot2::annotate(geom="text", y=had_acl(), label="Haddock ACL", x=80) +
       ggplot2::guides(size = "none")+
       ggplot2::ggtitle("Cod and haddock mortality")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
       ggplot2::xlab("Recreational cod mortality (mt)")
 
     fig<- plotly::ggplotly(p, tooltip = "text") %>%
-      plotly::style(textposition = "top center")
+      plotly::style(textposition = "top center")%>%
+      plotly::layout(
+        title = list(font = list(size = 14)),
+        annotations= list(
+          # Add the yline for had_acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = had_acl(),       # Data coordinate for vertical placement
+            text = "Haddock ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
+          ),
+          list(
+            x = cod_acl(),               # 0 = left edge of the plot area (the y-axis)
+            y = 1,       # Data coordinate for vertical placement
+            text = "Cod ACL",
+            xref = "x",      # Anchors X to the viewport (won't move when panning)
+            yref = "paper",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "center",  # Centers the text exactly on the vertical line
+            yanchor = "bottom",  # Sits the text on top of the plot ceiling
+            showarrow = FALSE,
+            yshift = -5           # Optional: 5 pixels of padding from the axis line
+          )
+        )
+      )
     fig
   })
 
