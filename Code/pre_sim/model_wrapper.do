@@ -675,7 +675,7 @@ else {
 		//run this script in R to read in the catch at length processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `rdb_catch_at_len_to_drive'{
     di "Pushing rec dashboard catch at length data to gdrive using R"
-	rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R, args("$Fishery" $ManagementCycle)
+	rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R", args("$Fishery" $ManagementCycle)
 	local executed_scripts `executed_scripts' rdb_catch_at_len_to_drive.R
 }
 else {
