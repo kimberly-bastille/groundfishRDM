@@ -14,7 +14,7 @@
                cost and angler demographics (drawn once per iteration), samples
                catch-per-trip outcomes from the copula output for that iteration
                (by mode and month), and saves one calib_catch_draws_`i'.dta.
- Inputs:       $misc_data_cd/fes_person_final_2023`w'.dta (waves 1-6),
+ Inputs:       $misc_data_cd/fes_person_final_2025`w'.dta (waves 1-6),
                $misc_data_cd/directed_trip_draws.csv,
                $misc_data_cd/trip_costs.dta,
                $calib_catch_draws_cd/calib_catch_draws_raw_`i'.dta (copula output).
@@ -94,20 +94,16 @@ end ;
       to 12-month effort and any estimates may be highly variable.
       Wave data will produce independent estimates of 12-month effort."
   
-   I will use the most recent year of FES survey data available (2023). */
+   I will use the most recent year of FES survey data available (2025). 
+   FES survey data for 2024 and 2025 received from Rob Andrews 11/4/26.
+   Same caveats above apply to the 2024 and 2025 data.*/
 
 global dems ;
 local wvs 1 2 3 4 5 6 ;
-foreach w of local wvs {;
+quietly foreach w of local wvs {;
 
-    u  "$misc_data_cd\fes_person_final_2023`w'.dta", clear ;
-					 
+    u  "$misc_data_cd\fes_person_final_2025`w'.dta", clear ; 
 					   
- 
-    /* PRESERVED: this state block has no ME (23) or NH (33) lines, unlike
-       part1's, and the next keep drops every unlabelled state. The pool
-       therefore ends up MA-only after the inlist() at the end of Section A
-       Kept as in the original. */
     gen state="MA" if st==25 ;
     replace state="MD" if st==24 ;
     replace state="RI" if st==44 ;
@@ -117,6 +113,9 @@ foreach w of local wvs {;
     replace state="DE" if st==10 ;
     replace state="VA" if st==51 ;
     replace state="NC" if st==37 ;
+	replace state="ME" if st==23 ;
+	replace state="NH" if st==33 ;
+
     keep if state!="" ;
 
     tempfile dems`w' ;

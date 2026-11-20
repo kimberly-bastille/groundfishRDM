@@ -179,34 +179,14 @@ commercial_FY_removals <- species_area_catch %>%
   mutate(total_removals=landings+discards)%>%
   filter(fishing_year>=2022)
 
-# I should just print the commercial_CY_removals instead of
-#cat("Western Gulf of Maine Commercial cod removals (mt)in 2023-2026:" \n")
-#commercial_CY_removals< %>%
-#  filter(itis_tsn==164712 & area_name=="WGOM" & year %in% (2023,2024,2025)
 
-#cat(" Gulf of Maine Commercial haddock removals (mt)in 2023-2026:" \n")
-#commercial_CY_removals< %>%
-#  filter(itis_tsn==164744 & area_name=="GOM" & year %in% (2023,2024,2025)
+cat("Western Gulf of Maine Commercial cod removals by Calendar Year: \n")
 
-WGOM_cod_2023<-commercial_CY_removals %>%
-  filter(itis_tsn==164712 & area_name=="WGOM" & year==2023) %>%
-  pull(total_removals)
-
-WGOM_cod_2024<-commercial_CY_removals %>%
-  filter(itis_tsn==164712 & area_name=="WGOM" & year==2024) %>%
-  pull(total_removals)
-
-WGOM_cod_2025<-commercial_CY_removals %>%
-  filter(itis_tsn==164712 & area_name=="WGOM" & year==2025) %>%
-  pull(total_removals)
-
-cat("Western Gulf of Maine Commercial cod removals: \n")
 commercial_CY_removals %>%
   filter(itis_tsn==164712,area_name=="WGOM")%>%
   select(itis_tsn, common_name, area_name, year, total_removals)
 
-
-cat("Gulf of Maine Commercial haddock removals: \n")
+cat("Gulf of Maine Commercial haddock removals by Calendar Year: \n")
 commercial_CY_removals %>%
   filter(itis_tsn==164744,area_name=="GOM")%>%
   select(itis_tsn, common_name, area_name, year, total_removals)

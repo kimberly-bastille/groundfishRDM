@@ -8,7 +8,7 @@
  Inputs:       $misc_data_cd/simulated_catch_totals3.dta (written by
                compare_calibration_data_to_MRIP.do).
  Outputs:      $misc_data_cd/rdb_sim_catch_per_trip.dta
- Dependencies: Global $misc_data_cd (set in model_wrapper.do).
+ Dependencies: Global $misc_data_cd and $ManagementCycle (set in model_wrapper.do).
  Pipeline:     Wrapped by model_wrapper.do, gated by `prep_cpt_for_dashboard'
                (default ON). Followed by rdb_catch_per_trip_to_drive.R, which
                pushes the output to Google Drive as an Rds.
@@ -122,8 +122,11 @@ restore
 clear
 append using `c_med' `c_min' `c_max' `h_med' `h_min' `h_max'
 
+/* ensure ManagementCycle is in range*/
+assert $ManagementCycle>=2026
 
 *add dataframe columns common to both species
+gen management_cycle= $ManagementCycle 
 gen wave=1 if inlist(month, 1, 2)
 replace wave=2 if inlist(month, 3, 4)
 replace wave=3 if inlist(month, 5, 6)
@@ -131,9 +134,9 @@ replace wave=4 if inlist(month, 7, 8)
 replace wave=5 if inlist(month, 9, 10)
 replace wave=6 if inlist(month, 11, 12)
 
-*wave 6 is from 2024
-gen year=2025 if month<=10
-replace year=2024 if month>=11
+*Waves 1-5 are from the year prior to management cycle, wave 6 is from 2 years prior
+gen year=management_cycle-1 if month<=10
+replace year=management_cycle-2 if month>=11
 
 gen stock_abbrev="WGOM"
 replace stock_abbrev="GOM" if common=="haddock"
@@ -144,7 +147,7 @@ gen state=.
 gen source="model intermediate"
 
 *reorder columns. sort data on month, common, mode.
-order fishery common species_itis stock_abbrev state mode year wave month metric value units source
+order fishery common species_itis stock_abbrev state mode year management_cycle wave month metric value units source
 sort month common mode
 
 //get rid of var label on value 

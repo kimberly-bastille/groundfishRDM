@@ -120,7 +120,7 @@ if ((installed_cod_commit!=cod_needed_commit) | is.na(installed_cod_commit) ){
 ################################################################################
 
 # read in the haddock assessment
-assessment_file_in<-"mod_nola_dcpe_blls2.rds"
+assessment_file_in<-"mod_2026MT.rds"
 readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","haddock_assessment",assessment_file_in)
 file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 

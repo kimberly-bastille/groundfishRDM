@@ -1,14 +1,21 @@
 ################################################################################
 ################################################################################
 # Script:       export_assess_to_gdrive.R
-# Purpose:      Explorts historical and projected NAA files to google drive
-# Inputs:       Historical and projected numbers at age:
-# Outputs:      none.
+# Purpose:      Exports historical and projected NAA files to google drive
+# Inputs:       Historical and projected numbers at age
+#   			glue("WGOMCod_Projections_{data_version}.Rds")
+#				glue("WGOM_Cod_projected_NAA_{data_version}")
+#				glue("WGOM_Cod_historical_NAA_{data_version}")
+#				glue("GOM_Haddock_projected_NAA_{data_version}")
+#				glue("GOM_Haddock_historical_NAA_{data_version}")
+#				takes "cod", "haddock", "both" as args.
+# Outputs:      Same files, but on the shared google drive. These files ARE versioned
 # Dependencies: Google Drive access with cached credentials in .secrets.
 # Pipeline:     Assessment-data prep, run once per management cycle. Upstream of
 #               the Stata pipeline: its NAA outputs feed the catch-at-length
 #               steps (see catch_at_length_projection.do).
-#
+# Notes:        Hard-coded path (2027_management_cycle_data) that will need to be updated at the
+#				next management cycle.
 ################################################################################
 ################################################################################
 #Load libraries
@@ -20,14 +27,29 @@ library(here)
 
 # Define arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop("Error: This script requires exactly one argument.", call. = FALSE)
+if (length(args) != 3) {
+  stop("Error: This script requires exactly three argument.", call. = FALSE)
 }
 
+
 #read in arguments. Ensure they are numeric
-stocks  <- args[1]
+Fishery<-args[1]
+management_cycle<-as.numeric(args[2])
+stocks<- args[3]
+
+if (!Fishery %in% c("groundfish","fluke")) {
+  stop(glue("First argument is {Fishery}. It must take on value of \"groundfish\" or \"fluke\"."), call. = FALSE)
+}
+
+
+if (!stocks %in% c("cod","haddock","both")) {
+  stop(glue("First argument is {stocks}. It must take on value of \"cod\", \"haddock\" or \"both\"."), call. = FALSE)
+}
 
 # Show them, just in case.
+cat("Fishery:", Fishery, "\n")
+cat("management cycle:", management_cycle, "\n")
+
 cat("Stocks to export:", stocks, "\n")
 
 
@@ -62,18 +84,25 @@ HaddockHistoricalNAASaveFile<-glue("GOM_Haddock_historical_NAA_{data_version}")
 # NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
 drive_auth(cache = here(".secrets"), email = TRUE)
 # Output folder on google drive
-groundfish_processed_path<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","input_data")
+
+#Assemble beginning of path
+groundfish_processed_path<-file.path("socialsci","RecreationalDST",
+                                     glue("{management_cycle}_management_cycle_data"),
+                                     glue("{Fishery}RDM"),
+                                     "input_data"
+                                     )
+
 folder_info <- drive_get(
   path = groundfish_processed_path,
   shared_drive = "NMFS NEC READ SSB"
 )
 groundfish_processed_path<-folder_info$id
 
-#################################put cod on gdrive ############################
+#################################put cod on gdrive depending on the value of stocks ############################
 
 if (stocks %in% c("cod","both")) {
 
-#Put the historical NAA on google drive
+#Put the historical NAA on google drive (dta and Rds)
 drive_upload(
   media = file.path(assessment_output_folder,glue("{CodHistoricalNAASaveFile}.Rds")),
   path = as_id(groundfish_processed_path),
@@ -89,7 +118,7 @@ drive_upload(
 )
 
 
-#Put the historical NAA on google drive
+#Put the Projected NAA on google drive (dta and Rds)
 drive_upload(
   media = file.path(assessment_output_folder,glue("{CodProjectedNAASaveFile}.Rds")),
   path = as_id(groundfish_processed_path),
@@ -106,11 +135,11 @@ drive_upload(
 }
 
 
-#################################put haddock on gdrive ############################
+#################################put haddock on gdrive depending on the value of stocks ############################
 
 if (stocks %in% c("haddock","both")) {
 
-  #Put the historical NAA on google drive
+  #Put the historical NAA on google drive (dta and Rds)
   drive_upload(
     media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.Rds")),
     path = as_id(groundfish_processed_path),
@@ -126,18 +155,18 @@ if (stocks %in% c("haddock","both")) {
   )
 
 
-  #Put the historical NAA on google drive
+  #Put the projected NAA on google drive (dta and Rds)
   drive_upload(
-    media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.Rds")),
+    media = file.path(assessment_output_folder,glue("{HaddockProjectedNAASaveFile}.Rds")),
     path = as_id(groundfish_processed_path),
-    name = glue("{HaddockHistoricalNAASaveFile}.Rds"),
+    name = glue("{HaddockProjectedNAASaveFile}.Rds"),
     overwrite = TRUE
   )
 
   drive_upload(
-    media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.dta")),
+    media = file.path(assessment_output_folder,glue("{HaddockProjectedNAASaveFile}.dta")),
     path = as_id(groundfish_processed_path),
-    name = glue("{HaddockHistoricalNAASaveFile}.dta"),
+    name = glue("{HaddockProjectedNAASaveFile}.dta"),
     overwrite = TRUE
   )
 }

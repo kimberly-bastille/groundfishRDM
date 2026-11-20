@@ -18,7 +18,7 @@ Four kinds of information feed the tool.
 
 **What anglers actually catch.** Historical catch and effort data from the Marine Recreational Information Program (MRIP) tell us how many trips are taken, when they occur, and by which fishing mode. They also tell us how many cod and haddock are caught on a typical trip. MRIP estimates have sampling uncertainty because MRIP surveys a sample of fishing trips rather than observing every trip. Fishing outcomes also vary naturally: most trips catch few fish, while a small number catch many. The the [RecDST data dashboard](https://connect.fisheries.noaa.gov/content/c257deee-a657-4c10-be8a-92827cb5bdfe/) provides additional information about the MRIP data used in the tool.
 
-**How big the fish are.** Stock assessments project the number of cod and haddock in the population next year for each age class. This matters for recreational management because the effect of a minimum size limit depends on how many fish are near that size. Combined with information about the sizes anglers have caught in the recent past, these projections allow us to estimate next year's expected catch-at-length distributions, or the lengths of fish anglers are likely to encounter.
+**How big the fish are.** Stock assessments conducted by the Northeast Fisheries Science Center (NEFSC) provide projections of the number of cod and haddock in the population next year for each age class. We use NEFSC trawl survey data to translate these age-class projections to length-class projections. Information on fish abundance by length matters for recreational management because the effect of a minimum length limit depends on how many fish are assumed to be above or below that length. Combined with information about the lengths of fish anglers have caught in the recent past, the stock assessment-based projections allow us to compute next year's expected catch-at-length distributions, or the lengths of fish anglers are likely to encounter.
 
 **What trips cost.** NOAA's 2022 angler expenditure survey, an add-on to the site-intercept survey, provides information on fishing trip costs. We use these data to translate policy-induced changes in trip quality into monetary changes in angler well-being.
 
@@ -28,7 +28,7 @@ Many inputs to the DST are estimates rather than exact values. For example, MRIP
 
 Unless otherwise noted, results shown in the DST are the median across draws. The median is the middle projected outcome: half of the draws produce a higher value and half produce a lower value. We use the median because it is less sensitive than an average to a small number of extreme projected outcomes.
 
-For recreational mortality, the DST also reports the percentage of draws at or below the sub-ACL. This provides additional information about uncertainty around the median. For example, two regulatory scenarios could have similar median mortality but different percentages of draws below the sub-ACL. A higher percentage means the scenario remains below the sub-ACL across a wider range of plausible fishery conditions represented by the model.
+For recreational mortality, the DST also reports the percentage of draws at or below the sub-ACL for each species. This provides additional information about uncertainty around the median. For example, two regulatory scenarios could have similar median mortality but different percentages of draws below the sub-ACL. A higher percentage means the scenario remains below the sub-ACL across a wider range of plausible fishery conditions represented by the model.
 
 The median and the percentage of draws below the sub-ACL should be read together. The median describes the central projected outcome, while the percentage below the sub-ACL describes how consistently the scenario meets the limit across the plausible conditions represented in the DST.
 
@@ -38,17 +38,17 @@ The simulation builds up a fishery-wide answer from many small, realistic pieces
 
 Here is a simplified version of what happens for a single opportunity - think of it as one person, on one day, deciding whether to go fishing.
 
-**1. Set the scene.** The tool assigns this person a trip cost and personal characteristics, such as age, education, and how often they fished in the past year, drawn from realistic distributions.
+**1. Set the scene.** The tool assigns this fishing opportunity information about the person making the decision, such as their age, education, and how often they fished in the past year. It also assigns information about the cost of the trip. Both types of information are drawn from realistic distributions.
 
 **2. Figure out what they would catch.** The tool draws a number of cod and haddock from observed catch-per-trip patterns for that time of year and fishing mode. It then assigns each individual fish a length drawn from the length distribution anglers are expected to encounter next year.
 
 **3. Apply the rules.** Each fish is checked against the minimum size and bag limit in effect on that date and for that fishing mode. Legal fish are kept until the bag limit is reached; everything else is released. Some released fish die, and the tool accounts for this using discard mortality rates that vary by month and fish size (for haddock). Observed fishery data are also used to represent imperfect compliance and voluntary release: some fish that are legally required to be released are harvested, while some fish that could legally be kept are released.
 
-**4. Decide whether the trip happens.** The tool now knows what the trip would be like - including the expected number of cod and haddock harvested and released and the trip cost. Using preference parameters estimated from the angler survey, it calculates how appealing the trip is relative to not fishing and converts that value into the probability that the angler takes the trip. Across all fishing opportunities, these probabilities determine the projected number of recreational cod and haddock trips.
+**4. Decide whether the trip happens.** The tool now knows what the trip would be like - including the expected number of cod and haddock harvested and released and the trip cost. Using preference parameters estimated from the angler survey, it calculates how appealing the fishing opportunity is relative to not fishing and converts that value into the probability that the angler takes the trip. Across all fishing opportunities, these probabilities determine the projected number of recreational cod and haddock trips.
 
-The tool repeats this process for fishing opportunities throughout the year and aggregates the outcomes. Because each opportunity's contribution is weighted by the probability that the trip occurs, regulations that make fishing less attractive result in fewer projected trips and, all else equal, less fishing mortality.
+The tool repeats this process for fishing opportunity throughout the year and aggregates the outcomes. Because each opportunity's contribution is weighted by the probability that the trip occurs, regulations that make fishing less attractive result in fewer projected trips and, all else equal, less fishing mortality.
 
-We always provide a set of results for "last year's" conditions and rules, giving a baseline for comparison for the same person on the same day.
+We always provide results for what is expected to occur next year under no changes to last year's regulations, or the "status quo". While last year's regulation are held constant under this modeled scenario, the length of fish anglers catch--determined in part by projected stock abundances by length--do change. This feature alone can influence recreational fishing mortality.
 
 ### Assumptions worth knowing about
 
@@ -142,7 +142,7 @@ The page has three parts, from top to bottom: a chart comparing cod and haddock 
 
 ------------------------------------------------------------------------
 
-The **Supplemental Figures** selector: Below the main table is a row of checkboxes labeled Supplemental Figures, with three choices: **Compensating Variation**, **Discards**, and **Trips**. Each box you select adds two figures to the bottom of the page - one for cod and one for haddock. Clear a box and its figures disappear. These figures are described below.
+The **Supplemental Figures** selector: Below the main table is a row of checkboxes labeled Supplemental Figures, with three choices: **Economic impacts to anglers**, **Discards**, and **Trips**. Each box you select adds two figures to the bottom of the page - one for cod and one for haddock. Clear a box and its figures disappear. These figures are described below.
 
 ![Figure 6: Screenshot of the Supplemental Figures checkbox row](figures/SupplementalFigures.png)
 
@@ -150,7 +150,7 @@ The **Supplemental Figures** selector: Below the main table is a row of checkbox
 
 ### Interpreting Your Results
 
-Start with the mortality chart and summary table. Together they address the main management question: does a regulatory scenario lead to recreational fishing mortality at or below the sub-ACL? The supplemental figures provide additional information about angler welfare, discards, and fishing trips.
+Start with the mortality chart and summary table. Together they address the main management question: does a regulatory scenario lead to recreational fishing mortality at or below the sub-ACL? The supplemental figures provide additional information about economic impacts to anglers, discards, and fishing trips.
 
 #### The Cod and Haddock Mortality Chart
 
@@ -209,7 +209,7 @@ CV should therefore be interpreted as the economic value of a change in expected
 
 ### Compensating Variation Figures
 
-Select the CV box to add two figures, one for cod and one for haddock. Each figure plots compensating variation on the horizontal axis, in millions of dollars, against that species' total recreational mortality on the vertical axis. A reference line marks the sub-ACL. These figures show the trade-off between conservation outcomes and changes in angler well-being. Two regulatory scenarios that produce similar mortality can have substantially different CV values. Scenarios farther to the left have lower CV and therefore represent better outcomes for anglers, all else equal. When comparing scenarios with similar mortality, the policy with the lowest CV is most ideal for anglers.
+Select the "Economic impacts (CV)" box to add two figures, one for cod and one for haddock. Each figure plots compensating variation on the horizontal axis, in millions of dollars, against that species' total recreational mortality on the vertical axis. A reference line marks the sub-ACL. These figures show the trade-off between conservation and economic outcomes. Two regulatory scenarios producing similar levels recreational mortality can differ more widely in their expected economic impact to anglers. Scenarios farther to the left have lower CV and therefore represent better outcomes for anglers, all else equal.
 
 ------------------------------------------------------------------------
 
@@ -233,7 +233,7 @@ Select the **Discards** box to add two figures. Each plots dead discard mortalit
 
 Select the **Trips** box to add two figures, plotting the predicted number of recreational trips against each species' total mortality.
 
-**What this tells you.** The trip count is the tool's estimate of how many trips anglers are expected to take. Because the tool accounts for whether expected fishing conditions make a trip more or less attractive, more restrictive regulations can reduce the projected number of trips. Changes in trips can also indicate economic effects beyond angler welfare, such as changes in spending at businesses that serve recreational anglers.
+**What this tells you.** The trip count is the tool's estimate of how many trips anglers are expected to take. Because the tool accounts for whether expected fishing conditions make a trip more or less attractive, more liberal regulations will increase the projected number of trips, while more restrictive regulations will reduce them. Changes in trips can also indicate economic effects beyond compensating variation (an angler-based economic metric), such as changes in spending at downstream businesses that serve recreational anglers.
 
 ------------------------------------------------------------------------
 

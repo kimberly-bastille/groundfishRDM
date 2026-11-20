@@ -52,11 +52,6 @@ save `mrip_sites', replace
 restore
 
 
-
-local yrz "2024, 2025, 2026"
-local wavelist "1, 2, 3, 4, 5, 6"
-
-
         capture confirm file "$misc_data_cd/mrip_trip.dta"
         if _rc continue
 
@@ -68,11 +63,14 @@ local wavelist "1, 2, 3, 4, 5, 6"
 
         use "$misc_data_cd/mrip_trip.dta", clear
         renvarlab, lower
-        keep if inlist(year,`yrz')
-		keep if inlist(wave, `wavelist') 
+		tempvar keeper
+		gen `keeper'=0
+		replace `keeper'=1 if $calibration_year
+		replace `keeper'=1 if $calibration_year_back
 
+		keep if `keeper'==1
+		drop `keeper'
 		
-        * keep if year == `yr' & wave == `wave'
         count
         if r(N) == 0 continue
 
@@ -81,9 +79,13 @@ local wavelist "1, 2, 3, 4, 5, 6"
 		
         use "$misc_data_cd/mrip_catch.dta", clear
         renvarlab, lower
-        keep if inlist(year,`yrz')
-		keep if inlist(wave, `wavelist') 
-        count
+		tempvar keeper
+		gen `keeper'=0
+		replace `keeper'=1 if $calibration_year
+		replace `keeper'=1 if $calibration_year_back
+
+		keep if `keeper'==1
+		drop `keeper'
         if r(N) == 0 continue
 
         sort year strat_id psu_id id_code
@@ -150,8 +152,7 @@ local wavelist "1, 2, 3, 4, 5, 6"
         
         append using `master'
         save `master', replace
-*    }
-*}
+
 
 use `master', clear
 
@@ -175,20 +176,18 @@ clear
 tempfile master
 save `master', emptyok replace
 
-
-*foreach yr of local yrz {
-*   foreach wave of local wavelist {
-
-
-
-
         tempfile tl1 cl1
 
         use "$misc_data_cd/mrip_trip.dta", clear
 		
 		renvarlab, lower
-        keep if inlist(year,`yrz')
-		keep if inlist(wave, `wavelist') 
+		tempvar keeper
+		gen `keeper'=0
+		replace `keeper'=1 if $calibration_year
+		replace `keeper'=1 if $calibration_year_back
+
+		keep if `keeper'==1
+		drop `keeper'
         count
         if r(N) == 0 continue
 
@@ -197,8 +196,13 @@ save `master', emptyok replace
 		
         use "$misc_data_cd/mrip_catch.dta", clear
         renvarlab, lower
-        keep if inlist(year,`yrz')
-		keep if inlist(wave, `wavelist') 
+		tempvar keeper
+		gen `keeper'=0
+		replace `keeper'=1 if $calibration_year
+		replace `keeper'=1 if $calibration_year_back
+
+		keep if `keeper'==1
+		drop `keeper'
         count
         if r(N) == 0 continue
 
@@ -288,8 +292,6 @@ save `master', emptyok replace
         
         append using `master'
         save `master', replace
-*    }
-*}
 
 use `master', clear
 
@@ -455,35 +457,38 @@ save "$misc_data_cd\fishery_choice_availability.dta", replace
 * Update regulations for ALL species through calibration period. 
 * The regulations file used in the fishery choice model spans through 2025. Update any regulations for the calibration period that are not in the RDM calibration period.
 * For mgt cycle 2027, this means 2026 regulations.
+tempfile regs2024 regs2025 regs2026 regs
+
 use "$misc_data_cd\daily_rec_regulations_2010_2025.dta", clear
+gen wave=1 if month(date)==1 | month(date)==2
+replace wave=2 if month(date)==3 | month(date)==4
+replace wave=3 if month(date)==5 | month(date)==6
+replace wave=4 if month(date)==7 | month(date)==8
+replace wave=5 if month(date)==9 | month(date)==10
+replace wave=6 if month(date)==11 | month(date)==12
+
 rename prim1_common alt_name
-keep state mode date alt_name open
+keep state mode date alt_name open wave
 keep if inlist(mode, "fh", "pr")
-gen year=year(date)
 
-su year
-return list
-if (`r(max)'==2025){
-keep if inrange(date, $calibration_date_start, $calibration_date_end)
+preserve
+keep if year(date)==2025
+save `regs2025', replace
+restore
 
-isid state mode date alt_name
-bysort state mode date: assert _N==15
-assert inlist(open, 0, 1)
-}
+preserve
+keep if year(date)==2024
+save `regs2024', replace
+restore
 
-su year
-return list
-if (`r(max)'==2026){
 keep if year(date)==2025
 
-tempfile regs2025 regs2026 regs
-save `regs2025', replace
-
+* Update 2026 regulations here  
 * Copy 2025 calendar dates into 2026.
 replace date=mdy(month(date), day(date), 2026)
 format date %td
 
-* Update Massachusetts black sea bass retention season.
+* Massachusetts black sea bass open season changed from 2025 to 2026.
 replace open=. if alt_name=="blackseabass" & state=="MA"
 replace open=1 if inrange(date, td(16may2026), td(14oct2026)) & alt_name=="blackseabass" & state=="MA"
 replace open=0 if alt_name=="blackseabass" & state=="MA" & open==.
@@ -494,12 +499,12 @@ assert inlist(open, 0, 1)
 save `regs2026', replace
 
 append using `regs2025'
+append using `regs2024'
+
 gen int year=year(date)
 
 isid state mode date alt_name
 bysort state mode date: assert _N==15
-}
-
 
 tempfile regs
 save `regs', replace
@@ -519,6 +524,7 @@ isid year wave state strat_id psu_id id_code
 * Verify date coverage before expanding; joinby otherwise drops unmatched trips.
 preserve
 use `regs', clear
+keep if $calibration_year
 keep state mode date year
 duplicates drop
 tempfile regulation_dates

@@ -11,7 +11,7 @@
  Inputs:       $misc_data_cd/baseline_catch_at_length.csv (written by catch_at_length_calibration.do).
                $misc_data_cd/projected_catch_at_length.csv (written by catch_at_length_projection.do). 
  Outputs:      $misc_data_cd/rdb_cat_len.dta
- Dependencies: Global $misc_data_cd (set in model_wrapper.do).
+ Dependencies: Global $misc_data_cd and $ManagementCycle (set in model_wrapper.do).
  Pipeline:     Wrapped by model_wrapper.do, gated by `prep_catch_at_length_for_dash'
                (default ON). Followed by rdb_catch_at_len_to_drive.R, which pushes
                the output to Google Drive as an Rds.
@@ -150,6 +150,9 @@ drop season1-season4
 /******************************************************************************/
 /******************************************************************************/
 
+/* ensure ManagementCycle is in range*/
+assert $ManagementCycle>=2026
+gen management_cycle= $ManagementCycle 
 gen common = "atlanticcod" if species=="cod"
 replace common = "haddock" if species=="hadd"
 gen species_itis = 164712 if species=="cod"
@@ -164,12 +167,14 @@ gen fishery= "NE Groundfish"
 //get rid of var label on value 
 label variable value ""
 
-//technically some of the data came from 2024 but 2025 is the regulatory baseline year
-gen year=2025
-replace year=2026 if units=="projected fitted percent of catch"
+/*baseline year is the one before management cycle although technically some of the 
+data came from 2 years ago (Nov, Dec)
+Projection year is the management cycle year */
+gen year=management_cycle - 1
+replace year=management_cycle if units=="projected fitted percent of catch"
 
 
-order fishery common species_itis stock_abbrev year metric value units source
+order fishery common species_itis stock_abbrev year management_cycle metric value units source
 
 save "$misc_data_cd\rdb_cat_len.dta", replace 
 

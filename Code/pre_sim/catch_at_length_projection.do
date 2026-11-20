@@ -427,8 +427,9 @@ di "catch_at_length_projection: converting projected NAA to numbers-at-length ..
 
 /* cod */
 use "$misc_data_cd/WGOM_Cod_projected_NAA.dta", clear ;
+list data_version in 1 ;
 keep if year==$cod_NAA_proj_year ;
-
+assert _N>0; /*very basic check that we have data */
 split metric, parse(" ") ;
 rename metric5 age ;
 keep age value year replicate ;
@@ -462,8 +463,10 @@ save `proj_naa_cod', replace ;
 
 /* haddock */
 use "$misc_data_cd/GOM_Haddock_projected_NAA.dta", clear ;
-
+list data_version in 1;
 keep if year==$hadd_NAA_proj_year ;
+assert _N>0; /*very basic check that we have data */
+
 split metric, parse(" ") ;
 rename metric5 age ;
 keep age value replicate ;
@@ -505,7 +508,8 @@ merge 1:1 species season length draw using `selectivity' ;
 sort species season draw length ;
 
 gen catch_proj= frac_caught_smooth*proj_nal_smooth ;
-mvencode catch*, mv(0) ;
+mvencode catch_proj, mv(0) override ; 
+
 
 keep length species season draw  catch catch_proj cod_replicate hadd_replicate proj_* base* ;
 tostring draw, gen(draw2) ;

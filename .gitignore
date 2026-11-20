@@ -14,3 +14,4 @@
 /Code/pre_sim/logs
 directed_trips_after.csv
 directed_trips_before.csv
+sqlnet.log
