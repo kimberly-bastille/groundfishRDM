@@ -584,8 +584,7 @@ server <- function(input, output, session){
                                             "90-100%" = 1, "Less than 50%" = 1))+
       ggplot2::labs(colour="% of simulations under cod ACL",
                     size="% of simulations under haddock ACL")+
-      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE,
-                         angle = 45, hjust = 0,nudge_x=.05, nudge_y=.05)+
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_vline( xintercept =cod_acl(), linetype="dashed")+
       ggplot2::geom_hline( yintercept =had_acl(), color="grey45")+
       ggplot2::annotate(geom="text", x=cod_acl(), label="Cod ACL", y=520) +
