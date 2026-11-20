@@ -65,20 +65,12 @@ dir.create(file.path(haddock_wham_lib), showWarnings = FALSE)
 
 # this is the google drive location of the cod model
 assessment_file_in<-"mod_base_2023_noBLLS.rds"
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","cod_assessment",assessment_file_in)
-file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
-# break if this matches more than 1 file.
+readin<-file.path(shared_drive_root, "socialsci","RecreationalDST","2027_management_cycle_data",
+                  "groundfishRDM","cod_assessment",assessment_file_in)
 
-stopifnot(length(file_id)==1)
 temp_path <- tempfile(fileext = ".rds")
-
-# Download
-message("Downloading cod assessment model from Google Drive ...")
-drive_download(
-  file = as_id(file_id),
-  path = temp_path,
-  overwrite = TRUE
-)
+message("Downloading haddock assessment model from Google Drive ...")
+file.copy(from=readin, t=temp_path)
 
 # Read in using  into your environment
 mod_accepted <- read_rds(temp_path)
@@ -121,22 +113,17 @@ if ((installed_cod_commit!=cod_needed_commit) | is.na(installed_cod_commit) ){
 
 # read in the haddock assessment
 assessment_file_in<-"mod_2026MT.rds"
-readin<-file.path("socialsci","RecreationalDST","2027_management_cycle_data","groundfishRDM","haddock_assessment",assessment_file_in)
-file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 
-# break if this matches more than 1 file.
-stopifnot(length(file_id)==1)
+
+readin<-file.path(shared_drive_root, "socialsci","RecreationalDST","2027_management_cycle_data",
+                  "groundfishRDM","haddock_assessment",assessment_file_in)
 
 # Create a path for a temporary file
-temp_path <- tempfile(fileext = ".rds")
 
-# Download
+# NOTE: tempfile handles cross-platform path safe creation and garbage collection upon session end
+temp_path <- tempfile(fileext = ".rds")
 message("Downloading haddock assessment model from Google Drive ...")
-drive_download(
-  file = as_id(file_id),
-  path = temp_path,
-  overwrite = TRUE
-)
+file.copy(from=readin, t=temp_path)
 
 # Read in using  into your environment
 haddock_accepted <- read_rds(temp_path)

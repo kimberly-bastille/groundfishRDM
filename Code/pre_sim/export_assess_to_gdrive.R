@@ -22,7 +22,6 @@
 library(tidyverse)
 library(haven)
 library(glue)
-library(googledrive)
 library(here)
 
 # Define arguments
@@ -80,95 +79,56 @@ CodHistoricalNAASaveFile<-glue("WGOM_Cod_historical_NAA_{data_version}")
 HaddockProjectedNAASaveFile<-glue("GOM_Haddock_projected_NAA_{data_version}")
 HaddockHistoricalNAASaveFile<-glue("GOM_Haddock_historical_NAA_{data_version}")
 
-# Connect to Google Drive
-# NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
-drive_auth(cache = here(".secrets"), email = TRUE)
-# Output folder on google drive
 
 #Assemble beginning of path
-groundfish_processed_path<-file.path("socialsci","RecreationalDST",
+groundfish_processed_path<-file.path(shared_drive_root, "socialsci","RecreationalDST",
                                      glue("{management_cycle}_management_cycle_data"),
                                      glue("{Fishery}RDM"),
                                      "input_data"
                                      )
 
-folder_info <- drive_get(
-  path = groundfish_processed_path,
-  shared_drive = "NMFS NEC READ SSB"
-)
-groundfish_processed_path<-folder_info$id
-
 #################################put cod on gdrive depending on the value of stocks ############################
 
 if (stocks %in% c("cod","both")) {
 
-#Put the historical NAA on google drive (dta and Rds)
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{CodHistoricalNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{CodHistoricalNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
+  file.copy(from=file.path(assessment_output_folder,glue("{CodHistoricalNAASaveFile}.Rds")),
+            to=file.path(groundfish_processed_path, glue("{CodHistoricalNAASaveFile}.Rds"))
+            )
 
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{CodHistoricalNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{CodHistoricalNAASaveFile}.dta"),
-  overwrite = TRUE
-)
+  file.copy(from=file.path(assessment_output_folder,glue("{CodHistoricalNAASaveFile}.dta")),
+            to=file.path(groundfish_processed_path, glue("{CodHistoricalNAASaveFile}.dta"))
+  )
+  file.copy(from=file.path(assessment_output_folder,glue("{CodProjectedNAASaveFile}.Rds")),
+            to=file.path(groundfish_processed_path, glue("{CodProjectedNAASaveFile}.Rds"))
+  )
 
-
-#Put the Projected NAA on google drive (dta and Rds)
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{CodProjectedNAASaveFile}.Rds")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{CodProjectedNAASaveFile}.Rds"),
-  overwrite = TRUE
-)
-
-drive_upload(
-  media = file.path(assessment_output_folder,glue("{CodProjectedNAASaveFile}.dta")),
-  path = as_id(groundfish_processed_path),
-  name = glue("{CodProjectedNAASaveFile}.dta"),
-  overwrite = TRUE
-)
+  file.copy(from=file.path(assessment_output_folder,glue("{CodProjectedNAASaveFile}.dta")),
+            to=file.path(groundfish_processed_path, glue("{CodProjectedNAASaveFile}.dta"))
+  )
 }
 
 
 #################################put haddock on gdrive depending on the value of stocks ############################
 
 if (stocks %in% c("haddock","both")) {
-
   #Put the historical NAA on google drive (dta and Rds)
-  drive_upload(
-    media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.Rds")),
-    path = as_id(groundfish_processed_path),
-    name = glue("{HaddockHistoricalNAASaveFile}.Rds"),
-    overwrite = TRUE
+
+  file.copy(from=file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.Rds")),
+            to=file.path(groundfish_processed_path, glue("{HaddockHistoricalNAASaveFile}.Rds"))
   )
 
-  drive_upload(
-    media = file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.dta")),
-    path = as_id(groundfish_processed_path),
-    name = glue("{HaddockHistoricalNAASaveFile}.dta"),
-    overwrite = TRUE
+  file.copy(from=file.path(assessment_output_folder,glue("{HaddockHistoricalNAASaveFile}.dta")),
+            to=file.path(groundfish_processed_path, glue("{HaddockHistoricalNAASaveFile}.dta"))
+  )
+  file.copy(from=file.path(assessment_output_folder,glue("{HaddockProjectedNAASaveFile}.Rds")),
+            to=file.path(groundfish_processed_path, glue("{HaddockProjectedNAASaveFile}.Rds"))
+  )
+
+  file.copy(from=file.path(assessment_output_folder,glue("{HaddockProjectedNAASaveFile}.dta")),
+            to=file.path(groundfish_processed_path, glue("{HaddockProjectedNAASaveFile}.dta"))
   )
 
 
-  #Put the projected NAA on google drive (dta and Rds)
-  drive_upload(
-    media = file.path(assessment_output_folder,glue("{HaddockProjectedNAASaveFile}.Rds")),
-    path = as_id(groundfish_processed_path),
-    name = glue("{HaddockProjectedNAASaveFile}.Rds"),
-    overwrite = TRUE
-  )
-
-  drive_upload(
-    media = file.path(assessment_output_folder,glue("{HaddockProjectedNAASaveFile}.dta")),
-    path = as_id(groundfish_processed_path),
-    name = glue("{HaddockProjectedNAASaveFile}.dta"),
-    overwrite = TRUE
-  )
 }
 
 

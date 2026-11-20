@@ -99,7 +99,7 @@ global seed 03211990
 =1 for final data prep
 =0 for prototyping
  */
-local final_data_prep= 1
+local final_data_prep= 0
 
 
 
@@ -176,8 +176,8 @@ global calibration_date_end mdy(10,31,`=$ManagementCycle-1')
 /* projection year is groundfish fishing year (May 1 to April 30)
 This runs May 1 of the ManagementCycle to April 30 of `ManagementCycle+1'
 */
-global projection_date_start mdy(5,1,$ManagementCycle) 
-global projection_date_end mdy(4,30,`=$ManagementCycle+1') 
+global projection_date_start mdy(5,1,$ManagementCycle)
+global projection_date_end mdy(4,30,`=$ManagementCycle+1')
 
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
@@ -198,7 +198,7 @@ global trawl_survey_start_year 2023
 
 
 /******************************************************************************/
-/* Section C2:JUST FOR TESTING  - temporarily rebuild the calibration_year global 
+/* Section C2:JUST FOR TESTING  - temporarily rebuild the calibration_year global
 and the mrip globals to get a different set of data*/
 /*
 
@@ -230,9 +230,9 @@ and the mrip globals to get a different set of data*/
 // Control which modules to run (set to 0 to skip)
 loc process_commercial_landings = 0      	    // Get commercial landings from Oracle
 loc process_cod_assess = 0                		// Process Cod Assessment data
-loc process_haddock_assess = 0            // Process Haddock Assessment data
+loc process_haddock_assess = 0           // Process Haddock Assessment data
 
-loc get_assessment_from_gdrive = 0				// Pull Assessment OUTPUTs 
+loc get_assessment_from_gdrive = 0				// Pull Assessment OUTPUTs
 loc get_mrip_oracle = 0	 		 			      // Pull MRIP data.
 loc get_fes_from_gdrive=0						// get the fes data from google drive
 loc get_mrip_site_list = 0		 					  // Pull MRIP site list.
@@ -253,14 +253,14 @@ loc catch_at_length_project=0					    // Generate projection-year catch-at-lengt
 
 loc get_fishery_choice_from_gdrive = 0				// Get files required for fishery choice model from gdrive (Lou=0 always)
 loc estimate_fishery_choice_model=0					// Estimate fishery choice model
-loc prepare_fishery_choice_data=1					// Generate data and parameters from fishery choice model
+loc prepare_fishery_choice_data=0					// Generate data and parameters from fishery choice model
 
 loc Rcodewrapper=0							        // Run calibration routine in R
 
 
 /********************* Push to google drive toggles*************************************/
 /********************* (versions on main should be set to 0)****************************/
-loc export_assess_to_gdrive = 0          // Export assessment to google drive
+loc export_assess_to_gdrive = 1          // Export assessment to google drive
 local assess_upload = "both"			    	 // arguments for uploading. Can be "cod", "haddock", or "both"
 loc export_all_to_GDrive = 0             // Export calibration and all data to Google
 
@@ -282,8 +282,8 @@ loc rdb_dtrips_to_drive =0 	      		  // Push directed trips data to google driv
 /***************************************************************************************/
 
 **** Toggles to generate alternative data for the uncertainty project (1 = yes, 0 = no)
-/* Be mindful that files are being overwritten with each test and some data needs resetting 
-prior to generating data for the next test. Eg, after testing mean directed trips, must rerun 
+/* Be mindful that files are being overwritten with each test and some data needs resetting
+prior to generating data for the next test. Eg, after testing mean directed trips, must rerun
 directed_trips_calibration to replace directed_trip_draws.csv with original version before testing
 median trips or another source of uncertainty. When not testing catch per trip uncertainty, must either
 run copula_modeling_calibration or run copula_both but set manual species toggle to "none" in copula_both.R. */
@@ -302,9 +302,9 @@ local uncertain_loc=0			  /* save the alternative data in its own 'uncertainty' 
 *Only TP can do the uncertainty project, this block of code sets all the uncertainty toggles to 0 if you are not TP:
 if (inlist("$developer","TP")==0) {
 	global uncertain=0
-	local copula_both=0			   
-	local projected_naa_uncertain=0  
-	local directed_trip_uncertain=0   
+	local copula_both=0
+	local projected_naa_uncertain=0
+	local directed_trip_uncertain=0
 	local uncertain_loc=0
 }
 /********************* End of Uncertainty Project Toggles *************************************/
@@ -316,14 +316,14 @@ if `uncertain_loc' {
 	global misc_data_cd "${gfdatadirunc}/miscellaneous"
 	global calib_catch_draws_cd "${gfdatadirunc}/calib_catch_draws"
 	global figure_cd  "${gfdatadirunc}/figures"
-	
+
 	capture mkdir $misc_data_cd
 	capture mkdir $calib_catch_draws_cd
 	capture mkdir $figure_cd
 }
 
 /********************* local and global verification *************************************/
-/* if this is not the final data prep, short cut by setting ndraws=5 
+/* if this is not the final data prep, short cut by setting ndraws=5
    Display all macros, but only have confirmations trig
 */
 if (`final_data_prep'==0){
@@ -357,11 +357,11 @@ confirm_prompt "Please verify that the Trawl Survey Start year are properly set.
 if ustrregexm("$calibration_year'", "year==([0-9]{4})") {
     local extracted_year = ustrregexs(1)
 }
-di as text "First year extracted from calibration_year global is `extracted_year'.  We expected to it to be `=$ManagementCycle-1'!! 
+di as text "First year extracted from calibration_year global is `extracted_year'.  We expected to it to be `=$ManagementCycle-1'!!
 
 if ("`extracted_year'"!="`=$ManagementCycle-1'") {
 	confirm_prompt "WARNING: calibration_year global is inconsistent with the ManagementCycle global. Something might be wrong." 1
-} 
+}
 else if("`extracted_year'"!="`=$ManagementCycle-1'"){
 	di as text "Calibration_year global consistent with ManagementCycle global"
 }
@@ -711,23 +711,23 @@ if `estimate_fishery_choice_model'{
 	di "Estimate fishery choice model"
 	do "$input_code_cd\estimate_fishery_choice_model.do"
 	local executed_scripts `executed_scripts' estimate_fishery_choice_model.do
-	
-	
+
+
 	}
 else {
    local skipped_scripts `skipped_scripts' estimate_fishery_choice_model.do
 
-}	
+}
 
 // 11c) Generate fishery choice model data and parameters which feed into projection
 if `prepare_fishery_choice_data'{
 	di "Preparing fishery choice data"
 	do "$input_code_cd\prepare_fishery_choice_data.do"
 	local executed_scripts `executed_scripts' prepare_fishery_choice_data.do
-	
+
 	do "$input_code_cd\predict_fishery_choice_probabilities.do"
 	local executed_scripts `executed_scripts' predict_fishery_choice_probabilites.do
-	
+
 	}
 else {
    local skipped_scripts `skipped_scripts' prepare_fishery_choice_data.do
@@ -761,7 +761,7 @@ else {
 
 if (`projected_naa_uncertain' & "$developer"=="TP"){
 	di "Resetting Assessment data from google"
-	
+
 	do "$input_code_cd\get_assessment_from_gdrive.do" $Fishery $ManagementCycle
 	local executed_scripts `executed_scripts' AssesmentReset
 }
@@ -794,7 +794,7 @@ if `final_data_prep'==1{
 else if `final_data_prep'==0{
 	di as text "Final Data prep set to OFF"
 }
-	
+
 
 print_settings
 
