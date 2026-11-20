@@ -55,7 +55,6 @@ library(tidyverse)
 library(TMB)
 library(haven)
 library(glue)
-library(googledrive)
 library(here)
 cod_wham_lib <- file.path(Sys.getenv("R_LIBS_USER"), "cod_wham_install")
 library(wham,lib.loc = cod_wham_lib)
@@ -119,35 +118,14 @@ FullProjectionsSaveFile<-glue("WGOMCod_Projections_{data_version}.Rds")
 ProjectedNAASaveFile<-glue("WGOM_Cod_projected_NAA_{data_version}")
 HistoricalNAASaveFile<-glue("WGOM_Cod_historical_NAA_{data_version}")
 
-
-
-# Connect to Google Drive
-# NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
-drive_auth(cache = here(".secrets"), email = TRUE)
-# Output folder on google drive
-groundfish_processed_path<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
-                                     "groundfishRDM","input_data")
-folder_info <- drive_get(
-  path = groundfish_processed_path,
-  shared_drive = "NMFS NEC READ SSB"
-)
-groundfish_processed_path<-folder_info$id
-
 #read in the assessment file
-readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+readin<-file.path(shared_drive_root,"socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
                   "groundfishRDM","cod_assessment",assessment_file_in)
-file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
-#
 # Create a path for a temporary file
 # NOTE: tempfile handles cross-platform path safe creation and garbage collection upon session end
 temp_path <- tempfile(fileext = ".rds")
 
-# Download
-drive_download(
-  file = as_id(file_id),
-  path = temp_path,
-  overwrite = TRUE
-)
+file.copy(from=readin, t=temp_path)
 
 
 #read in calendar year commercial landings
@@ -179,19 +157,15 @@ mod_list <- list(mod_accepted)
 
 
 
+
+
+
 # Read the ASAP file from google drive
-readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),"groundfishRDM","cod_assessment",ASAP_file_in)
-file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
+readin<-file.path(shared_drive_root, "socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),"groundfishRDM","cod_assessment",ASAP_file_in)
 #
 # Create a path for a temporary file
 temp_path <- tempfile(fileext = ".DAT")
-
-# Download
-drive_download(
-  file = as_id(file_id),
-  path = temp_path,
-  overwrite = TRUE
-)
+file.copy(from=readin, t=temp_path)
 
 # Read in
 asap3 <- read_asap3_dat(temp_path)
