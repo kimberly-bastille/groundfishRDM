@@ -621,7 +621,7 @@ server <- function(input, output, session){
     if(any("CV" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("cvCodPlot", height = "100%")
+        plotly::plotlyOutput("cvCodPlot", height = "90%")
       )
     }
   })
@@ -666,7 +666,6 @@ server <- function(input, output, session){
                                    "<br>CV ($M): ", round(`CV($M)`, 2),
                                    "<br>Cod mortality (mt): ", cod))) +
       ggplot2::geom_hline( yintercept =cod_acl())+
-      ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`CV($M)`[catch$policy_name == "SQ"])) +
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE,
                          angle = 45, hjust = 0,nudge_x=.05, nudge_y=.05)+
       ggplot2::xlab("Compensating variation ($ millions)")+
@@ -736,6 +735,18 @@ server <- function(input, output, session){
             showarrow = FALSE,
             text = arrow_text,
             font = list(size = 12)
+          ),
+          # Add the yline for cod_acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = cod_acl(),       # Data coordinate for vertical placement
+            text = "Cod ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
           )
         )
       )
@@ -748,7 +759,7 @@ server <- function(input, output, session){
     if(any("CV" == input$fig)){
       div(
         style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
-        plotly::plotlyOutput("cvHadPlot", height = "100%")
+        plotly::plotlyOutput("cvHadPlot", height = "90%")
       )
     }
   })
@@ -795,7 +806,6 @@ server <- function(input, output, session){
       ggplot2::geom_hline( yintercept =had_acl())+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE,
                          angle = 45, hjust = 0,nudge_x=.05, nudge_y=.05)+
-      ggplot2::geom_text(ggplot2::aes(y=had_acl(), label="Haddock ACL", x=catch$`CV($M)`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
       ggplot2::labs(title = "<b>Haddock  mortality and economic effects on anglers</b><br>Negative compensating variation (CV) indicates aggregate economic gains to anglers relative to the November 2025 through October 2026 period; <br>positive values indicate economic losses.",
@@ -828,7 +838,7 @@ server <- function(input, output, session){
         margin = list(t = 100, b = 95),
         title = list(font = list(size = 14)),
         annotations = list(
-          # All three below-axis annotations sit at the bottom edge of the
+          # the first two below-axis annotations sit at the bottom edge of the
           # plot area (y = 0) and are pushed down a fixed number of pixels
           # with yshift, so they stay the same distance from the axis at
           # any plot size.
@@ -863,6 +873,18 @@ server <- function(input, output, session){
             showarrow = FALSE,
             text = arrow_text,
             font = list(size = 12)
+          ),
+          # Add the yline for had_acl() with better anchoring
+          list(
+            x = 0,               # 0 = left edge of the plot area (the y-axis)
+            y = had_acl(),       # Data coordinate for vertical placement
+            text = "Haddock ACL",
+            xref = "paper",      # Anchors X to the viewport (won't move when panning)
+            yref = "y",          # Anchors Y to the data (will move if zooming Y)
+            xanchor = "left",    # Left-align text against the axis
+            yanchor = "bottom",  # Sits just above the ACL line
+            showarrow = FALSE,
+            xshift = 5           # Optional: 5 pixels of padding from the axis line
           )
         )
       )
