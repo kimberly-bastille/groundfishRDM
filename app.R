@@ -143,10 +143,11 @@ ui <- fluidPage(
                      style = "margin-left: 1px; color: #337ab7;"
                    )
                  ),
-                 "Discards",
+                 #"Discards",
+                 "Harvest mortality ratio",
                  "Trips"
                ),
-               choiceValues = list("CV", "Discards", "Trips"),
+               choiceValues = list("CV", "Harvest", "Trips"),
                inline = TRUE
              ),
 
@@ -154,6 +155,7 @@ ui <- fluidPage(
              uiOutput("addCVHad"),
              uiOutput("addReleaseCod"),
              uiOutput("addReleaseHad"),
+             uiOutput("addHarvMort"),
              uiOutput("addTripsCod"),
              uiOutput("addTripsHad")),
 
@@ -531,7 +533,7 @@ server <- function(input, output, session){
 
   output$totCatch <- plotly::renderPlotly({
 
-    catch_agg<- df %>% #outputs() %>%
+    catch_agg<- outputs() %>%
       dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
                                   "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
                     mode == "all modes") %>%
@@ -922,6 +924,66 @@ server <- function(input, output, session){
       )
 
     fig2
+  })
+
+  output$addHarvMort <- renderUI({
+    if(any("Harvest" == input$fig)){
+      div(
+        style = "width: 100%; aspect-ratio: 16 / 9;",   # change the ratio here
+        plotly::plotlyOutput("harvmortPlot", height = "90%")
+      )
+    }
+  })
+
+  output$harvmortPlot <- plotly::renderPlotly({
+    req(any("Harvest" == input$fig))
+    harvmort <-  outputs() %>%
+      dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_keep_hadd_weight_lb_new"),
+                    mode == "all modes") %>%
+      dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+      dplyr::group_by(policy_name, iteration, species, mode) %>%
+      dplyr::summarise(harv_mort = sum(as.numeric(value)) * lb_to_mt(), .groups = "drop")
+
+    catch<- outputs() %>%
+      dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+                                  "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
+                    mode == "all modes") %>%
+      dplyr::mutate(species = stringr::str_extract(metric, "cod|hadd")) %>%
+      dplyr::group_by(policy_name, species, iteration) %>%
+      dplyr::summarise(Value = sum(as.numeric(value))) %>%
+      dplyr::mutate(Value = Value * lb_to_mt()) %>%
+      dplyr::group_by(policy_name, iteration, species) %>%
+      dplyr::summarise(tot_mort =round(median(Value),0)) %>%
+      dplyr::ungroup() %>%
+
+      dplyr::left_join(harvmort) %>%
+      dplyr::mutate(harvmort_ratio = harv_mort/tot_mort) %>%
+      dplyr::select(policy_name, mode, species, iteration, harvmort_ratio) %>%
+      tidyr::pivot_wider(names_from = species, values_from = c(harvmort_ratio)) %>%
+      dplyr::group_by(policy_name) %>%
+      dplyr::summarise(`Cod harvest mortality ratio` = median(cod),
+                       `Haddock harvest mortality ratio` = median(hadd)) %>%
+      dplyr::ungroup()
+
+
+    p3<- catch %>% ggplot2::ggplot(ggplot2::aes(x = `Cod harvest mortality ratio`, y = `Haddock harvest mortality ratio`))+
+      ggplot2::geom_point(
+        ggplot2::aes(text = paste0("Policy: ", policy_name,
+                                   "<br>Cod harvest mortality ratio: ", round(`Cod harvest mortality ratio`, 2),
+                                   "<br>Haddock harvest mortality ratio: ", round(`Haddock harvest mortality ratio`, 2)))) +
+      ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
+      ggplot2::xlab("Cod harvest mortality ratio")+
+      ggplot2::ylab("Haddock harvest mortality ratio")+
+      ggplot2::labs(title = paste0("<b>Cod harvest mortality ratio and haddock harvest mortality ratio</b>",
+                    "<br>Harvest mortality ratio calculated by dividing weight of kept fish (mt) ",
+                    "by weight of total catch (mt)"))+
+      ggplot2::theme(legend.position = "none")
+
+    fig3<- plotly::ggplotly(p3, tooltip = "text")%>%
+      plotly::style(textposition = "top center") %>%
+      plotly::layout(
+        title = list(font = list(size = 14)))
+    fig3
   })
 
 
