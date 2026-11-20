@@ -932,6 +932,7 @@ server <- function(input, output, session){
         ggplot2::aes(text = paste0("Policy: ", policy_name,
                                    "<br>Cod discard mortality (mt): ", round(`Cod Discard Mortality`, 1),
                                    "<br>Cod mortality (mt): ", `Cod Total Mortality`))) +
+      ggplot2::geom_hline( yintercept =cod_acl(), linetype="dashed")+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`Cod Discard Mortality`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Cod discard mortality (mt)")+
