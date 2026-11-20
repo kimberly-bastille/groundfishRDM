@@ -531,7 +531,7 @@ server <- function(input, output, session){
 
   output$totCatch <- plotly::renderPlotly({
 
-    catch_agg<- outputs() %>%
+    catch_agg<- df %>% #outputs() %>%
       dplyr::filter(metric %in% c("tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
                                   "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"),
                     mode == "all modes") %>%
@@ -544,44 +544,47 @@ server <- function(input, output, session){
       dplyr::group_by(policy_name, species) %>%
       dplyr::summarise(under_acl = (100/length(unique(iteration)))*sum(under_acl),
                        Value = round(median(Value),0))  %>%
-      tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl))
-
-    # Bin the draw counts into the discrete legend categories used by the
-    # colour scale. Written as a chain of case_when()s that each fall through
-    # to the previously assigned value rather than one multi-arm case_when.
-    catch_agg2<- catch_agg %>%
-      dplyr::mutate(under_acl_cod2 = dplyr::case_when(under_acl_cod < 50 ~ "Less than 50%", TRUE ~ ""),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 50 & under_acl_cod < 60 ~ "50-59%", TRUE ~ under_acl_cod2),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 60 & under_acl_cod < 70~ "60-69%", TRUE ~ under_acl_cod2),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 70 & under_acl_cod < 80 ~ "70-79%", TRUE ~ under_acl_cod2),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 80 & under_acl_cod < 90 ~ "80-89%", TRUE ~ under_acl_cod2),
-                    under_acl_cod2 = dplyr::case_when(under_acl_cod >= 90 & under_acl_cod <=100 ~ "90-100%", TRUE ~ under_acl_cod2)) %>%
-      dplyr::mutate(under_acl_had2 = dplyr::case_when(under_acl_hadd < 50 ~ "Less than 50%", TRUE ~ ""),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 50 & under_acl_hadd < 60 ~ "50-59%", TRUE ~ under_acl_had2),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 60 & under_acl_hadd < 70~ "60-69%", TRUE ~ under_acl_had2),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 70 & under_acl_hadd < 80 ~ "70-79%", TRUE ~ under_acl_had2),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 80 & under_acl_hadd < 90 ~ "80-89%", TRUE ~ under_acl_had2),
-                    under_acl_had2 = dplyr::case_when(under_acl_hadd >= 90 & under_acl_hadd <=100 ~ "90-100%", TRUE ~ under_acl_had2)) %>%
+      tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl)) %>%
       dplyr::rename(`Cod Mortality`=Value_cod) %>%
       dplyr::rename(`Haddock Mortality`=Value_hadd) %>%
       dplyr::ungroup()
 
-    p<- catch_agg2 %>%
+    # Bin the draw counts into the discrete legend categories used by the
+    # colour scale. Written as a chain of case_when()s that each fall through
+    # to the previously assigned value rather than one multi-arm case_when.
+    # catch_agg2<- catch_agg %>%
+    #   dplyr::mutate(under_acl_cod2 = dplyr::case_when(under_acl_cod < 50 ~ "Less than 50%", TRUE ~ ""),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 50 & under_acl_cod < 60 ~ "50-59%", TRUE ~ under_acl_cod2),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 60 & under_acl_cod < 70~ "60-69%", TRUE ~ under_acl_cod2),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 70 & under_acl_cod < 80 ~ "70-79%", TRUE ~ under_acl_cod2),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 80 & under_acl_cod < 90 ~ "80-89%", TRUE ~ under_acl_cod2),
+    #                 under_acl_cod2 = dplyr::case_when(under_acl_cod >= 90 & under_acl_cod <=100 ~ "90-100%", TRUE ~ under_acl_cod2)) %>%
+    #   dplyr::mutate(under_acl_had2 = dplyr::case_when(under_acl_hadd < 50 ~ "Less than 50%", TRUE ~ ""),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 50 & under_acl_hadd < 60 ~ "50-59%", TRUE ~ under_acl_had2),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 60 & under_acl_hadd < 70~ "60-69%", TRUE ~ under_acl_had2),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 70 & under_acl_hadd < 80 ~ "70-79%", TRUE ~ under_acl_had2),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 80 & under_acl_hadd < 90 ~ "80-89%", TRUE ~ under_acl_had2),
+    #                 under_acl_had2 = dplyr::case_when(under_acl_hadd >= 90 & under_acl_hadd <=100 ~ "90-100%", TRUE ~ under_acl_had2)) %>%
+    #   dplyr::rename(`Cod Mortality`=Value_cod) %>%
+    #   dplyr::rename(`Haddock Mortality`=Value_hadd) %>%
+    #   dplyr::ungroup()
+
+    p<- catch_agg %>%
       ggplot2::ggplot(ggplot2::aes(x = `Cod Mortality`, y = `Haddock Mortality`))+
-      ggplot2::geom_point(ggplot2::aes(colour = under_acl_cod2, size = under_acl_had2,
+      ggplot2::geom_point(ggplot2::aes(#colour = under_acl_cod2, size = under_acl_had2,
                                        text = paste0("Policy: ", policy_name,
                                                      "<br>Cod mortality (mt): ", `Cod Mortality`,
                                                      "<br>Haddock mortality (mt): ", `Haddock Mortality`,
                                                      "<br>% under cod ACL: ", round(under_acl_cod, 1),
                                                      "<br>% under haddock ACL: ", round(under_acl_hadd, 1)))) +
-      ggplot2::scale_color_manual(values = c("50-59%" = "#A9DFBF", "60-69%" = "#7DCEA0",
-                                             "70-79%" = "#52BE80","80-89%" = "#27AE60",
-                                             "90-100%" = "#1B5E20", "Less than 50%" = "red3"))+
-      # Every size is mapped to 1 and the size legend is suppressed below, so
+      # ggplot2::scale_color_manual(values = c("50-59%" = "#A9DFBF", "60-69%" = "#7DCEA0",
+      #                                        "70-79%" = "#52BE80","80-89%" = "#27AE60",
+      #                                        "90-100%" = "#1B5E20", "Less than 50%" = "red3"))+
+      # # Every size is mapped to 1 and the size legend is suppressed below, so
       # the haddock ACL bin currently has no visible effect on the plot.
-      ggplot2::scale_size_manual(values = c("50-59%" = 1, "60-69%" = 1,
-                                            "70-79%" = 1,"80-89%" = 1,
-                                            "90-100%" = 1, "Less than 50%" = 1))+
+      # ggplot2::scale_size_manual(values = c("50-59%" = 1, "60-69%" = 1,
+      #                                       "70-79%" = 1,"80-89%" = 1,
+      #                                       "90-100%" = 1, "Less than 50%" = 1))+
       ggplot2::labs(colour="% of simulations under cod ACL",
                     size="% of simulations under haddock ACL")+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
