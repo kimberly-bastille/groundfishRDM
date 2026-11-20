@@ -650,6 +650,16 @@ else {
 	local skipped_scripts `skipped_scripts' catch_at_length_calibration.do
 }
 
+// Re-write projected NAA files for uncertainty project
+if `projected_naa_uncertain' {
+  di "Estimating uncertainty project NAA "
+  do "$input_code_cd\projected_naa_uncertain.do" cod 	//here put in cod, haddock or both for which species to set deterministic in projected catch at length
+ 	di "NAA overwritten to examine projected catch at length uncertainty"
+ 	local executed_scripts `executed_scripts' projected_naa_uncertain.do
+	}
+else {
+   local skipped_scripts `skipped_scripts' projected_naa_uncertain.do
+}
 
 // 10) Generate projection-year catch-at-length, incorporating the stock assessment data
 if `catch_at_length_project'{
@@ -680,16 +690,6 @@ if `rdb_catch_at_len_to_drive'{
 }
 else {
    local skipped_scripts `skipped_scripts' rdb_catch_at_len_to_drive.R
-}
-// Re-write projected NAA files for uncertainty project
-if `projected_naa_uncertain' {
-  di "Estimating uncertainty project NAA "
-  do "$input_code_cd\projected_naa_uncertain.do" cod 	//here put in cod, haddock or both for which species to set deterministic in projected catch at length
- 	di "NAA overwritten to examine projected catch at length uncertainty"
- 	local executed_scripts `executed_scripts' projected_naa_uncertain.do
-	}
-else {
-   local skipped_scripts `skipped_scripts' projected_naa_uncertain.do
 }
 
 
