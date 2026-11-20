@@ -73,7 +73,7 @@ miscellaneous_path<-file.path("socialsci","RecreationalDST",
                                      glue("{Fishery}RDM"),
                                      "miscellaneous"
 )
-#updated output folder
+#updated output folder on google drive
 groundfish_processed_path<-file.path("socialsci","RecreationalDST",
                                      glue("{management_cycle}_management_cycle_data"),
                                      glue("{Fishery}RDM"),
@@ -81,16 +81,16 @@ groundfish_processed_path<-file.path("socialsci","RecreationalDST",
 )
 
 folder_info <- drive_get(
-  path = miscellaneous_path,
+  path = groundfish_processed_path,
   shared_drive = "NMFS NEC READ SSB"
 )
-miscellaneous_path<-folder_info$id
+groundfish_processed_path<-folder_info$id
 
 
 #Put the catch per trip Rds on google drive
 drive_upload(
   media = file.path(output_folder,glue("{SimCPTSaveFile}.Rds")),
-  path = as_id(miscellaneous_path),
+  path = as_id(groundfish_processed_path),
   name = glue("{SimCPTSaveFile}.Rds"),
   overwrite = TRUE
 )
