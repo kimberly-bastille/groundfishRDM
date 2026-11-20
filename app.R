@@ -586,7 +586,7 @@ server <- function(input, output, session){
                     size="% of simulations under haddock ACL")+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_vline( xintercept =cod_acl(), linetype="dashed")+
-      ggplot2::geom_hline( yintercept =had_acl(), color="grey45")+
+      ggplot2::geom_hline( yintercept =had_acl())+
       ggplot2::annotate(geom="text", x=cod_acl(), label="Cod ACL", y=520) +
       ggplot2::annotate(geom="text", y=had_acl(), label="Haddock ACL", x=80) +
       ggplot2::guides(size = "none")+
@@ -664,7 +664,7 @@ server <- function(input, output, session){
         ggplot2::aes(text = paste0("Policy: ", policy_name,
                                    "<br>CV ($M): ", round(`CV($M)`, 2),
                                    "<br>Cod mortality (mt): ", cod))) +
-      ggplot2::geom_hline( yintercept =cod_acl())+
+      ggplot2::geom_hline( yintercept =cod_acl(), linetype="dashed")+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
@@ -932,7 +932,6 @@ server <- function(input, output, session){
         ggplot2::aes(text = paste0("Policy: ", policy_name,
                                    "<br>Cod discard mortality (mt): ", round(`Cod Discard Mortality`, 1),
                                    "<br>Cod mortality (mt): ", `Cod Total Mortality`))) +
-      ggplot2::geom_hline( yintercept =cod_acl())+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`Cod Discard Mortality`[catch$policy_name == "SQ"])) +
       ggplot2::xlab("Cod discard mortality (mt)")+
@@ -1047,7 +1046,7 @@ server <- function(input, output, session){
         ggplot2::aes(text = paste0("Policy: ", policy_name,
                                    "<br>Trips: ", format(round(Trips), big.mark = ","),
                                    "<br>Cod mortality (mt): ", cod))) +
-      ggplot2::geom_hline( yintercept = cod_acl())+
+      ggplot2::geom_hline( yintercept =cod_acl(), linetype="dashed")+
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::geom_text(ggplot2::aes(y=cod_acl(), label="Cod ACL", x=catch$`Trips`[catch$policy_name == "SQ"]), angle=90) +
       ggplot2::xlab("Number of trips")+
