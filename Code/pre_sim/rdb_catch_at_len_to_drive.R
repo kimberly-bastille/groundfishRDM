@@ -42,6 +42,9 @@ vintage_string<-gsub("mrip_pull","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
 data_vintage<-max(vintage_string)
 
+# Should we save the rdb dta's to input data locally? Or keep them in misc and just push to
+#input_data on google?? In which case you would just change miscellaneous_path down below
+output_folder2<-here("input_data")
 input_file <- file.path(gf.data.dir,"miscellaneous","rdb_cat_len.dta")
 
 # Read in my .dta file
@@ -69,6 +72,12 @@ miscellaneous_path<-file.path("socialsci","RecreationalDST",
                                      glue("{management_cycle}_management_cycle_data"),
                                      glue("{Fishery}RDM"),
                                      "miscellaneous"
+)
+#updated output folder
+groundfish_processed_path<-file.path("socialsci","RecreationalDST",
+                                     glue("{management_cycle}_management_cycle_data"),
+                                     glue("{Fishery}RDM"),
+                                     "input_data"
 )
 
 folder_info <- drive_get(
