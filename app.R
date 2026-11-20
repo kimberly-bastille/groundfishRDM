@@ -693,6 +693,7 @@ server <- function(input, output, session){
                                    "<br>CV ($M): ", round(`CV($M)`, 2),
                                    "<br>Cod mortality (mt): ", cod))) +
       ggplot2::geom_hline( yintercept =cod_acl(), linetype="dashed")+
+      ggplot2::geom_vline( xintercept =0,color="grey45") +
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational cod mortality (mt)")+
@@ -829,6 +830,7 @@ server <- function(input, output, session){
                                    "<br>CV ($M): ", round(`CV($M)`, 2),
                                    "<br>Haddock mortality (mt): ", hadd))) +
       ggplot2::geom_hline( yintercept =had_acl())+
+      ggplot2::geom_vline( xintercept =0,color="grey45") +
       ggplot2::geom_text(ggplot2::aes(label = policy_name), check_overlap = TRUE)+
       ggplot2::xlab("Compensating variation ($ millions)")+
       ggplot2::ylab("Recreational haddock mortality (mt)")+
