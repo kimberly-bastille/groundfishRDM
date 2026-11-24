@@ -94,63 +94,82 @@ dir.create(output_dir, showWarnings = TRUE, recursive=TRUE)
 
 get_rep_stat <- function(formula, rep_design) {
   out <- survey::svymean(formula, rep_design, return.replicates = TRUE, na.rm = TRUE)
-  reps <- attr(out, "replicates")
-  if (is.null(reps)) {
-    reps <- numeric(0)
-  } else {
-    reps <- as.numeric(reps)
-  }
-  reps <- reps[is.finite(reps)]
-  list(
-    mean = as.numeric(coef(out)),
-    reps = reps
-  )
+
+  reps <- if (is.list(out) && !is.null(out$replicates)) out$replicates else attr(out, "replicates")
+  if (is.null(reps)) reps <- numeric(0)
+  reps <- as.numeric(reps)
+
+
+  list(mean = as.numeric(coef(out)), reps = reps)
 }
 
 get_rep_var <- function(df, varname, rep_design) {
   rep_wgts <- stats::weights(rep_design, type = "analysis")
-  if (is.null(rep_wgts)) return(numeric(0))
-  if (is.vector(rep_wgts)) rep_wgts <- matrix(rep_wgts, ncol = 1)
+
+    if (is.null(rep_wgts)) {
+    return(numeric(0))
+  }
+
+  if (is.vector(rep_wgts)) {
+    rep_wgts <- matrix(rep_wgts, ncol = 1)
+  }
 
   out <- sapply(seq_len(ncol(rep_wgts)), function(i) {
     df_rep <- df
     df_rep$rep_wgt_tmp <- rep_wgts[, i]
+
     if (all(is.na(df_rep$rep_wgt_tmp)) || sum(df_rep$rep_wgt_tmp, na.rm = TRUE) <= 0) {
       return(NA_real_)
     }
+
     svy_rep <- survey::svydesign(
-      ids = ~psu_id, strata = ~strat_id, weights = ~rep_wgt_tmp,
-      nest = TRUE, data = df_rep
+      ids = ~psu_id,
+      strata = ~strat_id,
+      weights = ~rep_wgt_tmp,
+      nest = TRUE,
+      data = df_rep
     )
+
     val <- try(
-      as.numeric(coef(survey::svyvar(stats::as.formula(paste0("~", varname)), svy_rep, na.rm = TRUE))),
+      as.numeric(coef(
+        survey::svyvar(
+          stats::as.formula(paste0("~", varname)),
+          svy_rep,
+          na.rm = TRUE
+        )
+      )),
       silent = TRUE
     )
-    if (inherits(val, "try-error")) return(NA_real_)
+
+    if (inherits(val, "try-error")) {
+      return(NA_real_)
+    }
+
     val
   })
   out <- as.numeric(out)
-  out[is.finite(out)]
+  out
 }
 
 safe_theta <- function(mu, var, theta_cap = 1000) {
-  mu  <- as.numeric(mu)
+  mu <- as.numeric(mu)
   var <- as.numeric(var)
-  mu  <- mu[is.finite(mu)]
-  var <- var[is.finite(var)]
 
-  if (length(mu) == 0 || length(var) == 0) return(theta_cap)
+  if (!length(mu) || !length(var)) return(numeric(0))
 
-  len <- min(length(mu), length(var))
-  mu  <- pmax(mu[seq_len(len)],  1e-8)
-  var <- pmax(var[seq_len(len)], 1e-8)
+  n <- min(length(mu), length(var))
+  mu <- mu[seq_len(n)]
+  var <- var[seq_len(n)]
+
+  ok <- is.finite(mu) & is.finite(var)
+  if (!any(ok)) return(numeric(0))
+
+  mu <- pmax(mu[ok], 1e-8)
+  var <- pmax(var[ok], 1e-8)
 
   theta <- mu^2 / pmax(var - mu, 1e-6)
-  theta <- pmax(theta, 1e-6)
-  theta <- pmin(theta, theta_cap)
+  theta <- pmin(pmax(theta, 1e-6), theta_cap)
   theta[!is.finite(theta)] <- theta_cap
-
-  if (length(theta) == 0) theta <- theta_cap
   theta
 }
 
@@ -251,6 +270,8 @@ run_species_copula_sim <- function(full_df,
 
     max_val <- round(max(df[[varname]], na.rm = TRUE)) + ifelse(grepl("_keep$", varname), keep_cap_buffer, rel_cap_buffer)
     theta_hat_single <- safe_theta(mu, var_mu)
+    if (!length(theta_hat_single)) theta_hat_single <- 1000
+    theta_hat_single <- theta_hat_single[1L]
 
     # Calculate bootstrap replicate uncertainty ONLY if flag == 0
     if (uncertain_flag == 0) {
@@ -274,8 +295,8 @@ run_species_copula_sim <- function(full_df,
         if (n_psu(df) <= 1) {
           sampled_theta <- theta_hat_single
         } else {
-          sampled_theta <- sample(rep_theta_use, 1, replace = TRUE)
-        }
+          sampled_theta <- rep_theta_use[sample.int(length(rep_theta_use), 1L)]
+          }
       } else {
         sampled_mu <- pmax(mu, 1e-8)
         sampled_theta <- theta_hat_single
@@ -321,7 +342,12 @@ run_species_copula_sim <- function(full_df,
     max_rel  <- round(max(df[[rel_var]],  na.rm = TRUE)) + rel_cap_buffer
 
     theta_hat_keep_single <- safe_theta(mu_keep, var_keep)
-    theta_hat_rel_single  <- safe_theta(mu_rel,  var_rel)
+    if (!length(theta_hat_keep_single)) theta_hat_keep_single <- 1000
+    theta_hat_keep_single <- theta_hat_keep_single[1L]
+
+    theta_hat_rel_single <- safe_theta(mu_rel, var_rel)
+    if (!length(theta_hat_rel_single)) theta_hat_rel_single <- 1000
+    theta_hat_rel_single <- theta_hat_rel_single[1L]
 
     # Calculate bootstrap replicate uncertainty ONLY if flag == 0
     if (uncertain_flag == 0) {
@@ -378,8 +404,9 @@ run_species_copula_sim <- function(full_df,
           sampled_theta_keep <- theta_hat_keep_single
           sampled_theta_rel  <- theta_hat_rel_single
         } else {
-          sampled_theta_keep <- sample(rep_theta_keep_use, 1, replace = TRUE)
-          sampled_theta_rel  <- sample(rep_theta_rel_use,  1, replace = TRUE)
+          sampled_theta_keep <- rep_theta_keep_use[sample.int(length(rep_theta_keep_use), 1L)]
+          sampled_theta_rel <- rep_theta_rel_use[sample.int(length(rep_theta_rel_use), 1L)]
+
         }
       } else {
         sampled_mu_keep <- pmax(mu_keep, 1e-8)
@@ -425,7 +452,12 @@ run_species_copula_sim <- function(full_df,
     max_rel  <- round(max(df[[rel_var]],  na.rm = TRUE)) + rel_cap_buffer
 
     theta_hat_keep_single <- safe_theta(mu_keep, var_keep)
-    theta_hat_rel_single  <- safe_theta(mu_rel,  var_rel)
+    if (!length(theta_hat_keep_single)) theta_hat_keep_single <- 1000
+    theta_hat_keep_single <- theta_hat_keep_single[1L]
+
+    theta_hat_rel_single <- safe_theta(mu_rel, var_rel)
+    if (!length(theta_hat_rel_single)) theta_hat_rel_single <- 1000
+    theta_hat_rel_single <- theta_hat_rel_single[1L]
 
     # Calculate bootstrap replicate uncertainty ONLY if flag == 0
     if (uncertain_flag == 0) {
@@ -455,8 +487,8 @@ run_species_copula_sim <- function(full_df,
           sampled_theta_keep <- theta_hat_keep_single
           sampled_theta_rel  <- theta_hat_rel_single
         } else {
-          sampled_theta_keep <- sample(rep_theta_keep_use, 1, replace = TRUE)
-          sampled_theta_rel  <- sample(rep_theta_rel_use,  1, replace = TRUE)
+          sampled_theta_keep <- rep_theta_keep_use[sample.int(length(rep_theta_keep_use), 1L)]
+          sampled_theta_rel <- rep_theta_rel_use[sample.int(length(rep_theta_rel_use), 1L)]
         }
       } else {
         sampled_mu_keep <- pmax(mu_keep, 1e-8)
