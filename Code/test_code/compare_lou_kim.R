@@ -8,31 +8,68 @@ library(tidyr)
 #===============================================================================
 # 1. LOAD AND COMBINE DATA
 #===============================================================================
+#
+# kim <- readr::read_csv(
+#   "E:/Lou_projects/groundfishRDM/2027_mgt_cycle/archive for testing 9-11-26/simulation_testing/output_KimLocal_SQactual_20261008_215435.csv",
+#   show_col_types = FALSE
+# ) %>%
+#   dplyr::select(season, mode, metric, value, iteration) %>%
+#   dplyr::mutate(source = "Kim")
 
-kim <- readr::read_csv(
-  "E:/Lou_projects/groundfishRDM/2027_mgt_cycle/archive for testing 9-11-26/simulation_testing/output_KimLocal_SQactual_20261008_215435.csv",
-  show_col_types = FALSE
+
+base <- read_excel(
+  "E:/Lou_projects/groundfishRDM/2027_mgt_cycle/simulation_testing/lou_local_RPchoicemodel_test0.xlsx"
 ) %>%
-  dplyr::select(season, mode, metric, value, iteration) %>%
-  dplyr::mutate(source = "Kim")
+  dplyr::select(month, mode, metric, value, iteration) %>%
+  dplyr::mutate(source = "close_oct_base")
 
-mine <- read_csv(
+
+adjusted <- read_excel(
   #"E:/Lou_projects/groundfishRDM/2027_mgt_cycle/simulation_testing/lou_local_altregs_10_27_26.xlsx"
-  "E:/Lou_projects/groundfishRDM/2027_mgt_cycle/archive for testing 9-11-26/simulation_testing/output_all_18_Hadd_20261023_180043.csv",  show_col_types = FALSE
+  "E:/Lou_projects/groundfishRDM/2027_mgt_cycle/simulation_testing/lou_local_RPchoicemodel_test.xlsx"
 
 ) %>%
-  dplyr::select(season, mode, metric, value, iteration) %>%
-  dplyr::mutate(source = "Mine")
+  dplyr::select(month, mode, metric, value, iteration) %>%
+  dplyr::mutate(source = "close_oct_RP")
 
-cloud <- readr::read_csv(
-  "E:/Lou_projects/groundfishRDM/2027_mgt_cycle/archive for testing 9-11-26/simulation_testing/output_KB_test2_20261027_200148.csv",
-  show_col_types = FALSE
+sq <- read_excel(
+  "E:/Lou_projects/groundfishRDM/2027_mgt_cycle/simulation_testing/lou_local_RPchoicemodel_testSQ.xlsx"
 ) %>%
-  dplyr::select(season, mode, metric, value, iteration) %>%
-  dplyr::mutate(source = "Cloud")
+  dplyr::select(month, mode, metric, value, iteration) %>%
+  dplyr::mutate(source = "sq")
 
-results <- dplyr::bind_rows(mine, cloud) %>%
-  dplyr::mutate(source = factor(source, levels = c("Mine",  "Cloud")))
+cod_open_may <- read_excel(
+  "E:/Lou_projects/groundfishRDM/2027_mgt_cycle/simulation_testing/lou_local_RPchoicemodel_codopenmay.xlsx"
+) %>%
+  dplyr::select(month, mode, metric, value, iteration) %>%
+  dplyr::mutate(source = "open_cod_may_RP")
+
+
+results <- dplyr::bind_rows(sq, base, adjusted, cod_open_may ) %>%
+  dplyr::mutate(source = factor(source, levels = c("sq", "close_oct_base",  "close_oct_RP", "open_cod_may_RP" ))) #%>%
+  #dplyr::filter(month==5)
+
+# Sum harvest and dead-discard weight within each draw.
+mortality_draws <- results |>
+  dplyr::filter(metric %in% c(
+    "tot_keep_cod_weight_lb_new", "tot_discmort_cod_weight_lb_new",
+    "tot_keep_hadd_weight_lb_new", "tot_discmort_hadd_weight_lb_new"
+  )) |>
+  dplyr::mutate(metric = dplyr::if_else(
+    grepl("_cod_", metric),
+    "tot_mortality_cod_weight_lb_new",
+    "tot_mortality_hadd_weight_lb_new"
+  )) |>
+  dplyr::group_by(month, mode, source, iteration, metric) |>
+  dplyr::summarise(value = sum(value), .groups = "drop")
+
+results <- dplyr::bind_rows(results, mortality_draws ) %>%
+  dplyr::group_by(month, mode, source, iteration, metric) |>
+  dplyr::summarise(value = sum(value), .groups = "drop")
+
+
+
+
 
 # Verify observations by source
 dplyr::count(results, source)
@@ -41,8 +78,8 @@ dplyr::count(results, source)
 sort(unique(results$metric))
 
 trip_metrics <- c(
-  "n_trips_base",
-  "n_trips_alt",
+  #"n_trips_base",
+  #"n_trips_alt"
   "CV"
 )
 
@@ -55,25 +92,41 @@ results %>%
     ggplot2::aes(x = source, y = value, fill = source)
   ) +
   ggplot2::geom_boxplot(outlier.alpha = 0.2) +
-  ggplot2::facet_grid(metric ~ season, scales = "free_y") +
+  ggplot2::facet_grid(~metric , scales = "free_y") +
   ggplot2::labs(
     x = NULL,
     y = "Simulated value",
     fill = NULL
   ) +
-  ggplot2::theme_bw() +
+  ggplot2::theme_bw(base_size = 18) +
   ggplot2::theme(
     legend.position = "none",
-    strip.background = ggplot2::element_blank()
-  )
+    strip.background = ggplot2::element_blank(),
+    axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust = 1)
+  )+
+  ggplot2::scale_y_continuous(
+    breaks = scales::breaks_pretty(n = 8))
 
 catch_metrics <- c(
   "tot_cat_cod_new",
   "tot_keep_cod_new",
-  "tot_rel_cod_new",
-  "tot_cat_hadd_new",
-  "tot_keep_hadd_new",
-  "tot_rel_hadd_new"
+  "tot_rel_cod_new"#,
+  #"tot_cat_hadd_new",
+  #"tot_keep_hadd_new",
+  #"tot_rel_hadd_new"
+)
+
+# catch_metrics <- c(
+#   "tot_keep_cod_new",
+#   "tot_keep_hadd_new"
+# )
+
+catch_metrics <- c(
+  "tot_mortality_hadd_weight_lb_new",
+  "tot_mortality_cod_weight_lb_new"
+)
+catch_metrics <- c(
+  "tot_mortality_hadd_weight_lb_new"
 )
 
 all_metrics <- c(
@@ -94,23 +147,26 @@ results %>%
     metric %in% catch_metrics
   ) %>%
   dplyr::mutate(
-    metric = factor(metric, levels = catch_metrics)
+    metric = factor(metric, levels = catch_metrics)#,
+    #value=value/2204.62
   ) %>%
   ggplot2::ggplot(
     ggplot2::aes(x = source, y = value, fill = source)
   ) +
   ggplot2::geom_boxplot(outlier.alpha = 0.2) +
-  ggplot2::facet_grid(metric ~ season, scales = "free_y") +
+  ggplot2::facet_grid(~metric, scales = "free_y") +
   ggplot2::labs(
     x = NULL,
-    y = "Number of fish",
+    y = "#s of fish",
     fill = NULL
   ) +
-  ggplot2::theme_bw() +
+  ggplot2::theme_bw(base_size=14) +
   ggplot2::theme(
     legend.position = "none",
-    strip.background = ggplot2::element_blank()
-  )
+    strip.background = ggplot2::element_blank(),
+    axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust = 1)
+  )+ ggplot2::scale_y_continuous(
+    breaks = scales::breaks_pretty(n = 8))
 
 results %>%
   dplyr::filter(
@@ -137,74 +193,28 @@ results %>%
   )
 
 
-paired <- results %>%
-  tidyr::pivot_wider(
-    id_cols = c(season, mode, metric, iteration),
-    names_from = source,
-    values_from = value
-  ) %>%
-  dplyr::mutate(
-    diff_kim_mine = Kim - Mine,
-    diff_cloud_mine = Cloud - Mine,
-    diff_cloud_kim = Cloud - Kim
-  )
-
-# Reshape differences into long format
-paired_long <- paired %>%
-  tidyr::pivot_longer(
-    cols = dplyr::starts_with("diff_"),
-    names_to = "comparison",
-    values_to = "diff"
-  ) %>%
-  dplyr::mutate(
-    comparison = dplyr::recode(comparison,
-                               "diff_kim_mine" = "Kim - Mine",
-                               "diff_cloud_mine" = "Cloud - Mine",
-                               "diff_cloud_kim" = "Cloud - Kim"
-    )
-  )
-
-# Catch comparisons
-paired_long %>%
-  dplyr::filter(mode == "all modes", metric %in% catch_metrics) %>%
-  dplyr::mutate(metric = factor(metric, levels = catch_metrics)) %>%
-  ggplot2::ggplot(ggplot2::aes(x = comparison, y = diff, fill = comparison)) +
-  ggplot2::geom_hline(yintercept = 0, linetype = "dashed") +
-  ggplot2::geom_boxplot(outlier.alpha = 0.2) +
-  ggplot2::facet_grid(metric ~ season, scales = "free_y") +
-  ggplot2::labs(x = NULL, y = "Difference in projected catch") +
-  ggplot2::theme_bw() +
-  ggplot2::theme(legend.position = "none", strip.background = ggplot2::element_blank())
-
-# Trip and welfare comparisons
-paired_long %>%
-  dplyr::filter(mode == "all modes", metric %in% trip_metrics) %>%
-  dplyr::mutate(metric = factor(metric, levels = trip_metrics)) %>%
-  ggplot2::ggplot(ggplot2::aes(x = comparison, y = diff, fill = comparison)) +
-  ggplot2::geom_hline(yintercept = 0, linetype = "dashed") +
-  ggplot2::geom_boxplot(outlier.alpha = 0.2) +
-  ggplot2::facet_grid(metric ~ season, scales = "free_y") +
-  ggplot2::labs(x = NULL, y = "Difference in projected outcomes") +
-  ggplot2::theme_bw() +
-  ggplot2::theme(legend.position = "none", strip.background = ggplot2::element_blank())
-
 comparison_summary2 <- results %>%
-  dplyr::filter(mode=="all modes") %>%
-  dplyr::group_by(mode, metric, source) %>%
+  #dplyr::filter(mode=="all modes") %>%
+  dplyr::group_by(mode, month, metric, source) %>%
   dplyr::summarise(
     median_value = median(value, na.rm = TRUE),
     mean_value = mean(value, na.rm = TRUE),
     .groups = "drop"
-  ) %>%
+  )
+
+
+write_xlsx(comparison_summary2, file.path(test_results_cd, "test_results_11_10_26.xlsx"))
+
+%>%
   tidyr::pivot_wider(
     id_cols = c(mode, metric),
     names_from = source,
     values_from = c(median_value, mean_value)
   ) %>%
   dplyr::mutate(
-    diff_median_cloud_mine = median_value_Cloud - median_value_Mine
+    diff_median_base_adj =   median_value_base-median_value_adjusted
   ) %>%
-  dplyr::select(mode, metric, diff_median_cloud_mine)
+  dplyr::select(mode, metric, diff_median_base_adj)
 
 comparison_summary2 %>%
   dplyr::mutate(dplyr::across(where(is.numeric), ~ scales::comma(.x, accuracy = 0.01))) %>%
