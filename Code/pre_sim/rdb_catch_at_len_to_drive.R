@@ -2,24 +2,21 @@
 # Script:       rdb_catch_at_len_to_drive.R
 # Purpose:      Reads the dashboard-formatted catch-at-length .dta, saves it as
 #               an .Rds stamped with its data_version, and uploads that .Rds to
-#               the shared Google Drive miscellaneous folder for the rec
+#               the shared Google Drive input_data folder for the rec
 #               dashboard.
 # Inputs:       <gf.data.dir>/miscellaneous/rdb_cat_len.dta (written by rdb_catch_at_length.do)
 # Outputs:      <gf.data.dir>/miscellaneous/rdb_catch_at_length_<date>.Rds,
 #               and a copy of that file uploaded to Google Drive.
-# Dependencies: Sources developer_setup.R (for gf.data.dir). Requires a cached
-#               Drive token in .secrets (see googledrivesetup.R).
-# Pipeline:     Step in model_wrapper.do gated by `Rpush_catch_at_length_to_gdrive'
-#               (default ON), run via `rscript using`. Near-identical twin of
-#               rdb_catch_per_trip_to_drive.R (differs only in the input file and
-#               object names). Input file rdb_cat_len.dta is generated in rdb_catch_at_length.do.
+# Dependencies: Requires shared_drive_root and gf.data.dir to be defined in developer_setup.R.
+# Pipeline:     Step in model_wrapper.do gated by `rdb_catch_at_len_to_drive'
+#               (default ON), run via `rscript using`.
 ################################################################################
+
 
 #Load libraries
 library(tidyverse)
 library(haven)
 library(glue)
-library(googledrive)
 library(here)
 
 # Define arguments
@@ -59,32 +56,17 @@ rdb_catch_at_length$data_version<-as.Date(rdb_catch_at_length$data_version)
 write_rds(rdb_catch_at_length, file=file.path(output_folder,glue("{SimCPTSaveFile}.Rds")))
 
 
-# Connect to Google Drive
-# NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
-message("Uploading catch-at-length Rds to Google Drive ...")
-drive_auth(cache = here(".secrets"), email = TRUE)
-
-# Output folder on google drive
-miscellaneous_path<-file.path("socialsci","RecreationalDST",
+# output folder on google drive
+groundfish_processed_path<-file.path(shared_drive_root, "socialsci","RecreationalDST",
                                      glue("{management_cycle}_management_cycle_data"),
                                      glue("{Fishery}RDM"),
-                                     "miscellaneous"
+                                     "input_data"
 )
 
-folder_info <- drive_get(
-  path = miscellaneous_path,
-  shared_drive = "NMFS NEC READ SSB"
+file.copy(from=file.path(output_folder,glue("{SimCPTSaveFile}.Rds")),
+          to=file.path(groundfish_processed_path, glue("{SimCPTSaveFile}.Rds"))
 )
-miscellaneous_path<-folder_info$id
 
-
-#Put the catch per trip Rds on google drive
-drive_upload(
-  media = file.path(output_folder,glue("{SimCPTSaveFile}.Rds")),
-  path = as_id(miscellaneous_path),
-  name = glue("{SimCPTSaveFile}.Rds"),
-  overwrite = TRUE
-)
 message("Catch-at-length upload complete.")
 
 

@@ -2,12 +2,12 @@
 # Script:       rdb_dtrips_to_drive.R
 # Purpose:      Reads the dashboard-formatted directed trips .dta, saves it as
 #               an .Rds stamped with its data_version, and uploads that .Rds to
-#               the shared Google Drive miscellaneous folder for the rec
+#               the shared Google Drive input_data folder for the rec
 #               dashboard.
 # Inputs:       <gf.data.dir>/miscellaneous/rdb_dtrips.dta (written by rdb_directed_trips.do)
 # Outputs:      <gf.data.dir>/miscellaneous/rdb_dtrips_<date>.Rds,
 #               and a copy of that file uploaded to Google Drive.
-# Dependencies: Requires shared_drive_root to be defined in developer_setup.R
+# Dependencies: Requires shared_drive_root and gf.data.dir to be defined in developer_setup.R.
 # Pipeline:     Step in model_wrapper.do gated by `rdb_dtrips_to_drive'
 #               (default ON), run via `rscript using`.
 ################################################################################
@@ -30,7 +30,7 @@ Fishery<-args[1]
 management_cycle<-as.numeric(args[2])
 
 
-here::i_am("Code/pre_sim/rdb_catch_at_len_to_drive.R")
+here::i_am("Code/pre_sim/rdb_dtrips_to_drive.R")
 source(here("Code", "helpers", "developer_setup.R"))
 
 output_folder<-file.path(gf.data.dir, "miscellaneous")
@@ -56,15 +56,15 @@ rdb_dtrips$data_version<-as.Date(rdb_dtrips$data_version)
 write_rds(rdb_dtrips, file=file.path(output_folder,glue("{SimCPTSaveFile}.Rds")))
 
 
-# Output folder on google drive
-miscellaneous_path<-file.path(shared_drive_root, "socialsci","RecreationalDST",
-                              glue("{management_cycle}_management_cycle_data"),
-                              glue("{Fishery}RDM"),
-                              "miscellaneous"
+# output folder on google drive
+groundfish_processed_path<-file.path(shared_drive_root, "socialsci","RecreationalDST",
+                                     glue("{management_cycle}_management_cycle_data"),
+                                     glue("{Fishery}RDM"),
+                                     "input_data"
 )
 
 file.copy(from=file.path(output_folder,glue("{SimCPTSaveFile}.Rds")),
-          to=file.path(miscellaneous_path, glue("{SimCPTSaveFile}.Rds"))
+          to=file.path(groundfish_processed_path, glue("{SimCPTSaveFile}.Rds"))
 )
 
 message("Directed trips upload complete.")
