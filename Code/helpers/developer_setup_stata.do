@@ -27,7 +27,10 @@ capture mkdir $gfdatadir
 * make directory for uncertainty project data (Tess only for now)
 if inlist("$developer","TP") {
 	global gfdatadirunc "${here}\Data\2027_mgt_cycle\uncertainty"
-} 
+}
+
+global shared_drive_root "D:\Shared drives\NMFS NEC READ SSB"
+
 
 display "Hello $developer.  Use the global gfdatadir in place of \${here}\Data\YYYY mgmt cycle)."
 display "The value of datadir is: $gfdatadir"
