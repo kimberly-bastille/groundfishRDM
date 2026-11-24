@@ -57,14 +57,14 @@ write_rds(rdb_dtrips, file=file.path(output_folder,glue("{SimCPTSaveFile}.Rds"))
 
 
 # Output folder on google drive
-miscellaneous_path<-file.path("socialsci","RecreationalDST",
+miscellaneous_path<-file.path(shared_drive_root, "socialsci","RecreationalDST",
                               glue("{management_cycle}_management_cycle_data"),
                               glue("{Fishery}RDM"),
                               "miscellaneous"
 )
 
 #updated output folder on google drive
-groundfish_processed_path<-file.path("socialsci","RecreationalDST",
+groundfish_processed_path<-file.path(shared_drive_root, "socialsci","RecreationalDST",
                                      glue("{management_cycle}_management_cycle_data"),
                                      glue("{Fishery}RDM"),
                                      "input_data"
