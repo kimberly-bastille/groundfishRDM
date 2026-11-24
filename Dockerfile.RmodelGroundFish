@@ -35,6 +35,7 @@ RUN install2.r -e -s \
     uuid \
     plotly \
     conflicted \
+    haven \
     fst \
     DT
 

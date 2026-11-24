@@ -32,6 +32,7 @@ RUN install2.r -e -s \
     rlang \
     openssl \
     conflicted \
+    haven \
     uuid \
     && chown -R shiny:shiny /srv/rdmtool
 
