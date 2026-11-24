@@ -47,7 +47,6 @@ library(tidyverse)
 library(TMB)
 library(haven)
 library(glue)
-library(googledrive)
 library(here)
 #load the haddock specific version of WHAM.
 haddock_wham_lib <- file.path(Sys.getenv("R_LIBS_USER"), "haddock_wham_install")
@@ -109,36 +108,15 @@ assessment_file_in<-"mod_2026MT.rds"
 waa_file_in<-"waa_pred_2026-07-07.xlsx"
 
 
-# Connect to Google Drive
-# NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
-drive_auth(cache = here(".secrets"), email = TRUE)
-
-# Output folder on google drive
-groundfish_processed_path<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
-                                     "groundfishRDM","input_data")
-
-folder_info <- drive_get(
-  path = groundfish_processed_path,
-  shared_drive = "NMFS NEC READ SSB"
-)
-groundfish_processed_path<-folder_info$id
-
 # Read in the assessment file
-readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+readin<-file.path(shared_drive_root,"socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
                                      "groundfishRDM","haddock_assessment",assessment_file_in)
-file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 
 # Create a path for a temporary file
 # NOTE: tempfile handles cross-platform path safe creation and garbage collection upon session end
 temp_path <- tempfile(fileext = ".rds")
 
-# Download
-drive_download(
-  file = as_id(file_id),
-  path = temp_path,
-  overwrite = TRUE
-)
-
+file.copy(from=readin, t=temp_path)
 #read in calendar year commercial landings
 
 commercial_CY_removals<- readRDS(file=
@@ -162,16 +140,11 @@ if (file.exists(temp_path)) {
 
 
 # readin the WAA file
-readin<-file.path("socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
+readin<-file.path(shared_drive_root, "socialsci","RecreationalDST",glue("{management_cycle}_management_cycle_data"),
                   "groundfishRDM","haddock_assessment",waa_file_in)
-file_id<-drive_get(path = readin, shared_drive = "NMFS NEC READ SSB")$id
 temp_path <- tempfile(fileext = ".xlsx")
 
-drive_download(
-  file = as_id(file_id),
-  path = temp_path,
-  overwrite = TRUE
-)
+file.copy(from=readin, t=temp_path)
 # Set some specifications ######################################################
 bridge_year_catch <- 1527+417.5 #PDT provided value
 stock_name <- "GOM haddock"
