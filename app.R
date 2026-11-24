@@ -976,7 +976,7 @@ server <- function(input, output, session){
       ggplot2::ylab("Haddock harvest mortality ratio")+
       ggplot2::labs(title = paste0("<b>Cod harvest mortality ratio and haddock harvest mortality ratio</b>",
                     "<br>Harvest mortality ratio calculated by dividing weight of kept fish (mt) ",
-                    "by weight of total catch (mt)"))+
+                    "by weight of total mortality (mt)"))+
       ggplot2::theme(legend.position = "none")
 
     fig3<- plotly::ggplotly(p3, tooltip = "text")%>%
