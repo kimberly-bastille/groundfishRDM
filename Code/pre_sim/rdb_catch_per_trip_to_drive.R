@@ -6,7 +6,7 @@
 # Inputs:       <gf.data.dir>/miscellaneous/rdb_sim_catch_per_trip.dta (written by rdb_processing_catch_per_trip.do)
 # Outputs:      <gf.data.dir>/miscellaneous/rdb_catch_per_trip_<date>.Rds,
 #               and a copy of that file uploaded to Google Drive.
-# Dependencies: Requires shared_drive_root to be defined in developer_setup.R.
+# Dependencies: Requires shared_drive_root and gf.data.dir to be defined in developer_setup.R.
 # Pipeline:     Step in model_wrapper.do gated by `rdb_catch_per_trip_to_drive'
 #               (default ON), run via `rscript using`.
 ################################################################################
