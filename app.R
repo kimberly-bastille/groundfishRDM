@@ -165,6 +165,8 @@ ui <- fluidPage(
               #Run Button
               actionButton("runmeplease", "Run Me"),
               textInput("Run_Name", "Please name this using your initials and the number of the run (ex. AB1)."),
+              uiOutput("displaymessage"),
+
 
               fluidRow(
                 column(6,
@@ -300,49 +302,9 @@ ui <- fluidPage(
 
 server <- function(input, output, session){
 
-  # observeEvent(input$runmeplease, {
-  #   output$displaymessage <- renderText(paste0("Policy ", input$Run_Name, " saved - your model run has been queued. ..."))
-  # })
-
   observeEvent(input$runmeplease, {
-    policy_name <- input$Run_Name   # captured once, at click time
-    output$displaymessage <- renderText(
-      paste0("Policy ", policy_name, " saved - your model run has been queued. ",
-             "Be sure to change the policy name before submitting again.")
-    )
+    output$displaymessage <- renderText(paste0("Policy ", input$Run_Name, " saved - your model run has been queued. ..."))
   })
-
-  library(magrittr)
-  library(ggplot2)
-  #library(webshot)
-
-  # There is no incremental refresh: "Update" reloads the whole browser page,
-  # which re-evaluates outputs() and so picks up any result files the worker
-  # has written since the session started.
-
-  # observeEvent(input$runmeplease, {
-  #   output$displaymessage <- renderText(paste0("Policy ", input$Run_Name, " saved - your model run has been queued. ..."))
-  # })
-
-  observeEvent(input$runmeplease, {
-    policy_name <- input$Run_Name   # captured once, at click time
-    output$displaymessage <- renderText(
-      paste0("Policy ", policy_name, " saved - your model run has been queued. ",
-             "Be sure to change the policy name before submitting again.")
-    )
-  })
-
-  library(magrittr)
-  library(ggplot2)
-  #library(webshot)
-
-  # There is no incremental refresh: "Update" reloads the whole browser page,
-  # which re-evaluates outputs() and so picks up any result files the worker
-  # has written since the session started.
-
-  # observeEvent(input$runmeplease, {
-  #   output$displaymessage <- renderText(paste0("Policy ", input$Run_Name, " saved - your model run has been queued. ..."))
-  # })
 
   observeEvent(input$runmeplease, {
     policy_name <- input$Run_Name   # captured once, at click time
