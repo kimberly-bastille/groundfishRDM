@@ -56,13 +56,7 @@ rdb_catch_at_length$data_version<-as.Date(rdb_catch_at_length$data_version)
 write_rds(rdb_catch_at_length, file=file.path(output_folder,glue("{SimCPTSaveFile}.Rds")))
 
 
-# Output folder on google drive
-miscellaneous_path<-file.path(shared_drive_root, "socialsci","RecreationalDST",
-                                     glue("{management_cycle}_management_cycle_data"),
-                                     glue("{Fishery}RDM"),
-                                     "miscellaneous"
-)
-#updated output folder on google drive
+# output folder on google drive
 groundfish_processed_path<-file.path(shared_drive_root, "socialsci","RecreationalDST",
                                      glue("{management_cycle}_management_cycle_data"),
                                      glue("{Fishery}RDM"),
