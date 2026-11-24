@@ -7,8 +7,8 @@
 # Inputs:       <gf.data.dir>/miscellaneous/rdb_dtrips.dta (written by rdb_directed_trips.do)
 # Outputs:      <gf.data.dir>/miscellaneous/rdb_dtrips_<date>.Rds,
 #               and a copy of that file uploaded to Google Drive.
-# Dependencies: Sources developer_setup.R (for gf.data.dir). Requires a cached
-#               Drive token in .secrets (see googledrivesetup.R).
+# Dependencies: Requires shared_drive_root to be defined
+
 # Pipeline:     Step in model_wrapper.do gated by `rdb_dtrips_to_drive'
 #               (default ON), run via `rscript using`.
 ################################################################################
@@ -32,7 +32,7 @@ management_cycle<-as.numeric(args[2])
 
 
 here::i_am("Code/pre_sim/rdb_catch_at_len_to_drive.R")
-source(here("Code", "helpers", "developer_setup.R"))
+source(here("Code", "helpers", ""))
 
 output_folder<-file.path(gf.data.dir, "miscellaneous")
 vintage_string<-list.files(output_folder, pattern=glob2rx("mrip_pull*Rds"))
