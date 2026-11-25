@@ -47,46 +47,12 @@
    - MRIP source data come from Oracle
 
 
- THESE GLOBALS AND REGULATIONS MUST BE UPDATED EVERY YEAR (see Section A).
+ THESE GLOBALS AND REGULATIONS MUST BE UPDATED EVERY YEAR (see Section B).
 *******************************************************************************/
 
-set varabbrev on
-
 /******************************************************************************/
 /******************************************************************************/
-/* Section A: Year-specific global parameters (UPDATE EVERY YEAR) */
-/******************************************************************************/
-/******************************************************************************/
-
-/*Set calibration year-waves*/
-global calibration_year "(year==2025 & inlist(wave, 1, 2, 3, 4, 5)) | (year==2024 & inlist(wave, 6))"  // last six waves of data  updated
-global calibration_date_start td(01nov2024)
-global calibration_date_end td(31oct2025)
-
-global projection_date_start td(01may2026)
-global projection_date_end td(30apr2027)
-
-* add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level
-
-* fed holidays in the calibration year
-global fed_holidays "inlist(day, td(11nov2024), td(28nov2024), td(25dec2024), td(01jan2025), td(20jan2025), td(17feb2025), td(26may2025), td(19jun2025), td(04jul2025), td(01sep2025), td(13oct2025))"
-
-* fed holidays in the projection year
-global fed_holidays_y2 "inlist(day1, td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026), td(11nov2026),  td(26nov2026),  td(25dec2026), td(01jan2027), td(18jan2027), td(15feb2027))"
-
-* leap-year days here
-global leap_yr_days "td(29feb2024)"
-
-* set number of model iterations to create
-global ndraws 101
-
-* adjust 2022 survey trip costs to account for inflation (January 2022 - January 2025)
-* source =https://www.bls.gov/data/inflation_calculator.htm
-global inflation_expansion=1.13
-
-/******************************************************************************/
-/******************************************************************************/
-/* Section B: Directories, log, and seed */
+/* Section A: Directories, log, and seed */
 /******************************************************************************/
 /******************************************************************************/
 /* `here' finds the project root. This only works if you have already cd'd into
@@ -94,9 +60,22 @@ global inflation_expansion=1.13
 here, nogit
 
 do "${here}/Code/helpers/developer_setup_stata.do"
+do "${here}/Code/helpers/confirm_prompt.do"
+do "${here}/Code/helpers/print_settings.do"
+
+global input_code_cd "${here}/Code/pre_sim"
+global log_dir "${input_code_cd}/logs"
+/* start log */
+cap log close
+local date_string = subinstr(trim("${S_DATE}"), ":" , "_", .)
+local date_string = subinstr("`date_string'", " " , "_", .)
+local time_string = subinstr(trim("${S_TIME}"), ":" , "_", .)
+log using "${log_dir}\model_wrapper_log_`date_string'_`time_string'.smcl", replace
+
+set varabbrev on
+pause on
 
 * adjust project paths based on user
-global input_code_cd "${here}/Code/pre_sim"
 global misc_data_cd "${gfdatadir}/miscellaneous"
 global calib_catch_draws_cd "${gfdatadir}/calib_catch_draws"
 global figure_cd  "${gfdatadir}/figures"
@@ -112,16 +91,47 @@ capture mkdir $log_dir
 timer clear 1        // Resets timer #1
 timer on 1           // Starts timing
 
-/* start log */
-cap log close
-local time_string = subinstr(trim("${S_TIME}"), ":" , "_", .)
-
-log using "${log_dir}\model_wrapper_log_${S_DATE}_`time_string'.smcl", replace
-
-
-
 * set a global seed
 global seed 03211990
+
+
+/* is this the final data prep?
+=1 for final data prep
+=0 for prototyping
+ */
+local final_data_prep= 0
+
+
+
+
+
+/******************************************************************************/
+/******************************************************************************/
+/* Section B: Year-specific global parameters (UPDATE EVERY YEAR) */
+/******************************************************************************/
+/******************************************************************************/
+
+
+* add federal holidays, as these are considered "weekend" days by the MRIP and we need to account for this when estimating fishing effort at the month and kind-of-day level.   https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/
+
+* fed holidays in the calibration year. The intended intended use is:
+*  <command> if $fed_holidays. It operates on the column "day"
+global fed_holidays "inlist(day, td(11nov2025), td(27nov2025), td(25dec2025), td(01jan2026), td(19jan2026), td(16feb2026), td(25may2026), td(19jun2026), td(03jul2026), td(07sep2026), td(12oct2026))"
+
+* fed holidays in the projection year. The intended use is:
+* <command> if $fed_holidays_y2.  It operates on the column "day1"
+global fed_holidays_y2 "inlist(day1, td(31may2027), td(18jun2027), td(05jul2027), td(06sep2027), td(11oct2027), td(11nov2027),  td(25nov2027),  td(24dec2027), td(01jan2028), td(17jan2028), td(21feb2028))"
+
+* leap-year days here
+global leap_yr_days "td(29feb2028)"
+
+* set number of model iterations to create
+global ndraws 101
+
+* adjust 2022 survey trip costs to account for inflation (January 2022 - January 2026)
+
+* source =https://www.bls.gov/data/inflation_calculator.htm
+global inflation_expansion=1.16
 
 
 /******************************************************************************/
@@ -129,42 +139,53 @@ global seed 03211990
 /* Section C: MRIP year/wave globals and assessment-year globals */
 /******************************************************************************/
 /******************************************************************************/
+global Fishery "groundfish" /* can be set to "groundfish" or "fluke". should match the casing of the drive folders */
+global ManagementCycle 2027 /* the year for which we are setting regulations. In December of 2026, we are working on the management cycle for FY2027. this may cause other things downstream to break until the mrip data is released*/
+global FesYear 2025  /* FES year from MRIP */
 
 /*set mrip type either cal_2018 or cal_2026 */
 global mrip_cal_type "cal_2018"
 
-/* years/waves of MRIP data.*/
-/* used by:
-tidyup_mrip_data_fromR.do
-MRIP_column_cases.do (dead code)
-compare wave 5 data.do*/
+/*First and last mrip year in datapull*/
+/* production */
+global first_mrip_year 2024
+global last_mrip_year 2026
 
-global yr_wvs 20231 20232 20233 20234 20235 20236  ///
-			  20241 20242 20243 20244 20245 20246  ///
-			  20251 20252 20253 20254 20255 20256
+global yr_wvs
+/* assemble yr_wvs, used for subsetting*/
+foreach year of numlist $first_mrip_year/$last_mrip_year {
+	foreach w of numlist 1/6{
+		global yr_wvs $yr_wvs `year'`w'
+	}
+}
+di "$yr_wvs"
 
-/* First and last year of MRIP data.*/
-/* used by:
-tidyup_mrip_data_fromR.do*/
 
-global first_mrip_year 2023
-global last_mrip_year 2025
-numlist "$first_mrip_year/$last_mrip_year"
+/* note the immmediate evaluation of the $ManagementCycle-1 expression with `=$ManagementCycle-1'*/
 
-/* Yearlist and wavelist.*/
-/* used by:
-MRIP_lists.do (dead code) */
+/*calibration year-waves. The next 5 globals will get picked up based on the MangementCycle.*/
+global calibration_year "(year==`=$ManagementCycle-1' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`=$ManagementCycle-2' & inlist(wave, 6))"  // last six waves of data  updated
+global calibration_year_back "(year==`=$ManagementCycle-2' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`=$ManagementCycle-3' & inlist(wave, 6))"  // six waves before that
 
-global yearlist  `r(numlist)'
-global wavelist 1 2 3 4 5 6
+
+/* calibration year starts on Nov 1 (wave 6) and end on oct 31 (wave 4 of next year)*/
+global calibration_date_start mdy(11,1,`=$ManagementCycle-2')
+global calibration_date_end mdy(10,31,`=$ManagementCycle-1')
+
+
+/* projection year is groundfish fishing year (May 1 to April 30)
+This runs May 1 of the ManagementCycle to April 30 of `ManagementCycle+1'
+*/
+global projection_date_start mdy(5,1,$ManagementCycle)
+global projection_date_end mdy(4,30,`=$ManagementCycle+1')
 
 /* set the baseline year and projection year numbers-at-age globals
 used by catch_at_length_projection.do*/
 
-global cod_NAA_base_year 2025
-global hadd_NAA_base_year 2025
-global cod_NAA_proj_year 2026
-global hadd_NAA_proj_year 2026
+global cod_NAA_base_year 2026
+global hadd_NAA_base_year 2026
+global cod_NAA_proj_year 2027
+global hadd_NAA_proj_year 2027
 
 /* set the starting year for the NEFSC trawl survey data pull (in catch_at_length_projection.do)
 	 we aggregate these data across multiple years and use them to create age-length keys
@@ -172,10 +193,33 @@ global hadd_NAA_proj_year 2026
 	 but do not want to use historical data too far in the past.
 used by catch_at_length_projection.do*/
 
-global trawl_survey_start_year 2022
+global trawl_survey_start_year 2023
 
 
 
+/******************************************************************************/
+/* Section C2:JUST FOR TESTING  - temporarily rebuild the calibration_year global
+and the mrip globals to get a different set of data*/
+/*
+
+	global calibration_year "(year==`=$ManagementCycle-3' & inlist(wave, 1, 2, 3, 4, 5)) | (year==`=$ManagementCycle-4' & inlist(wave, 6))"  // last six waves of data  updated
+
+	global calibration_date_start mdy(11,1,`=$ManagementCycle-3')
+	global calibration_date_end mdy(10,31,`=$ManagementCycle-2')
+
+	global first_mrip_year 2023
+	global last_mrip_year 2025
+	global yr_wvs
+	/* assemble yr_wvs, used for subsetting*/
+	foreach year of numlist $first_mrip_year/$last_mrip_year {
+		foreach w of numlist 1/6{
+			global yr_wvs $yr_wvs `year'`w'
+		}
+	}
+	di "$yr_wvs"
+*/
+/* END  JUST FOR TESTING */
+/******************************************************************************/
 
 /******************************************************************************/
 /******************************************************************************/
@@ -186,11 +230,12 @@ global trawl_survey_start_year 2022
 // Control which modules to run (set to 0 to skip)
 loc process_commercial_landings = 0      	    // Get commercial landings from Oracle
 loc process_cod_assess = 0                		// Process Cod Assessment data
-loc process_haddock_assess = 0            // Process Haddock Assessment data
+loc process_haddock_assess = 0           // Process Haddock Assessment data
 
-loc get_assessment_from_gdrive = 0				// Pull Assessment data
-loc get_mrip_oracle = 1		 					      // Pull MRIP data.
-loc get_mrip_site_list = 1		 					  // Pull MRIP site list.
+loc get_assessment_from_gdrive = 0				// Pull Assessment OUTPUTs
+loc get_mrip_oracle = 0	 		 			      // Pull MRIP data.
+loc get_fes_from_gdrive=0						// get the fes data from google drive
+loc get_mrip_site_list = 0		 					  // Pull MRIP site list.
 
 loc get_svdbs_data = 0		 					  // Pull MRIP site list.
 
@@ -205,17 +250,18 @@ loc additional_angler_dems	=0					  // add additional angler demographics
 loc catch_at_length_calibration=0			   	// Generate baseline-year catch-at-length
 loc catch_at_length_project=0					    // Generate projection-year catch-at-length
 
+
 loc get_fishery_choice_from_gdrive = 0				// Get files required for fishery choice model from gdrive (Lou=0 always)
-loc estimate_fishery_choice_model=1					// Estimate fishery choice model
-loc prepare_fishery_choice_data=1					// Generate data and parameters from fishery choice model
+loc estimate_fishery_choice_model=0					// Estimate fishery choice model
+loc prepare_fishery_choice_data=0					// Generate data and parameters from fishery choice model
 
 loc Rcodewrapper=0							        // Run calibration routine in R
 
 
 /********************* Push to google drive toggles*************************************/
 /********************* (versions on main should be set to 0)****************************/
-loc export_assess_to_gdrive = 0          // Export assessment to google drive
-local assess_upload = "cod"				 // arguments for uploading. Can be "cod", "haddock", or "both"
+loc export_assess_to_gdrive = 1          // Export assessment to google drive
+local assess_upload = "both"			    	 // arguments for uploading. Can be "cod", "haddock", or "both"
 loc export_all_to_GDrive = 0             // Export calibration and all data to Google
 
 
@@ -223,10 +269,11 @@ loc export_all_to_GDrive = 0             // Export calibration and all data to G
 /********************* (versions on main should be set to 0)****************************/
 
 loc rdb_processing_catch_per_trip= 0  	  // prep data for dashboard
-loc rdb_catch_per_trip_to_drive =0 	  	  // Push to google drive in R
 loc rdb_catch_at_length= 0	              // Prep catch at length data for dashboard
-loc rdb_catch_at_len_to_drive =0 	      // Push catch at length data to google drive in R
 loc rdb_directed_trips =0 	        	  // Prep directed trips data for dashboard
+
+loc rdb_catch_at_len_to_drive =0 	      // Push catch at length data to google drive in R
+loc rdb_catch_per_trip_to_drive =0 	  	  // Push to google drive in R
 loc rdb_dtrips_to_drive =0 	      		  // Push directed trips data to google drive in R
 
 
@@ -235,29 +282,29 @@ loc rdb_dtrips_to_drive =0 	      		  // Push directed trips data to google driv
 /***************************************************************************************/
 
 **** Toggles to generate alternative data for the uncertainty project (1 = yes, 0 = no)
-/* Be mindful that files are being overwritten with each test and some data needs resetting 
-prior to generating data for the next test. Eg, after testing mean directed trips, must rerun 
+/* Be mindful that files are being overwritten with each test and some data needs resetting
+prior to generating data for the next test. Eg, after testing mean directed trips, must rerun
 directed_trips_calibration to replace directed_trip_draws.csv with original version before testing
 median trips or another source of uncertainty. When not testing catch per trip uncertainty, must either
 run copula_modeling_calibration or run copula_both but set manual species toggle to "none" in copula_both.R. */
 global uncertain 0				/* Uncertainty project argument for passing into R code  */
-local copula_both=0			    /* Copula model with ability to remove sampling uncertainty for testing catch per 
-								trip uncertainty (use manual toggle 'species_no_uncertainty' in the R script to select 
-								one or both species, or neither when testing the other uncertainty sources). Turn off 
+local copula_both=0			    /* Copula model with ability to remove sampling uncertainty for testing catch per
+								trip uncertainty (use manual toggle 'species_no_uncertainty' in the R script to select
+								one or both species, or neither when testing the other uncertainty sources). Turn off
 								copula_modeling_calibration local above to save time when copula_both=1 */
-local projected_naa_uncertain=0   /* Removes uncertainty in numbers at age to examine catch at length uncertainty  
-									(Manually change species in code below to cod, haddock, or both in this line: 
+local projected_naa_uncertain=0   /* Removes uncertainty in numbers at age to examine catch at length uncertainty
+									(Manually change species in code below to cod, haddock, or both in this line:
 									do "$input_code_cd\projected_naa_uncertain.do" above step 10) */
-local directed_trip_uncertain=0   /* Removes uncertainty in simulated directed trips (there's a manual 
+local directed_trip_uncertain=0   /* Removes uncertainty in simulated directed trips (there's a manual
 								    toggle in the do file to take median trips or mean trips).  */
 local uncertain_loc=0			  /* save the alternative data in its own 'uncertainty' folders */
 
 *Only TP can do the uncertainty project, this block of code sets all the uncertainty toggles to 0 if you are not TP:
 if (inlist("$developer","TP")==0) {
 	global uncertain=0
-	local copula_both=0			   
-	local projected_naa_uncertain=0  
-	local directed_trip_uncertain=0   
+	local copula_both=0
+	local projected_naa_uncertain=0
+	local directed_trip_uncertain=0
 	local uncertain_loc=0
 }
 /********************* End of Uncertainty Project Toggles *************************************/
@@ -269,21 +316,60 @@ if `uncertain_loc' {
 	global misc_data_cd "${gfdatadirunc}/miscellaneous"
 	global calib_catch_draws_cd "${gfdatadirunc}/calib_catch_draws"
 	global figure_cd  "${gfdatadirunc}/figures"
-	
+
 	capture mkdir $misc_data_cd
 	capture mkdir $calib_catch_draws_cd
 	capture mkdir $figure_cd
 }
 
-
-
-
-// Prototyping: set proto=1 to override $ndraws down to the small value below for a fast test run.
-local proto = 1
-
-if `proto' {
-	global ndraws 5
+/********************* local and global verification *************************************/
+/* if this is not the final data prep, short cut by setting ndraws=5
+   Display all macros, but only have confirmations trig
+*/
+if (`final_data_prep'==0){
+ 	global ndraws 5
+	display as input "Prototyping enabled. ndraws set to $ndraws. Overwrite or press <Enter> to continue: " _request(ndraws)
 }
+
+if (`final_data_prep')==1{
+	confirm_prompt "Final data setup, ndraws set to $ndraws." 1
+}
+
+/*Print the global macro settings and prompt the user to verify*/
+print_settings
+/* calibration_year global macro */
+confirm_prompt "Please verify that calibration year global is set properly."  `final_data_prep'
+
+/* Management Cycle and calibration year macros */
+confirm_prompt "Please verify first and last mrip years" `final_data_prep'
+
+/* NAA years for cod and haddock:*/
+confirm_prompt "Please verify that baseline and projection year NAA are properly set." `final_data_prep'
+
+/* Calibration start and end dates, projection start and end dates:*/
+confirm_prompt "Please verify that Calibration start and end dates, projection start and end dates are properly set." `final_data_prep'
+
+/* Trawl Survey:*/
+confirm_prompt "Please verify that the Trawl Survey Start year are properly set." `final_data_prep'
+
+/* add a last check that the mangement year and mrip year and calibration years are aligned */
+/* Use Unicode regex to find year== followed by 4 digits */
+if ustrregexm("$calibration_year'", "year==([0-9]{4})") {
+    local extracted_year = ustrregexs(1)
+}
+di as text "First year extracted from calibration_year global is `extracted_year'.  We expected to it to be `=$ManagementCycle-1'!!
+
+if ("`extracted_year'"!="`=$ManagementCycle-1'") {
+	confirm_prompt "WARNING: calibration_year global is inconsistent with the ManagementCycle global. Something might be wrong." 1
+}
+else if("`extracted_year'"!="`=$ManagementCycle-1'"){
+	di as text "Calibration_year global consistent with ManagementCycle global"
+}
+
+
+confirm_prompt "Everything is set. Last chance to reset globals." 1
+/********************* end of local and global verification *************************************/
+
 
 local executed_scripts ""
 local skipped_scripts  ""
@@ -305,7 +391,9 @@ else {
 }
 if `process_cod_assess' {
 	di "Processing cod assessment"
-	rscript using "$input_code_cd\process_cod_assessment_data.R"
+	rscript using "$input_code_cd\process_cod_assessment_data.R", args($ManagementCycle $cod_NAA_proj_year)
+	di "Cod assessment processed.  NAA for $cod_NAA_proj_year are in the input_data folder."
+
 	local executed_scripts `executed_scripts' process_cod_assessment_data.R
 }
 else {
@@ -314,17 +402,19 @@ else {
 
 if `process_haddock_assess'{
 	di "Processing haddock assessment"
-	rscript using "$input_code_cd\process_hadd_assessment_data.R"
-	local executed_scripts `executed_scripts' process_hadd_assessment_data.R
+	rscript using "$input_code_cd\process_haddock_assessment_data.R", args($ManagementCycle $hadd_NAA_proj_year)
+	di "Haddock assessment processed.  NAA for $hadd_NAA_proj_year are in the input_data folder."
+
+	local executed_scripts `executed_scripts' process_haddock_assessment_data.R
 }
 else {
-	local skipped_scripts `skipped_scripts' process_hadd_assessment_data.R
+	local skipped_scripts `skipped_scripts' process_haddock_assessment_data.R
 }
 
 
 if `export_assess_to_gdrive' {
 	di "Exporting assessment results for `assess_upload' stocks to gdrive"
-	rscript using "$input_code_cd\export_assess_to_gdrive.R", args(`assess_upload')
+	rscript using "$input_code_cd\export_assess_to_gdrive.R", args($Fishery $ManagementCycle `assess_upload')
 	local executed_scripts `executed_scripts' export_assess_to_gdrive.R
 }
 else {
@@ -339,7 +429,8 @@ else {
 /* This code requires you to mount your google drive to D on your computer */
 if `get_assessment_from_gdrive' {
 	di "Pulling Assessment data from google"
-	do "$input_code_cd\get_assessment_from_gdrive.do"
+
+	do "$input_code_cd\get_assessment_from_gdrive.do" $Fishery $ManagementCycle
 	local executed_scripts `executed_scripts' get_assessment_from_gdrive.R
 }
 else {
@@ -369,6 +460,13 @@ if `get_mrip_oracle' {
 else {
 	local skipped_scripts `skipped_scripts' tidyup_mrip_data_fromR.do get_mrip_oracle.R
 }
+if `get_fes_from_gdrive' {
+  	di "Copying FES from Google Drive "
+	do "$input_code_cd\get_fes_from_gdrive.do" $Fishery $ManagementCycle $FesYear
+  	di "FES Files copied from Google Drive "
+
+}
+
 
 
 
@@ -434,7 +532,7 @@ else {
 		//run this script in R to read in the directed trips processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `rdb_dtrips_to_drive'{
     di "Pushing rec dashboard catch at length data to gdrive using R"
-	rscript using "$input_code_cd\rdb_dtrips_to_drive.R"
+	rscript using "$input_code_cd\rdb_dtrips_to_drive.R" , args("$Fishery" $ManagementCycle)
 	local executed_scripts `executed_scripts' rdb_dtrips_to_drive.R
 }
 else {
@@ -525,7 +623,7 @@ else {
 		//run this script in R to read in the catch per trip processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `rdb_catch_per_trip_to_drive'{
    	di "Pushing rec dashboard data to gdrive using R"
-	rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R"
+	rscript using "$input_code_cd\rdb_catch_per_trip_to_drive.R", args("$Fishery" $ManagementCycle)
 	local executed_scripts `executed_scripts' rdb_catch_per_trip_to_drive.R
 }
 else {
@@ -551,6 +649,29 @@ if `catch_at_length_calibration'{
 else {
 	local skipped_scripts `skipped_scripts' catch_at_length_calibration.do
 }
+
+// Re-write projected NAA files for uncertainty project
+if `projected_naa_uncertain' {
+  di "Estimating uncertainty project NAA "
+  do "$input_code_cd\projected_naa_uncertain.do" cod 	//here put in cod, haddock or both for which species to set deterministic in projected catch at length
+ 	di "NAA overwritten to examine projected catch at length uncertainty"
+ 	local executed_scripts `executed_scripts' projected_naa_uncertain.do
+	}
+else {
+   local skipped_scripts `skipped_scripts' projected_naa_uncertain.do
+}
+
+// 10) Generate projection-year catch-at-length, incorporating the stock assessment data
+if `catch_at_length_project'{
+	di "Generating projection year catch-at-length"
+	do "$input_code_cd\catch_at_length_projection.do"
+	local executed_scripts `executed_scripts' catch_at_length_projection.do
+	}
+else {
+   local skipped_scripts `skipped_scripts' catch_at_length_projection.do
+}
+
+
 		//Process catch at length and format it for the rec dashboard
 if `rdb_catch_at_length'{
    	di "Processing and formatting catch-at-length for dashboard"
@@ -564,41 +685,20 @@ else {
 		//run this script in R to read in the catch at length processed for the rec dashboard, save it as an Rds, and push it to Google Drive
 if `rdb_catch_at_len_to_drive'{
     di "Pushing rec dashboard catch at length data to gdrive using R"
-	rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R"
+	rscript using "$input_code_cd\rdb_catch_at_len_to_drive.R", args("$Fishery" $ManagementCycle)
 	local executed_scripts `executed_scripts' rdb_catch_at_len_to_drive.R
 }
 else {
    local skipped_scripts `skipped_scripts' rdb_catch_at_len_to_drive.R
 }
-// Re-write projected NAA files for uncertainty project
-if `projected_naa_uncertain' {
-  di "Estimating uncertainty project NAA "
-  do "$input_code_cd\projected_naa_uncertain.do" cod 	//here put in cod, haddock or both for which species to set deterministic in projected catch at length
- 	di "NAA overwritten to examine projected catch at length uncertainty"
- 	local executed_scripts `executed_scripts' rdb_catch_at_len_to_drive.R
-}
-else {
-   local skipped_scripts `skipped_scripts' projected_naa_uncertain.do
-}
 
-
-
-// 10) Generate projection-year catch-at-length, incorporating the stock assessment data
-if `catch_at_length_project'{
-	di "Generating projection year catch-at-length"
-	do "$input_code_cd\catch_at_length_projection.do"
-	local executed_scripts `executed_scripts' catch_at_length_projection.do
-	}
-else {
-   local skipped_scripts `skipped_scripts' catch_at_length_projection.do
-}
 
 
 // 11a) Get fishery choice data from gdrive
 /* This code requires you to mount your google drive to D on your computer */
 if `get_fishery_choice_from_gdrive' {
 	di "Getting fishery choice data from Gdrive"
-	do "$input_code_cd\get_fishery_choice_data_from_gdrive.do"
+	do "$input_code_cd\get_fishery_choice_data_from_gdrive.do" $Fishery $ManagementCycle
 	local executed_scripts `executed_scripts' get_fishery_choice_data_from_gdrive.do
 }
 else {
@@ -611,23 +711,23 @@ if `estimate_fishery_choice_model'{
 	di "Estimate fishery choice model"
 	do "$input_code_cd\estimate_fishery_choice_model.do"
 	local executed_scripts `executed_scripts' estimate_fishery_choice_model.do
-	
-	
+
+
 	}
 else {
    local skipped_scripts `skipped_scripts' estimate_fishery_choice_model.do
 
-}	
+}
 
 // 11c) Generate fishery choice model data and parameters which feed into projection
 if `prepare_fishery_choice_data'{
 	di "Preparing fishery choice data"
 	do "$input_code_cd\prepare_fishery_choice_data.do"
 	local executed_scripts `executed_scripts' prepare_fishery_choice_data.do
-	
+
 	do "$input_code_cd\predict_fishery_choice_probabilities.do"
 	local executed_scripts `executed_scripts' predict_fishery_choice_probabilites.do
-	
+
 	}
 else {
    local skipped_scripts `skipped_scripts' prepare_fishery_choice_data.do
@@ -648,10 +748,10 @@ if `Rcodewrapper'{
 else {
    local skipped_scripts `skipped_scripts' R_code_wrapper.R
 }
-
+/* if this fails, you might need to remove the double quotes around $Fishery */
 if `export_all_to_GDrive'{
 di "Exporting calibration outputs to Google Drive ..."
-  rscript using "$here\Code\sim\export_all_to_GDrive.R", args($ndraws $uncertain)
+  rscript using "$here\Code\sim\export_all_to_GDrive.R", args("$Fishery" $ManagementCycle $ndraws $uncertain)
 	local executed_scripts `executed_scripts' export_all_to_GDrive.R
 	}
 else {
@@ -661,16 +761,13 @@ else {
 
 if (`projected_naa_uncertain' & "$developer"=="TP"){
 	di "Resetting Assessment data from google"
-	do "$input_code_cd\get_assessment_from_gdrive.do"
+
+	do "$input_code_cd\get_assessment_from_gdrive.do" $Fishery $ManagementCycle
 	local executed_scripts `executed_scripts' AssesmentReset
 }
 
 display "model_wrapper.do: Stata pre-simulation stage complete."
 
-
-if (`proto'==1) {
-	display "Prototyping option set on. ndraws global set to $ndraws"
-}
 
 /*******************************************************
 wrap up
@@ -679,16 +776,27 @@ wrap up
 /* Print the scripts that were run */
 
 di "These scripts were run:"
-foreach l of local executed_scripts{
-	di "`l': RUN"
+quietly foreach l of local executed_scripts{
+	noisily di as text "`l': RUN"
 }
+
 /* Print the scripts that were not run */
-
 di "These scripts were not run:"
-foreach l of local skipped_scripts{
-	di "`l': NOT RUN"
+quietly foreach l of local skipped_scripts{
+	noisily di as text "`l': NOT RUN"
 }
 
+/* Print some Global settings */
+
+if `final_data_prep'==1{
+	di as text "Final Data prep set to ON"
+}
+else if `final_data_prep'==0{
+	di as text "Final Data prep set to OFF"
+}
+
+
+print_settings
 
 timer off 1          // Stops timing
 timer list 1         // Displays elapsed time in seconds

@@ -29,6 +29,7 @@ first_yr  <- as.numeric(args[2])
 last_yr   <-  as.numeric(args[3])
 
 # Show them, just in case.
+cat("MRIP Calibration Year:", mrip_calibration_year, "\n")
 cat("First Year:", first_yr, "\n")
 cat("Last Year:", last_yr, "\n")
 

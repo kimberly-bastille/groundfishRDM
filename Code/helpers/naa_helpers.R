@@ -7,7 +7,7 @@
 # Inputs:       None at source time (defines functions only).
 # Outputs:      Functions pivot_naa_long() and validate_naa_data() in the
 #               calling environment.
-# Dependencies:
+# Dependencies: glue, cli, tidyr,dplyr
 # Pipeline:     Sourced by the two get_*_assessment_data.R scripts; not called
 #               by any wrapper.
 ################################################################################
@@ -32,9 +32,9 @@ pivot_naa_long <- function(df) {
     tidyr::pivot_longer(cols = all_of(age_cols),
                         names_to  = "age",
                         values_to = "value") %>%
-    mutate(age = as.integer(sub("age", "", age)),
+    dplyr::mutate(age = as.integer(sub("age", "", age)),
            metric=glue("{metric} {age}")) %>%
-    select(-age)
+    dplyr::select(-age)
 }
 
 
@@ -54,24 +54,59 @@ pivot_naa_long <- function(df) {
 validate_naa_data <- function(df) {
 
   # Ensure specified columns are character vectors and contain no NAs
-  stopifnot(
-    is.character(df$fishery) && !any(is.na(df$fishery)),
-    is.character(df$common) && !any(is.na(df$common)),
-    is.character(df$stock_abbrev) && !any(is.na(df$stock_abbrev)),
-    is.character(df$metric) && !any(is.na(df$metric)),
-    is.character(df$source) && !any(is.na(df$source)),
+  valid <-
+    is.character(df$fishery) && !any(is.na(df$fishery)) &&
+    is.character(df$common) && !any(is.na(df$common)) &&
+    is.character(df$stock_abbrev) && !any(is.na(df$stock_abbrev)) &&
+    is.character(df$metric) && !any(is.na(df$metric)) &&
+    is.character(df$source) && !any(is.na(df$source))&&
     is.character(df$units) && !any(is.na(df$units))
-  )
+  if (!valid) {
+    # {.arg df} automatically captures and formats the caller symbol
+    cli::cli_abort("Missing or unexpected values of stock_stats_df in {.arg df}")
+    }
+  ################################################################
+  # Ensure species_itis and management cycle are numeric and nothing is missing
+  ################################################################
+  valid <-    is.numeric(df$species_itis) && !any(is.na(df$species_itis)) %%
+    is.numeric(df$management_cycle) && !any(is.na(df$management_cycle))
 
-  # Ensure species_itis and value are numeric
-  stopifnot(is.numeric(df$species_itis))
-  stopifnot(is.numeric(df$value))
+  if (!valid) {
+    cli::cli_abort("Missing or unexpected values of species_itis in {.arg df}")
+  }
 
-  # Ensure data_version is a Date class
-  stopifnot(inherits(df$data_version, "Date"))
+
+  ################################################################
+  # Ensure NAA is numeric and nothing is missing.
+  ################################################################
+
+  valid <- is.numeric(df$value) && !any(is.na(df$value))
+
+  if (!valid) {
+    cli::cli_abort("Missing values of NAA OR non-numeric values of NAA in {.arg df}")
+  }
+  ################################################################
+  # Ensure NAA is numeric and average NAA are greater than 1)
+
+  test<-df %>%
+    dplyr::group_by(metric) %>%
+    dplyr::summarise(mean=mean(value))
+
+  valid <-  is.numeric(test$mean) && all(test$mean>1)
+
+  if (!valid) {
+    cli::cli_abort("Very small values of NAA in {.arg df}. Check proj_F_opt options.")
+  }
+  ################################################################
+  # Ensure data_version is a date field
+  ################################################################
+
+  valid <-  inherits(df$data_version, "Date")
+  if (!valid) {
+    cli::cli_abort("Data version is not a Date class. Check stock_stats_df")
+  }
 
   # NOTE: state and wave are allowed to be NA; no type enforcement applied here
-
   # Return the dataframe invisibly to support tidyverse piping (%>%)
   invisible(df)
 }

@@ -2,24 +2,32 @@
 # Script:       rdb_catch_per_trip_to_drive.R
 # Purpose:      Reads the dashboard-formatted catch-per-trip .dta, saves it as an
 #               .Rds stamped with its data_version, and uploads that .Rds to the
-#               shared Google Drive miscellaneous folder for the rec dashboard.
+#               shared Google Drive input_data folder for the rec dashboard.
 # Inputs:       <gf.data.dir>/miscellaneous/rdb_sim_catch_per_trip.dta (written by rdb_processing_catch_per_trip.do)
 # Outputs:      <gf.data.dir>/miscellaneous/rdb_catch_per_trip_<date>.Rds,
 #               and a copy of that file uploaded to Google Drive.
-# Dependencies: Sources developer_setup.R (for gf.data.dir). Requires a cached
-#               Drive token in .secrets (see googledrivesetup.R).
-# Pipeline:     Step in model_wrapper.do gated by `Rpush_cpt_to_gdrive'
-#               (default ON), run via `rscript using`. Near-identical twin of
-#               rdb_catch_at_len_to_drive.R (differs only in the input file and
-#               object names).
+# Dependencies: Requires shared_drive_root and gf.data.dir to be defined in developer_setup.R.
+# Pipeline:     Step in model_wrapper.do gated by `rdb_catch_per_trip_to_drive'
+#               (default ON), run via `rscript using`.
 ################################################################################
 
 #Load libraries
 library(tidyverse)
 library(haven)
 library(glue)
-library(googledrive)
 library(here)
+
+# Define arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 2) {
+  stop("Error: This script requires exactly two argument.", call. = FALSE)
+}
+
+
+#read in arguments. Ensure they are numeric
+Fishery<-args[1]
+management_cycle<-as.numeric(args[2])
+
 
 here::i_am("Code/pre_sim/rdb_catch_per_trip_to_drive.R")
 source(here("Code", "helpers", "developer_setup.R"))
@@ -47,29 +55,17 @@ rdb_catch_per_trip$data_version<-as.Date(rdb_catch_per_trip$data_version)
 write_rds(rdb_catch_per_trip, file=file.path(output_folder,glue("{SimCPTSaveFile}.Rds")))
 
 
-# Connect to Google Drive
-# NOTE: Relies on cached credentials in .secrets. Will prompt interactive auth if missing or expired.
-message("Uploading catch-per-trip Rds to Google Drive ...")
-drive_auth(cache = here(".secrets"), email = TRUE)
-
-# Output folder on google drive
-miscellaneous_path <-file.path("socialsci","RecreationalDST","2027_management_cycle_data",
-                               "groundfishRDM","miscellaneous")
-
-folder_info <- drive_get(
-  path = miscellaneous_path,
-  shared_drive = "NMFS NEC READ SSB"
+# output folder on google drive
+groundfish_processed_path<-file.path(shared_drive_root, "socialsci","RecreationalDST",
+                                     glue("{management_cycle}_management_cycle_data"),
+                                     glue("{Fishery}RDM"),
+                                     "input_data"
 )
-miscellaneous_path<-folder_info$id
 
-
-#Put the catch per trip Rds on google drive
-drive_upload(
-  media = file.path(output_folder,glue("{SimCPTSaveFile}.Rds")),
-  path = as_id(miscellaneous_path),
-  name = glue("{SimCPTSaveFile}.Rds"),
-  overwrite = TRUE
+file.copy(from=file.path(output_folder,glue("{SimCPTSaveFile}.Rds")),
+          to=file.path(groundfish_processed_path, glue("{SimCPTSaveFile}.Rds"))
 )
+
 message("Catch-per-trip upload complete.")
 
 

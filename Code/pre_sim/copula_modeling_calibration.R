@@ -101,21 +101,21 @@ dir.create(output_dir, showWarnings = TRUE, recursive=TRUE)
 get_rep_stat <- function(formula, rep_design) {
   out <- survey::svymean(formula, rep_design, return.replicates = TRUE, na.rm = TRUE)
 
-  reps <- attr(out, "replicates")
+  reps <- if (is.list(out) && !is.null(out$replicates)) out$replicates else attr(out, "replicates")
+  if (is.null(reps)) reps <- numeric(0)
+  reps <- as.numeric(reps)
 
-  if (is.null(reps)) {
-    reps <- numeric(0)
-  } else {
-    reps <- as.numeric(reps)
-  }
 
-  reps <- reps[is.finite(reps)]
-
-  list(
-    mean = as.numeric(coef(out)),
-    reps = reps
-  )
+  list(mean = as.numeric(coef(out)), reps = reps)
 }
+
+
+
+
+
+
+
+
 
 get_rep_var <- function(df, varname, rep_design) {
   rep_wgts <- stats::weights(rep_design, type = "analysis")
@@ -163,7 +163,7 @@ get_rep_var <- function(df, varname, rep_design) {
   })
 
   out <- as.numeric(out)
-  out <- out[is.finite(out)]
+
 
   out
 }
@@ -178,27 +178,24 @@ get_rep_var <- function(df, varname, rep_design) {
 #' @param theta_cap Upper bound on theta (default 1000) used when var <= mu.
 #' @return A vector of theta values, each in [1e-6, theta_cap].
 safe_theta <- function(mu, var, theta_cap = 1000) {
-  mu  <- as.numeric(mu)
+  mu <- as.numeric(mu)
   var <- as.numeric(var)
 
-  mu  <- mu[is.finite(mu)]
-  var <- var[is.finite(var)]
+  if (!length(mu) || !length(var)) return(numeric(0))
 
-  if (length(mu) == 0 || length(var) == 0) {
-    return(theta_cap)
-  }
+  n <- min(length(mu), length(var))
+  mu <- mu[seq_len(n)]
+  var <- var[seq_len(n)]
 
-  len <- min(length(mu), length(var))
-  mu  <- pmax(mu[seq_len(len)],  1e-8)
-  var <- pmax(var[seq_len(len)], 1e-8)
+  ok <- is.finite(mu) & is.finite(var)
+  if (!any(ok)) return(numeric(0))
+
+  mu <- pmax(mu[ok], 1e-8)
+  var <- pmax(var[ok], 1e-8)
 
   theta <- mu^2 / pmax(var - mu, 1e-6)
-  theta <- pmax(theta, 1e-6)
-  theta <- pmin(theta, theta_cap)
+  theta <- pmin(pmax(theta, 1e-6), theta_cap)
   theta[!is.finite(theta)] <- theta_cap
-
-  if (length(theta) == 0) theta <- theta_cap
-
   theta
 }
 
@@ -401,9 +398,11 @@ run_species_copula_sim <- function(full_df,
     rep_vars  <- get_rep_var(df, varname, rep_design)
     rep_theta <- safe_theta(rep_means, rep_vars)
     theta_hat_single <- safe_theta(mu, var_mu)
+    if (!length(theta_hat_single)) theta_hat_single <- 1000
+    theta_hat_single <- theta_hat_single[1L]
 
     rep_theta_use <- rep_theta[is.finite(rep_theta)]
-    if (length(rep_theta_use) == 0) rep_theta_use <- theta_hat_single
+    if (!length(rep_theta_use)) rep_theta_use <- theta_hat_single
 
     sim_datasets <- vector("list", n_draws)
     i <- 1
@@ -427,8 +426,8 @@ run_species_copula_sim <- function(full_df,
       if (n_psu(df) <= 1) {
         sampled_theta <- theta_hat_single
       } else {
-        sampled_theta <- sample(rep_theta_use, 1, replace = TRUE)
-      }
+        sampled_theta <- rep_theta_use[sample.int(length(rep_theta_use), 1L)]
+        }
 
       sim_x <- qnbinom(runif(n_sim), size = sampled_theta, mu = sampled_mu)
 
@@ -499,12 +498,18 @@ run_species_copula_sim <- function(full_df,
     rep_theta_rel  <- safe_theta(rep_rel_obj$reps,  get_rep_var(df, rel_var,  rep_design))
 
     theta_hat_keep_single <- safe_theta(mu_keep, var_keep)
-    theta_hat_rel_single  <- safe_theta(mu_rel,  var_rel)
+    if (!length(theta_hat_keep_single)) theta_hat_keep_single <- 1000
+    theta_hat_keep_single <- theta_hat_keep_single[1L]
+
+    theta_hat_rel_single <- safe_theta(mu_rel, var_rel)
+    if (!length(theta_hat_rel_single)) theta_hat_rel_single <- 1000
+    theta_hat_rel_single <- theta_hat_rel_single[1L]
 
     rep_theta_keep_use <- rep_theta_keep[is.finite(rep_theta_keep)]
     rep_theta_rel_use  <- rep_theta_rel[is.finite(rep_theta_rel)]
-    if (length(rep_theta_keep_use) == 0) rep_theta_keep_use <- theta_hat_keep_single
-    if (length(rep_theta_rel_use)  == 0) rep_theta_rel_use  <- theta_hat_rel_single
+
+    if (!length(rep_theta_keep_use)) rep_theta_keep_use <- theta_hat_keep_single
+    if (!length(rep_theta_rel_use))  rep_theta_rel_use  <- theta_hat_rel_single
 
     df_copula <- weighted_sample_for_copula(
       df = df,
@@ -571,9 +576,9 @@ run_species_copula_sim <- function(full_df,
         sampled_theta_keep <- theta_hat_keep_single
         sampled_theta_rel  <- theta_hat_rel_single
       } else {
-        sampled_theta_keep <- sample(rep_theta_keep_use, 1, replace = TRUE)
-        sampled_theta_rel  <- sample(rep_theta_rel_use,  1, replace = TRUE)
-      }
+        sampled_theta_keep <- rep_theta_keep_use[sample.int(length(rep_theta_keep_use), 1L)]
+        sampled_theta_rel <- rep_theta_rel_use[sample.int(length(rep_theta_rel_use), 1L)]
+        }
 
       uv <- copula::rCopula(n_sim, fitted_cop)
       sim_keep <- qnbinom(uv[, 1], size = sampled_theta_keep, mu = sampled_mu_keep)
@@ -641,12 +646,18 @@ run_species_copula_sim <- function(full_df,
     rep_theta_rel  <- safe_theta(rep_rel_obj$reps,  get_rep_var(df, rel_var,  rep_design))
 
     theta_hat_keep_single <- safe_theta(mu_keep, var_keep)
-    theta_hat_rel_single  <- safe_theta(mu_rel,  var_rel)
+    if (!length(theta_hat_keep_single)) theta_hat_keep_single <- 1000
+    theta_hat_keep_single <- theta_hat_keep_single[1L]
+
+    theta_hat_rel_single <- safe_theta(mu_rel, var_rel)
+    if (!length(theta_hat_rel_single)) theta_hat_rel_single <- 1000
+    theta_hat_rel_single <- theta_hat_rel_single[1L]
 
     rep_theta_keep_use <- rep_theta_keep[is.finite(rep_theta_keep)]
     rep_theta_rel_use  <- rep_theta_rel[is.finite(rep_theta_rel)]
-    if (length(rep_theta_keep_use) == 0) rep_theta_keep_use <- theta_hat_keep_single
-    if (length(rep_theta_rel_use)  == 0) rep_theta_rel_use  <- theta_hat_rel_single
+
+    if (!length(rep_theta_keep_use)) rep_theta_keep_use <- theta_hat_keep_single
+    if (!length(rep_theta_rel_use))  rep_theta_rel_use  <- theta_hat_rel_single
 
     sim_datasets <- vector("list", n_draws)
     i <- 1
@@ -678,9 +689,9 @@ run_species_copula_sim <- function(full_df,
         sampled_theta_keep <- theta_hat_keep_single
         sampled_theta_rel  <- theta_hat_rel_single
       } else {
-        sampled_theta_keep <- sample(rep_theta_keep_use, 1, replace = TRUE)
-        sampled_theta_rel  <- sample(rep_theta_rel_use,  1, replace = TRUE)
-      }
+        sampled_theta_keep <- rep_theta_keep_use[sample.int(length(rep_theta_keep_use), 1L)]
+        sampled_theta_rel <- rep_theta_rel_use[sample.int(length(rep_theta_rel_use), 1L)]
+        }
 
       sim_keep <- qnbinom(runif(n_sim), size = sampled_theta_keep, mu = sampled_mu_keep)
       sim_rel  <- qnbinom(runif(n_sim), size = sampled_theta_rel,  mu = sampled_mu_rel)

@@ -7,7 +7,7 @@
                the month-mode-kind of day level, and adds descriptive columns.  
  Inputs:       $misc_data_cd/directed_trip_draws.csv (written by directed_trips_calibration.do).
  Outputs:      $misc_data_cd/rdb_dtrips.dta
- Dependencies: Global $misc_data_cd (set in model_wrapper.do).
+ Dependencies: Global $misc_data_cd and $ManagementCycle (set in model_wrapper.do).
  Pipeline:     Wrapped by model_wrapper.do, gated by `prep_trips_for_dash'
                Followed by rdb_dtrips_to_drive.R, which pushes
                the output to Google Drive as an Rds.
@@ -62,6 +62,9 @@ collapse (median) dtrip, by(mode kod month year)
 /******************************************************************************/
 /******************************************************************************/
 
+/* ensure ManagementCycle is in range*/
+assert $ManagementCycle>=2026
+
 * Re-label and rename some variables 
 replace kod="weekday" if kod=="wd"
 replace kod="weekend" if kod=="we"
@@ -70,8 +73,9 @@ rename dtrip value
 gen units="calibrated directed trips"
 gen source="model intermediate"
 gen fishery= "NE Groundfish"
+gen management_cycle= $ManagementCycle 
 label variable value ""
-order fishery year month mode metric value units source
+order fishery year management_cycle month mode metric value units source
 
 * Look at the data as a stacked bar chart 
 graph bar value, over(metric) over(month) asyvars stack by(mode) ytitle("Directed Trips")
