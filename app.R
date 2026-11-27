@@ -387,6 +387,18 @@ server <- function(input, output, session){
     return(Run_Name)
   }
 
+  #' @title Normalize a policy name for matching
+  #' @description The same run can be spelled "KB_test" in the output files'
+  #'   policy_name column and "KB-test" in saved_regs (Run_Name() swaps "_" for
+  #'   "-"). This builds a join key that treats hyphens and underscores as the
+  #'   same character and ignores stray whitespace, so the two sides match.
+  #'   It is used only for joining; the names shown to users are unchanged.
+  #' @param x Character vector of policy names.
+  #' @return Character vector of normalized keys.
+  policy_key <- function(x){
+    gsub("[-_]", "-", trimws(as.character(x)))
+  }
+
   #' @title Read every regulation set ever submitted
   #' @description Stacks all saved_regs/*.csv into one long table. Each row is
   #'   one regulation element (e.g. "codFH_1_bag") for one run.
@@ -426,7 +438,10 @@ server <- function(input, output, session){
                        Value = round(median(Value),0)) %>%
       tidyr::pivot_wider(names_from = species, values_from = c(Value, under_acl)) %>%
       dplyr::mutate(under_acl_cod = round((under_acl_cod/101)*100, digits = 1),
-                    under_acl_hadd = round((under_acl_hadd/101)*100, digits = 1))
+                    under_acl_hadd = round((under_acl_hadd/101)*100, digits = 1)) %>%
+      dplyr::ungroup() %>%
+      # Hyphen/underscore-insensitive key for joining to the saved regulations
+      dplyr::mutate(join_key = policy_key(policy_name))
 
     # The saved regulations arrive as opaque name/value pairs, so species, mode,
     # season number and season endpoint (op/cl) are recovered by pattern
@@ -471,11 +486,13 @@ server <- function(input, output, session){
       dplyr::group_by(model, mode, size_type) %>%
       dplyr::summarise(size = dplyr::first(value), .groups = "drop") %>%
       tidyr::pivot_wider(names_from = size_type,values_from = size)
-
     final_table <- seasons %>%
       dplyr::left_join(bags, by = c("model", "mode")) %>%
       dplyr::left_join(minsizes, by = c("model", "mode")) %>%
-      dplyr::left_join(catch_agg, by = c("model" = "policy_name")) %>%
+      # Match on the normalized key so "KB-test" (saved_regs) joins to
+      # "KB_test" (output files); the displayed name comes from saved_regs.
+      dplyr::mutate(join_key = policy_key(model)) %>%
+      dplyr::left_join(catch_agg, by = "join_key") %>%
       dplyr::select(model, mode, codseason, codbag, codlen, hadseason, hadbag, hadlen, Value_cod, Value_hadd, under_acl_cod, under_acl_hadd) %>%
       dplyr::rename(Mode = mode,
                     `Policy Identifier` = model,
