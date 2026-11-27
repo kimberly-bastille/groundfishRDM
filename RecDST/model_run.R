@@ -223,7 +223,7 @@ trip_adjustments<-trip_adjustments %>%
 # In an Azure Shiny app, set n_workers from an environment variable or app option,
 # e.g. Sys.getenv("RDM_N_WORKERS", unset = parallel::detectCores(logical = FALSE) - 1).
 use_parallel <- TRUE
-n_workers <- 34  # or however many Azure workers/cores you want available
+#n_workers <- 34  # or however many Azure workers/cores you want available
 #n_workers <- 2
 
 ## Run Model in parallel
